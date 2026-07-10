@@ -1,0 +1,70 @@
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: pwa-torneios-traefik
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - pwa-torneios
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: pwa-torneios-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pwa_torneios}
+      POSTGRES_USER: ${POSTGRES_USER:-pwa_torneios}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pwa_torneios_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pwa-torneios
+
+  redis:
+    image: redis:7-alpine
+    container_name: pwa-torneios-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - pwa-torneios
+
+  api:
+    container_name: pwa-torneios-api
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pwa-torneios-api.rule=Host(`${API_HOST:-api.localhost}`)
+      - traefik.http.routers.pwa-torneios-api.entrypoints=web
+      - traefik.http.services.pwa-torneios-api.loadbalancer.server.port=3000
+    networks:
+      - pwa-torneios
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  pwa-torneios:
+    driver: bridge
