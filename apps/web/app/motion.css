@@ -1,0 +1,108 @@
+:root {
+  --motion-instant: 100ms;
+  --motion-fast: 160ms;
+  --motion-normal: 240ms;
+  --motion-emphasis: 420ms;
+  --motion-score: 650ms;
+  --ease-sport: cubic-bezier(.2,.8,.2,1);
+  --ease-impact: cubic-bezier(.15,1,.3,1);
+}
+
+.motion-enter {
+  opacity: 0;
+  transform: translateY(18px);
+  animation: sportEnter var(--motion-emphasis) var(--ease-impact) forwards;
+}
+.motion-delay-1 { animation-delay: 40ms; }
+.motion-delay-2 { animation-delay: 90ms; }
+.motion-delay-3 { animation-delay: 150ms; }
+.motion-delay-4 { animation-delay: 210ms; }
+.motion-delay-5 { animation-delay: 270ms; }
+
+.sport-press {
+  transition: transform var(--motion-fast) var(--ease-sport), filter var(--motion-fast) var(--ease-sport), opacity var(--motion-fast) ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.sport-press:active { transform: scale(.96) skewX(-1deg); filter: brightness(1.16); }
+.sport-press:disabled { opacity: .38; cursor: not-allowed; filter: grayscale(.35); }
+
+.diagonal-impact {
+  position: fixed;
+  inset: -20% -60%;
+  z-index: 80;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-55%) skewX(-18deg);
+}
+.impact-blue { background: linear-gradient(90deg, transparent 38%, rgba(14,121,178,.9) 49%, rgba(78,191,255,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-pink { background: linear-gradient(90deg, transparent 38%, rgba(191,19,99,.9) 49%, rgba(255,74,160,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-orange { background: linear-gradient(90deg, transparent 38%, rgba(243,146,55,.9) 49%, rgba(255,194,120,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-none { display: none; }
+
+.sport-toast {
+  position: fixed;
+  z-index: 90;
+  top: 22px;
+  left: 50%;
+  width: min(calc(100% - 36px), 420px);
+  transform: translateX(-50%);
+  padding: 14px 18px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-align: center;
+  color: #fbfef9;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+  box-shadow: 0 18px 50px rgba(0,0,0,.5);
+  animation: toastStrike 1.8s var(--ease-impact) both;
+}
+.toast-blue { background: #0e79b2; }
+.toast-pink { background: #bf1363; }
+.toast-orange { background: #f39237; color: #000; }
+
+.score-pop { animation: scorePop var(--motion-score) var(--ease-impact); }
+.score-impact-blue { box-shadow: inset 8px 0 0 rgba(14,121,178,.8); }
+.score-impact-pink { box-shadow: inset -8px 0 0 rgba(191,19,99,.8); }
+.score-impact-orange { box-shadow: inset 0 -5px 0 rgba(243,146,55,.8); }
+
+.timeline-new { animation: timelineInsert var(--motion-emphasis) var(--ease-impact) both; }
+
+.live-screen.is-paused .score-hero,
+.live-screen.is-paused .event-actions {
+  filter: saturate(.55) brightness(.72);
+}
+.live-status.paused { background: #f39237; color: #000; }
+.live-status.paused i { animation: none; background: #000; }
+
+@keyframes sportEnter {
+  from { opacity: 0; transform: translateY(18px); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: translateY(0); clip-path: inset(0 0 0 0); }
+}
+@keyframes diagonalStrike {
+  0% { opacity: 0; transform: translateX(-55%) skewX(-18deg); }
+  20% { opacity: .95; }
+  100% { opacity: 0; transform: translateX(55%) skewX(-18deg); }
+}
+@keyframes toastStrike {
+  0% { opacity: 0; transform: translate(-50%,-24px) skewX(-5deg); }
+  14%, 78% { opacity: 1; transform: translate(-50%,0) skewX(0); }
+  100% { opacity: 0; transform: translate(-50%,-12px) skewX(4deg); }
+}
+@keyframes scorePop {
+  0% { transform: scale(.72); filter: brightness(1); }
+  45% { transform: scale(1.28); filter: brightness(1.7); text-shadow: 0 0 24px currentColor; }
+  100% { transform: scale(1); filter: brightness(1); text-shadow: none; }
+}
+@keyframes timelineInsert {
+  from { opacity: 0; transform: translateX(26px) skewX(-4deg); }
+  to { opacity: 1; transform: translateX(0) skewX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .diagonal-impact { display: none !important; }
+}
