@@ -1,6 +1,7 @@
 import '@fontsource/boldonse';
 import '@fontsource-variable/host-grotesk';
 import './globals.css';
+import './motion.css';
 
 export const metadata = {
   title: 'PWA Torneios',
