@@ -61,6 +61,22 @@ services:
     networks:
       - pwa-torneios
 
+  web:
+    container_name: pwa-torneios-web
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pwa-torneios-web.rule=Host(`${WEB_HOST:-app.localhost}`)
+      - traefik.http.routers.pwa-torneios-web.entrypoints=web
+      - traefik.http.services.pwa-torneios-web.loadbalancer.server.port=3001
+    networks:
+      - pwa-torneios
+
 volumes:
   postgres_data:
   redis_data:
