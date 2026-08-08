@@ -1,0 +1,15 @@
+'use client';
+
+import Link from 'next/link';
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { AppShell } from './AppShell';
+import { useFrontendState } from '../lib/frontend-state';
+
+function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+export function CompetitionCreationForm() {
+  const router = useRouter(); const { state, commit } = useFrontendState();
+  const [name, setName] = useState(''); const [slug, setSlug] = useState(''); const [editionName, setEditionName] = useState(''); const [year, setYear] = useState(String(new Date().getFullYear() + 1)); const [start, setStart] = useState(''); const [end, setEnd] = useState(''); const [error, setError] = useState('');
+  function submit(event: FormEvent) { event.preventDefault(); const finalSlug = slugify(slug || name); if (!name.trim() || !finalSlug || !editionName.trim() || !year || !start || !end) { setError('Preencha a competição e os dados da primeira edição.'); return; } if (state.competitions.some((item) => item.slug === finalSlug)) { setError('Este identificador público já está em uso.'); return; } const id = `competition-${Date.now()}`; const editionId = `edition-${Date.now()}`; commit((current) => ({ ...current, competitions: [...current.competitions, { id, name: name.trim(), slug: finalSlug, active: false }], editions: [{ id: editionId, name: editionName.trim(), year: Number(year), start, end, status: 'Planejamento', active: false, competitionId: id }, ...current.editions] }), { action: 'Competição criada', entity: name.trim(), after: editionName.trim() }); router.push('/competitions'); }
+  return <AppShell active="profile" eyebrow="SUPER ADMIN" title="NOVA COMPETIÇÃO" subtitle="Crie o evento e sua primeira edição"><form className="entity-form" onSubmit={submit}><label><span>Nome</span><input value={name} onChange={(event) => { setName(event.target.value); if (!slug) setSlug(slugify(event.target.value)); }} placeholder="Ex.: Jogos de Engenharia" autoFocus /></label><label><span>Identificador público</span><input value={slug} onChange={(event) => setSlug(slugify(event.target.value))} placeholder="jogos-de-engenharia" /></label><label><span>Nome da primeira edição</span><input value={editionName} onChange={(event) => setEditionName(event.target.value)} placeholder="InterEng 2027" /></label><label><span>Ano</span><input type="number" value={year} onChange={(event) => setYear(event.target.value)} /></label><label><span>Início</span><input type="date" value={start} onChange={(event) => setStart(event.target.value)} /></label><label><span>Encerramento</span><input type="date" value={end} onChange={(event) => setEnd(event.target.value)} /></label>{error ? <p className="form-feedback form-feedback-error">{error}</p> : null}<div className="form-actions"><Link href="/competitions" className="secondary-button">Cancelar</Link><button type="submit" className="primary-button">Criar competição</button></div></form></AppShell>;
+}

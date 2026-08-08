@@ -1,0 +1,1 @@
+export default function Loading() { return <main className="app-screen global-state-screen" aria-busy="true"><div className="loading-mark">26</div><p>CARREGANDO INTERENG</p><span className="loading-line" /></main>; }

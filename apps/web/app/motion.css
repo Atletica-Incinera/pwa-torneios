@@ -34,9 +34,9 @@
   opacity: 0;
   transform: translateX(-55%) skewX(-18deg);
 }
-.impact-blue { background: linear-gradient(90deg, transparent 38%, rgba(14,121,178,.9) 49%, rgba(78,191,255,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
-.impact-pink { background: linear-gradient(90deg, transparent 38%, rgba(191,19,99,.9) 49%, rgba(255,74,160,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
-.impact-orange { background: linear-gradient(90deg, transparent 38%, rgba(243,146,55,.9) 49%, rgba(255,194,120,.95) 51%, transparent 62%); animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-blue { background: transparent; border-left: 52px solid #004570; border-right: 16px solid #f6a11a; animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-pink { background: transparent; border-left: 52px solid #e23f49; border-right: 16px solid #f7f0e3; animation: diagonalStrike var(--motion-score) var(--ease-impact); }
+.impact-orange { background: transparent; border-left: 52px solid #f6a11a; border-right: 16px solid #f7f0e3; animation: diagonalStrike var(--motion-score) var(--ease-impact); }
 .impact-none { display: none; }
 
 .sport-toast {
@@ -50,19 +50,19 @@
   font-weight: 900;
   letter-spacing: .1em;
   text-align: center;
-  color: #fbfef9;
+  color: #f7f0e3;
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
   box-shadow: 0 18px 50px rgba(0,0,0,.5);
   animation: toastStrike 1.8s var(--ease-impact) both;
 }
-.toast-blue { background: #0e79b2; }
-.toast-pink { background: #bf1363; }
-.toast-orange { background: #f39237; color: #000; }
+.toast-blue { background: #004570; }
+.toast-pink { background: #e23f49; }
+.toast-orange { background: #f6a11a; color: #022734; }
 
 .score-pop { animation: scorePop var(--motion-score) var(--ease-impact); }
-.score-impact-blue { box-shadow: inset 8px 0 0 rgba(14,121,178,.8); }
-.score-impact-pink { box-shadow: inset -8px 0 0 rgba(191,19,99,.8); }
-.score-impact-orange { box-shadow: inset 0 -5px 0 rgba(243,146,55,.8); }
+.score-impact-blue { box-shadow: inset 8px 0 0 rgba(0,69,112,.9); }
+.score-impact-pink { box-shadow: inset -8px 0 0 rgba(226,63,73,.9); }
+.score-impact-orange { box-shadow: inset 0 -5px 0 rgba(246,161,26,.9); }
 
 .timeline-new { animation: timelineInsert var(--motion-emphasis) var(--ease-impact) both; }
 
@@ -70,8 +70,8 @@
 .live-screen.is-paused .event-actions {
   filter: saturate(.55) brightness(.72);
 }
-.live-status.paused { background: #f39237; color: #000; }
-.live-status.paused i { animation: none; background: #000; }
+.live-status.paused { background: #f6a11a; color: #022734; }
+.live-status.paused i { animation: none; background: #022734; }
 
 @keyframes sportEnter {
   from { opacity: 0; transform: translateY(18px); clip-path: inset(0 0 100% 0); }
