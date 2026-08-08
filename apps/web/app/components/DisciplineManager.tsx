@@ -3,14 +3,18 @@
 import { Clock3, Settings2, Trophy, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useFrontendState } from '../lib/frontend-state';
+import { useUi } from './UiProvider';
+import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
 export function DisciplineManager({ name, mode, initialConfig, tournaments }: { name: string; mode: string; initialConfig: string; tournaments: number }) {
   const { state, commit } = useFrontendState();
+  const { confirm } = useUi();
   const stored = state.disciplines[name] ?? {};
   const enabled = stored.enabled !== false;
   const config = stored.config ?? initialConfig;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(config);
+  useUnsavedChanges(editing && value !== config);
 
   function save(event: FormEvent) {
     event.preventDefault();
@@ -18,8 +22,9 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
     setEditing(false);
   }
 
-  function toggleEnabled() {
+  async function toggleEnabled() {
     const next = !enabled;
+    if (!next && !(await confirm({ title: 'Remover modalidade?', message: 'Ela ficará indisponível em novos torneios e jogos, mas o histórico será preservado.', confirmLabel: 'Remover', danger: true }))) return;
     commit((current) => ({ ...current, disciplines: { ...current.disciplines, [name]: { ...current.disciplines[name], config, enabled: next } } }), { action: next ? 'Modalidade restaurada' : 'Modalidade removida da edição', entity: name, before: enabled ? 'Habilitada' : 'Removida', after: next ? 'Habilitada' : 'Removida' });
   }
 

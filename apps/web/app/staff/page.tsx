@@ -5,9 +5,11 @@ import { useMemo, useState } from 'react';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { disciplines, staff as seedStaff } from '../lib/mock-data';
 import { StaffState, useFrontendState } from '../lib/frontend-state';
+import { useUi } from '../components/UiProvider';
 
 export default function StaffPage() {
   const { state, commit } = useFrontendState();
+  const { confirm } = useUi();
   const [editing, setEditing] = useState<string | null>(null);
   const members = useMemo(() => {
     const seeded = seedStaff.map((member) => {
@@ -27,9 +29,9 @@ export default function StaffPage() {
     });
   }
 
-  function toggleRevoked(member: StaffState) {
+  async function toggleRevoked(member: StaffState) {
     const verb = member.revoked ? 'Restaurar' : 'Revogar';
-    if (!window.confirm(`${verb} o acesso de ${member.name}?`)) return;
+    if (!(await confirm({ title: `${verb} acesso?`, message: member.revoked ? `${member.name} poderá entrar novamente com o papel configurado.` : `${member.name} perderá imediatamente o acesso nesta sessão local.`, confirmLabel: verb, danger: !member.revoked }))) return;
     save(member, { revoked: !member.revoked }, member.revoked ? 'Acesso restaurado' : 'Acesso revogado');
   }
 

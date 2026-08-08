@@ -1,8 +1,11 @@
+'use client';
+
 import Link from 'next/link';
 import { ChevronDown, Cloud, Plus } from 'lucide-react';
 import { BottomNav } from './BottomNav';
-import { CreationFeedback } from './CreationFeedback';
-import { currentContext } from '../lib/mock-data';
+import { AdminRouteGuard } from './AdminRouteGuard';
+import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { useFrontendState } from '../lib/frontend-state';
 
 type NavKey = 'home' | 'tournaments' | 'matches' | 'teams' | 'profile';
 
@@ -13,19 +16,27 @@ type AppShellProps = {
   subtitle: string;
   actionHref?: string;
   actionLabel?: string;
+  actionPermission?: 'edition' | 'discipline';
+  actionDiscipline?: string;
   children: React.ReactNode;
 };
 
-export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, children }: AppShellProps) {
+export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
+  const { state } = useFrontendState();
+  const { session } = useFrontendSession();
+  const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
+  const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
+  const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
+  const canUseAction = actionPermission === 'discipline' ? canManageDiscipline(session, actionDiscipline) : canManageEdition(session);
   return (
-    <main className={`app-screen management-screen theme-${active}`}>
+    <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">
-        <Link href="/competitions" className="context-copy">
-          <span className="context-mark">26</span>
-          <span><small>{currentContext.competition}</small><strong>{currentContext.edition}</strong></span>
+        <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, ${edition.name}, contexto ativo`}>
+          <span className="context-mark">{String(edition.year).slice(-2)}</span>
+          <span><small>{competition.name}</small><strong>{edition.name}</strong></span>
           <ChevronDown size={16} />
         </Link>
-        <span className="sync-state"><Cloud size={15} /> Sincronizado</span>
+        <span className="sync-state"><Cloud size={15} /> Modo local</span>
       </div>
 
       <header className="mobile-header page-heading">
@@ -34,15 +45,14 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
-        {actionHref && actionLabel ? (
+        {actionHref && actionLabel && canUseAction ? (
           <Link href={actionHref} className="header-action" aria-label={actionLabel}><Plus size={23} /></Link>
         ) : null}
       </header>
 
-      <CreationFeedback />
       {children}
       <BottomNav active={active} />
-    </main>
+    </main></AdminRouteGuard>
   );
 }
 

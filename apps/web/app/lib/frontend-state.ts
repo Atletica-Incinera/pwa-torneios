@@ -9,7 +9,8 @@ export type AthleteState = { name?: string; teamId?: string; modalities?: string
 export type DisciplineState = { config?: string; enabled?: boolean; created?: boolean; name?: string; mode?: 'Coletiva' | 'Individual'; tournaments?: number; tone?: 'blue' | 'pink' | 'orange' };
 export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number };
 export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange' };
-export type MatchState = { date?: string; time?: string; venue?: string; status?: 'Agendada' | 'Ao vivo' | 'Encerrada' | 'Adiada' | 'Cancelada' | 'W.O.'; reason?: string; scoreA?: number; scoreB?: number; created?: boolean; discipline?: string; entryA?: string; entryB?: string; logoA?: string; logoB?: string; phase?: string };
+export type MatchEventState = { id: string; at: string; elapsedSeconds: number; type: string; detail: string; side: 'home' | 'away' | 'neutral'; scoreA: number; scoreB: number; previousScoreA?: number; previousScoreB?: number };
+export type MatchState = { date?: string; time?: string; venue?: string; status?: 'Agendada' | 'Ao vivo' | 'Encerrada' | 'Adiada' | 'Cancelada' | 'W.O.'; reason?: string; scoreA?: number | null; scoreB?: number | null; created?: boolean; discipline?: string; entryA?: string; entryB?: string; logoA?: string; logoB?: string; phase?: string; tournamentId?: string; clockSeconds?: number; runningSince?: string; paused?: boolean; events?: MatchEventState[]; operatorId?: string; operatorName?: string; operatorHeartbeat?: string };
 export type StaffState = {
   name: string;
   email: string;
@@ -30,6 +31,7 @@ export type FrontendState = {
   matches: Record<string, MatchState>;
   staff: Record<string, StaffState>;
   audit: AuditState[];
+  preferences: { selectedDiscipline: string; notifications: boolean };
 };
 
 const storageKey = 'intereng:app-state:v1';
@@ -49,11 +51,28 @@ export const initialFrontendState: FrontendState = {
   matches: {},
   staff: {},
   audit: [],
+  preferences: { selectedDiscipline: 'Futsal', notifications: true },
 };
 
 function parseState(value: string | null): FrontendState {
   if (!value) return initialFrontendState;
-  try { return { ...initialFrontendState, ...JSON.parse(value) } as FrontendState; } catch { return initialFrontendState; }
+  try {
+    const parsed = JSON.parse(value) as Partial<FrontendState>;
+    return {
+      ...initialFrontendState,
+      ...parsed,
+      competitions: parsed.competitions ?? initialFrontendState.competitions,
+      editions: parsed.editions ?? initialFrontendState.editions,
+      teams: { ...initialFrontendState.teams, ...parsed.teams },
+      athletes: { ...initialFrontendState.athletes, ...parsed.athletes },
+      disciplines: { ...initialFrontendState.disciplines, ...parsed.disciplines },
+      tournaments: { ...initialFrontendState.tournaments, ...parsed.tournaments },
+      matches: { ...initialFrontendState.matches, ...parsed.matches },
+      staff: { ...initialFrontendState.staff, ...parsed.staff },
+      audit: parsed.audit ?? [],
+      preferences: { ...initialFrontendState.preferences, ...parsed.preferences },
+    };
+  } catch { return initialFrontendState; }
 }
 
 export function readFrontendState() {
@@ -63,9 +82,11 @@ export function readFrontendState() {
 
 export function useFrontendState() {
   const [state, setState] = useState<FrontendState>(initialFrontendState);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setState(readFrontendState());
+    setHydrated(true);
     const sync = () => setState(readFrontendState());
     window.addEventListener(eventName, sync);
     window.addEventListener('storage', sync);
@@ -73,13 +94,22 @@ export function useFrontendState() {
   }, []);
 
   const commit = useCallback((update: (current: FrontendState) => FrontendState, audit?: Omit<AuditState, 'id' | 'at' | 'actor'>) => {
-    const current = readFrontendState();
-    const next = update(current);
-    if (audit) next.audit = [{ id: `audit-${Date.now()}`, at: new Date().toISOString(), actor: 'Ana Coordenadora', ...audit }, ...next.audit];
-    window.localStorage.setItem(storageKey, JSON.stringify(next));
-    setState(next);
-    window.dispatchEvent(new Event(eventName));
+    try {
+      const current = readFrontendState();
+      const updated = update(current);
+      const sessionRaw = window.localStorage.getItem('intereng:frontend-session') ?? window.sessionStorage.getItem('intereng:frontend-session');
+      const actor = sessionRaw ? (JSON.parse(sessionRaw) as { name?: string }).name ?? 'Usuário do app' : 'Usuário do app';
+      const next = audit ? { ...updated, audit: [{ id: `audit-${Date.now()}`, at: new Date().toISOString(), actor, ...audit }, ...updated.audit] } : updated;
+      window.localStorage.setItem(storageKey, JSON.stringify(next));
+      setState(next);
+      window.dispatchEvent(new Event(eventName));
+      if (audit) window.dispatchEvent(new CustomEvent('intereng:toast', { detail: { message: audit.action, tone: 'success' } }));
+      return true;
+    } catch {
+      window.dispatchEvent(new CustomEvent('intereng:toast', { detail: { message: 'Não foi possível salvar. Tente novamente.', tone: 'error' } }));
+      return false;
+    }
   }, []);
 
-  return { state, commit };
+  return { state, commit, hydrated };
 }

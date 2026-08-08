@@ -1,170 +1,134 @@
 'use client';
 
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CircleDot, Clock3, Flag, Goal, Pause, Play, RotateCcw, Square, TimerReset } from 'lucide-react';
 import { BottomNav } from '../../components/BottomNav';
 import { TeamMark } from '../../components/AppShell';
+import { AdminRouteGuard } from '../../components/AdminRouteGuard';
+import { useUi } from '../../components/UiProvider';
 import { matches } from '../../lib/mock-data';
-import { useFrontendState } from '../../lib/frontend-state';
+import { MatchEventState, useFrontendState } from '../../lib/frontend-state';
+import { canManageDiscipline, useFrontendSession } from '../../lib/frontend-session';
+import { formatClock } from '../../lib/tournament-engine';
+import { progressTournament } from '../../lib/tournament-progression';
 
 type EventTone = 'blue' | 'pink' | 'orange';
-type MatchEvent = { minute: string; title: string; detail: string; tone: EventTone };
-type LocalAction = { side: 'home' | 'away' | 'event' };
+
+const rules: Record<string, { score: string; extraA: string; extraB: string }> = {
+  Futsal: { score: 'Gol', extraA: 'Falta', extraB: 'Cartão' },
+  Vôlei: { score: 'Ponto', extraA: 'Fim de set', extraB: 'Falta' },
+  Handebol: { score: 'Gol', extraA: 'Falta', extraB: '2 minutos' },
+  Xadrez: { score: 'Ponto', extraA: 'Advertência', extraB: 'Encerrar tabuleiro' },
+};
 
 export default function LiveMatchPage() {
-  return (
-    <Suspense fallback={<main className="app-screen live-screen theme-matches"><p className="match-filter-empty">Carregando partida...</p></main>}>
-      <LiveMatchContent />
-    </Suspense>
-  );
+  return <AdminRouteGuard><Suspense fallback={<main className="global-state-screen"><span className="loading-mark">26</span><div className="loading-line" /><p>Preparando placar...</p></main>}><LiveMatchContent /></Suspense></AdminRouteGuard>;
 }
 
 function LiveMatchContent() {
   const searchParams = useSearchParams();
   const matchId = searchParams.get('partida');
-  const { state, commit } = useFrontendState();
+  const { state, commit, hydrated } = useFrontendState();
+  const { session } = useFrontendSession();
+  const { confirm, toast } = useUi();
+  const operationLock = useRef(false);
+  const initialized = useRef<string | null>(null);
+  const operatorId = useRef(`operator-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const storedRequested = matchId ? state.matches[matchId] : undefined;
   const localMatch = matchId && storedRequested?.created ? { id: matchId, time: storedRequested.time ?? '--:--', date: storedRequested.date ?? 'Hoje', discipline: storedRequested.discipline ?? 'Modalidade', entryA: storedRequested.entryA ?? 'Equipe A', logoA: storedRequested.logoA ?? '', entryB: storedRequested.entryB ?? 'Equipe B', logoB: storedRequested.logoB ?? '', scoreA: storedRequested.scoreA ?? null, scoreB: storedRequested.scoreB ?? null, venue: storedRequested.venue ?? 'A definir', phase: storedRequested.phase ?? 'Fase atual', status: storedRequested.status ?? 'Agendada' } : undefined;
   const requestedMatch = matchId ? matches.find((item) => item.id === matchId) ?? localMatch : undefined;
   const match = requestedMatch ?? matches.find((item) => item.status === 'Ao vivo') ?? matches[0];
   const invalidMatch = Boolean(matchId && !requestedMatch);
-  const persistedMatch = state.matches[match.id] ?? {};
-  const [homeScore, setHomeScore] = useState(persistedMatch.scoreA ?? match.scoreA ?? 0);
-  const [awayScore, setAwayScore] = useState(persistedMatch.scoreB ?? match.scoreB ?? 0);
-  const [paused, setPaused] = useState(false);
-  const [finished, setFinished] = useState(false);
-  const [actions, setActions] = useState<LocalAction[]>([]);
-  const [events, setEvents] = useState<MatchEvent[]>([
-    { minute: "72'", title: 'Gol', detail: `${match.entryA} · evento registrado`, tone: 'blue' },
-    { minute: "65'", title: 'Gol', detail: `${match.entryB} · evento registrado`, tone: 'pink' },
-  ]);
+  const persisted = state.matches[match.id] ?? {};
+  const status = persisted.status ?? match.status;
+  const homeScore = persisted.scoreA ?? match.scoreA ?? 0;
+  const awayScore = persisted.scoreB ?? match.scoreB ?? 0;
+  const events = persisted.events ?? [];
+  const paused = persisted.paused ?? false;
+  const finished = status === 'Encerrada';
+  const authorized = canManageDiscipline(session, match.discipline);
+  const operatorFresh = persisted.operatorHeartbeat && Date.now() - new Date(persisted.operatorHeartbeat).getTime() < 30_000;
+  const operatorConflict = Boolean(operatorFresh && persisted.operatorId && persisted.operatorId !== operatorId.current);
+  const allowed = authorized && !operatorConflict;
+  const disciplineRules = rules[match.discipline] ?? { score: 'Ponto', extraA: 'Falta', extraB: 'Ocorrência' };
+  const [clock, setClock] = useState(0);
   const [impact, setImpact] = useState<EventTone | null>(null);
-  const [toast, setToast] = useState('');
 
-  const statusLabel = finished ? 'ENCERRADA' : paused ? 'PAUSADA' : 'AO VIVO';
-  const latestMinute = useMemo(() => "73'", []);
-  const primaryEvent = match.discipline === 'Futsal' ? 'Gol' : 'Ponto';
+  function currentClock() {
+    const base = persisted.clockSeconds ?? 0;
+    if (persisted.paused || !persisted.runningSince || finished) return base;
+    return base + Math.max(0, Math.floor((Date.now() - new Date(persisted.runningSince).getTime()) / 1000));
+  }
 
   useEffect(() => {
-    if (!invalidMatch && (state.matches[match.id]?.status ?? match.status) !== 'Ao vivo') {
-      commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Ao vivo' } } }), { action: 'Partida iniciada', entity: `${match.entryA} × ${match.entryB}`, after: 'Ao vivo' });
+    if (!hydrated || invalidMatch || !allowed || initialized.current === match.id) return;
+    initialized.current = match.id;
+    if (!['Ao vivo', 'Encerrada'].includes(status)) {
+      commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Ao vivo', scoreA: homeScore, scoreB: awayScore, paused: false, clockSeconds: current.matches[match.id]?.clockSeconds ?? 0, runningSince: new Date().toISOString(), events: current.matches[match.id]?.events ?? [] } } }), { action: 'Partida iniciada', entity: `${match.entryA} × ${match.entryB}`, after: 'Ao vivo' });
+    } else if (status === 'Ao vivo' && !paused && !persisted.runningSince) {
+      commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], runningSince: new Date().toISOString() } } }));
     }
-  }, [commit, invalidMatch, match.entryA, match.entryB, match.id, match.status, state.matches]);
+  }, [allowed, awayScore, commit, homeScore, hydrated, invalidMatch, match.entryA, match.entryB, match.id, paused, persisted.runningSince, status]);
 
-  function triggerImpact(tone: EventTone, message: string) {
+  useEffect(() => {
+    if (!hydrated || invalidMatch || !authorized || finished || operatorConflict) return;
+    const heartbeat = () => commit((current) => { const active = current.matches[match.id] ?? {}; const fresh = active.operatorHeartbeat && Date.now() - new Date(active.operatorHeartbeat).getTime() < 30_000; if (fresh && active.operatorId && active.operatorId !== operatorId.current) return current; return { ...current, matches: { ...current.matches, [match.id]: { ...active, operatorId: operatorId.current, operatorName: session?.name ?? 'Operador', operatorHeartbeat: new Date().toISOString() } } }; });
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 10_000);
+    return () => { window.clearInterval(timer); commit((current) => { const active = current.matches[match.id]; if (active?.operatorId !== operatorId.current) return current; return { ...current, matches: { ...current.matches, [match.id]: { ...active, operatorId: undefined, operatorName: undefined, operatorHeartbeat: undefined } } }; }); };
+  }, [authorized, commit, finished, hydrated, invalidMatch, match.id, operatorConflict, session?.name]);
+
+  useEffect(() => {
+    setClock(currentClock());
+    if (paused || finished || !persisted.runningSince) return;
+    const timer = window.setInterval(() => setClock(currentClock()), 1000);
+    return () => window.clearInterval(timer);
+  }, [finished, match.id, paused, persisted.clockSeconds, persisted.runningSince]);
+
+  function showImpact(tone: EventTone) {
     setImpact(tone);
-    setToast(message);
-    window.setTimeout(() => setImpact(null), 650);
-    window.setTimeout(() => setToast(''), 1800);
+    window.setTimeout(() => setImpact(null), 600);
   }
 
-  function registerEvent(title: string, detail: string, tone: EventTone, side: LocalAction['side'] = 'event') {
-    const event = { minute: latestMinute, title, detail, tone };
-    setEvents((current) => [event, ...current]);
-    setActions((current) => [...current, { side }]);
-    triggerImpact(tone, `${title.toUpperCase()} REGISTRADO`);
+  function registerEvent(type: string, detail: string, tone: EventTone, side: MatchEventState['side'] = 'neutral', nextA = homeScore, nextB = awayScore) {
+    if (!allowed || paused || finished || operationLock.current) return;
+    operationLock.current = true;
+    const event: MatchEventState = { id: `event-${Date.now()}`, at: new Date().toISOString(), elapsedSeconds: clock, type, detail, side, scoreA: nextA, scoreB: nextB, previousScoreA: homeScore, previousScoreB: awayScore };
+    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Ao vivo', scoreA: nextA, scoreB: nextB, events: [event, ...(current.matches[match.id]?.events ?? [])] } } }), { action: `${type} registrado`, entity: detail, after: `${nextA} × ${nextB}` });
+    showImpact(tone);
+    window.setTimeout(() => { operationLock.current = false; }, 350);
   }
 
-  function registerHomeScore() {
-    const score = homeScore + 1;
-    setHomeScore(score);
-    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Ao vivo', scoreA: score, scoreB: awayScore } } }), { action: `${primaryEvent} registrado`, entity: match.entryA, after: String(score) });
-    registerEvent(primaryEvent, `${match.entryA} · novo evento`, 'blue', 'home');
+  function togglePause() {
+    if (!allowed || finished || operationLock.current) return;
+    operationLock.current = true;
+    const nextPaused = !paused;
+    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], paused: nextPaused, clockSeconds: nextPaused ? clock : current.matches[match.id]?.clockSeconds ?? clock, runningSince: nextPaused ? undefined : new Date().toISOString() } } }), { action: nextPaused ? 'Cronômetro pausado' : 'Cronômetro retomado', entity: `${match.entryA} × ${match.entryB}`, after: formatClock(clock) });
+    window.setTimeout(() => { operationLock.current = false; }, 350);
   }
 
-  function registerAwayScore() {
-    const score = awayScore + 1;
-    setAwayScore(score);
-    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Ao vivo', scoreA: homeScore, scoreB: score } } }), { action: `${primaryEvent} registrado`, entity: match.entryB, after: String(score) });
-    registerEvent(primaryEvent, `${match.entryB} · novo evento`, 'pink', 'away');
+  async function undoLastAction() {
+    const last = events[0];
+    if (!last || !allowed || finished || operationLock.current) { if (!last) toast('Nenhum evento para desfazer.', 'error'); return; }
+    if (!(await confirm({ title: 'Desfazer último evento?', message: `${last.type}: ${last.detail}. O placar também será restaurado.`, confirmLabel: 'Desfazer' }))) return;
+    operationLock.current = true;
+    const nextA = last.previousScoreA ?? Math.max(0, last.scoreA - (last.side === 'home' ? 1 : 0));
+    const nextB = last.previousScoreB ?? Math.max(0, last.scoreB - (last.side === 'away' ? 1 : 0));
+    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], scoreA: nextA, scoreB: nextB, events: (current.matches[match.id]?.events ?? []).filter((event) => event.id !== last.id) } } }), { action: 'Último evento desfeito', entity: `${match.entryA} × ${match.entryB}`, after: `${nextA} × ${nextB}` });
+    showImpact('orange');
+    window.setTimeout(() => { operationLock.current = false; }, 350);
   }
 
-  function undoLastAction() {
-    const lastAction = actions.at(-1);
-    if (!lastAction) {
-      setToast('NENHUMA AÇÃO PARA DESFAZER');
-      window.setTimeout(() => setToast(''), 1800);
-      return;
-    }
-    const nextHome = lastAction.side === 'home' ? Math.max(0, homeScore - 1) : homeScore;
-    const nextAway = lastAction.side === 'away' ? Math.max(0, awayScore - 1) : awayScore;
-    setHomeScore(nextHome);
-    setAwayScore(nextAway);
-    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], scoreA: nextHome, scoreB: nextAway } } }), { action: 'Último evento desfeito', entity: `${match.entryA} × ${match.entryB}`, after: `${nextHome} × ${nextAway}` });
-    setActions((current) => current.slice(0, -1));
-    setEvents((current) => current.slice(1));
-    triggerImpact('orange', 'ÚLTIMA AÇÃO DESFEITA');
+  async function finishMatch() {
+    if (!allowed || finished || operationLock.current || !(await confirm({ title: 'Encerrar partida?', message: `Confirme o placar final: ${match.entryA} ${homeScore} × ${awayScore} ${match.entryB}.`, confirmLabel: 'Encerrar partida', danger: true }))) return;
+    operationLock.current = true;
+    commit((current) => progressTournament({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Encerrada', paused: true, runningSince: undefined, clockSeconds: clock, scoreA: homeScore, scoreB: awayScore } } }, current.matches[match.id]?.tournamentId ?? persisted.tournamentId), { action: 'Partida encerrada', entity: `${match.entryA} × ${match.entryB}`, after: `${homeScore} × ${awayScore}` });
+    operationLock.current = false;
   }
 
-  function finishMatch() {
-    setFinished(true);
-    setPaused(true);
-    commit((current) => ({ ...current, matches: { ...current.matches, [match.id]: { ...current.matches[match.id], status: 'Encerrada', scoreA: homeScore, scoreB: awayScore } } }), { action: 'Partida encerrada', entity: `${match.entryA} × ${match.entryB}`, after: `${homeScore} × ${awayScore}` });
-    setToast('PARTIDA ENCERRADA NO PROTÓTIPO');
-    window.setTimeout(() => setToast(''), 1800);
-  }
+  if (invalidMatch) return <main className="app-screen live-screen theme-matches"><div className="empty-state"><strong>PARTIDA NÃO ENCONTRADA</strong><p>O identificador informado não pertence à edição atual.</p><Link href={`/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`} className="wide-action">VOLTAR PARA JOGOS</Link></div><BottomNav active="matches" /></main>;
 
-  if (invalidMatch) {
-    return <main className="app-screen live-screen theme-matches"><div className="empty-state"><strong>PARTIDA NÃO ENCONTRADA</strong><p>O identificador informado não pertence à edição atual.</p><Link href="/matches?modalidade=Futsal" className="wide-action">VOLTAR PARA JOGOS</Link></div><BottomNav active="matches" /></main>;
-  }
-
-  return (
-    <main className={`app-screen live-screen theme-matches ${paused ? 'is-paused' : ''}`}>
-      <div className={`diagonal-impact impact-${impact ?? 'none'}`} aria-hidden="true" />
-      {toast && <div className={`sport-toast toast-${impact ?? 'blue'}`}>{toast}</div>}
-
-      <header className="live-topbar motion-enter motion-delay-1">
-        <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · INTERENG 2026</p><h1>{match.phase}</h1></div>
-        <span className={`live-status ${paused ? 'paused' : ''}`}><i /> {statusLabel}</span>
-      </header>
-
-      <section className={`score-hero motion-enter motion-delay-2 ${impact ? `score-impact-${impact}` : ''}`}>
-        <div className="score-team score-team-blue">
-          <TeamMark initial={match.entryA[0]} tone="blue" logo={match.logoA} />
-          <strong>{match.entryA}</strong>
-        </div>
-        <div className="score-center">
-          <div className="score-numbers">
-            <strong className={`score-blue ${impact === 'blue' ? 'score-pop' : ''}`}>{homeScore}</strong>
-            <span>—</span>
-            <strong className={`score-pink ${impact === 'pink' ? 'score-pop' : ''}`}>{awayScore}</strong>
-          </div>
-          <div className="game-clock"><Clock3 size={19} />72:45</div>
-        </div>
-        <div className="score-team score-team-pink">
-          <TeamMark initial={match.entryB[0]} tone="pink" logo={match.logoB} />
-          <strong>{match.entryB}</strong>
-        </div>
-      </section>
-
-      <section className="event-actions motion-enter motion-delay-3" aria-label="Ações rápidas">
-        <button className="event-btn blue sport-press" onClick={registerHomeScore} disabled={paused || finished}><Goal size={25} /><span>{primaryEvent} {match.entryA}</span></button>
-        <button className="event-btn pink sport-press" onClick={registerAwayScore} disabled={paused || finished}><CircleDot size={25} /><span>{primaryEvent} {match.entryB}</span></button>
-        <button className="event-btn orange sport-press" onClick={() => registerEvent(match.discipline === 'Vôlei' ? 'Fim de set' : 'Falta', `${match.entryA} · novo evento`, 'orange')} disabled={paused || finished}><Flag size={25} /><span>{match.discipline === 'Vôlei' ? 'Fim de set' : 'Falta'}</span></button>
-        <button className="event-btn neutral sport-press" onClick={() => registerEvent(match.discipline === 'Futsal' ? 'Cartão' : 'Falta', `${match.entryB} · novo evento`, 'orange')} disabled={paused || finished}><Square size={24} /><span>{match.discipline === 'Futsal' ? 'Cartão' : 'Falta'}</span></button>
-      </section>
-
-      <section className="match-controls motion-enter motion-delay-4">
-        <button type="button" className="sport-press" onClick={() => setPaused((value) => !value)} disabled={finished}>{paused ? <Play size={19} /> : <Pause size={19} />}{paused ? 'Retomar' : 'Pausar'}</button>
-        <button type="button" className="sport-press" onClick={undoLastAction} disabled={finished}><RotateCcw size={19} />Desfazer</button>
-        <button type="button" className="finish sport-press" onClick={finishMatch} disabled={finished}><TimerReset size={19} />{finished ? 'Encerrada' : 'Encerrar'}</button>
-      </section>
-
-      <section className="timeline-block motion-enter motion-delay-5">
-        <div className="section-title-row"><div><p className="eyebrow">PARTIDA</p><h2>EVENTOS</h2></div></div>
-        <div className="event-timeline">
-          {events.map((event, index) => (
-            <article className={`timeline-item ${index === 0 ? 'timeline-new' : ''}`} key={`${event.minute}-${event.title}-${index}`}>
-              <span className={`timeline-minute minute-${event.tone}`}>{event.minute}</span>
-              <div><strong>{event.title}</strong><p>{event.detail}</p></div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <BottomNav active="matches" />
-    </main>
-  );
+  return <main className={`app-screen live-screen theme-matches motion-page ${paused ? 'is-paused' : ''}`}><div className={`diagonal-impact impact-${impact ?? 'none'}`} aria-hidden="true" /><header className="live-topbar motion-enter motion-delay-1"><div><p className="eyebrow orange">{match.discipline.toUpperCase()} · INTERENG 2026</p><h1>{match.phase}</h1></div><span className={`live-status ${paused ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : paused ? 'PAUSADA' : 'AO VIVO'}</span></header><section className={`score-hero motion-enter motion-delay-2 ${impact ? `score-impact-${impact}` : ''}`}><div className="score-team score-team-blue"><TeamMark initial={match.entryA[0]} tone="blue" logo={match.logoA} /><strong>{match.entryA}</strong></div><div className="score-center"><div className="score-numbers"><strong className={`score-blue ${impact === 'blue' ? 'score-pop' : ''}`}>{homeScore}</strong><span>—</span><strong className={`score-pink ${impact === 'pink' ? 'score-pop' : ''}`}>{awayScore}</strong></div><div className="game-clock" aria-label={`Cronômetro ${formatClock(clock)}`}><Clock3 size={19} />{formatClock(clock)}</div></div><div className="score-team score-team-pink"><TeamMark initial={match.entryB[0]} tone="pink" logo={match.logoB} /><strong>{match.entryB}</strong></div></section>{allowed ? <><section className="event-actions motion-enter motion-delay-3" aria-label="Ações rápidas"><button className="event-btn blue sport-press" onClick={() => registerEvent(disciplineRules.score, match.entryA, 'blue', 'home', homeScore + 1, awayScore)} disabled={paused || finished}><Goal size={25} /><span>{disciplineRules.score} {match.entryA}</span></button><button className="event-btn pink sport-press" onClick={() => registerEvent(disciplineRules.score, match.entryB, 'pink', 'away', homeScore, awayScore + 1)} disabled={paused || finished}><CircleDot size={25} /><span>{disciplineRules.score} {match.entryB}</span></button><button className="event-btn orange sport-press" onClick={() => registerEvent(disciplineRules.extraA, match.entryA, 'orange')} disabled={paused || finished}><Flag size={25} /><span>{disciplineRules.extraA}</span></button><button className="event-btn neutral sport-press" onClick={() => registerEvent(disciplineRules.extraB, match.entryB, 'orange')} disabled={paused || finished}><Square size={24} /><span>{disciplineRules.extraB}</span></button></section><section className="match-controls motion-enter motion-delay-4"><button type="button" className="sport-press" onClick={togglePause} disabled={finished}>{paused ? <Play size={19} /> : <Pause size={19} />}{paused ? 'Retomar' : 'Pausar'}</button><button type="button" className="sport-press" onClick={undoLastAction} disabled={finished || !events.length}><RotateCcw size={19} />Desfazer</button><button type="button" className="finish sport-press" onClick={finishMatch} disabled={finished}><TimerReset size={19} />{finished ? 'Encerrada' : 'Encerrar'}</button></section></> : <div className="info-banner" role="status"><p>Seu perfil pode acompanhar este placar, mas não operar a modalidade {match.discipline}.</p></div>}<section className="timeline-block motion-enter motion-delay-5"><div className="section-title-row"><div><p className="eyebrow">PARTIDA</p><h2>EVENTOS</h2></div></div><div className="event-timeline">{events.length ? events.map((event, index) => { const tone: EventTone = event.side === 'home' ? 'blue' : event.side === 'away' ? 'pink' : 'orange'; return <article className={`timeline-item ${index === 0 ? 'timeline-new' : ''}`} key={event.id}><span className={`timeline-minute minute-${tone}`}>{Math.floor(event.elapsedSeconds / 60)}′</span><div><strong>{event.type}</strong><p>{event.detail}</p></div></article>; }) : <p className="match-filter-empty">Nenhum evento registrado nesta partida.</p>}</div></section><BottomNav active="matches" /></main>;
 }

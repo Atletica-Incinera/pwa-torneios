@@ -2,30 +2,47 @@
 
 import Link from 'next/link';
 import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { authenticateFrontend } from './lib/frontend-session';
+import { useUi } from './components/UiProvider';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { toast } = useUi();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState('');
+  const [recovering, setRecovering] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  useEffect(() => { if (new URL(window.location.href).searchParams.get('access') === 'revoked') setMessage('Seu acesso foi revogado pelo administrador da edição.'); }, []);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!email.includes('@') || password.length < 4) {
-      setMessage('Informe um e-mail válido e uma senha com pelo menos 4 caracteres.');
+    if (!email.includes('@') || !password) {
+      setMessage('Informe seu e-mail e sua senha.');
       return;
     }
-    const storage = remember ? window.localStorage : window.sessionStorage;
-    storage.setItem('intereng:frontend-session', JSON.stringify({ email, role: 'EDITION_ADMIN' }));
-    router.push('/dashboard');
+    setSubmitting(true);
+    const result = authenticateFrontend(email, password, remember);
+    if (!result.session) { setMessage(result.error ?? 'Não foi possível entrar.'); setSubmitting(false); return; }
+    const redirect = new URL(window.location.href).searchParams.get('redirect');
+    toast(`Bem-vindo, ${result.session.name}.`);
+    router.push(redirect?.startsWith('/') ? redirect : '/dashboard');
+  }
+
+  function recover(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!recoveryEmail.includes('@')) { setMessage('Informe um e-mail válido para recuperar o acesso.'); return; }
+    toast('Solicitação registrada. O envio será conectado ao serviço de e-mail da API.', 'info');
+    setRecovering(false); setRecoveryEmail(''); setMessage('');
   }
 
   return (
-    <main className="login-shell">
+    <main id="app-main" className="login-shell">
       <div className="ambient ambient-blue" />
       <div className="ambient ambient-pink" />
 
@@ -81,13 +98,13 @@ export default function LoginPage() {
                 <input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} />
                 <span>Manter acesso</span>
               </label>
-              <button type="button" className="text-button" onClick={() => setMessage('Fluxo de recuperação solicitado. No protótipo, use qualquer e-mail válido e uma senha com 4 caracteres.')}>Esqueci a senha</button>
+              <button type="button" className="text-button" onClick={() => { setRecovering(true); setMessage(''); }}>Esqueci a senha</button>
             </div>
 
             {message ? <p className="auth-feedback" role="status">{message}</p> : null}
 
-            <button type="submit" className="primary-action cut-button">
-              <span>ENTRAR</span>
+            <button type="submit" className="primary-action cut-button" disabled={submitting}>
+              <span>{submitting ? 'ENTRANDO…' : 'ENTRAR'}</span>
               <ArrowRight size={22} />
             </button>
           </form>
@@ -97,8 +114,10 @@ export default function LoginPage() {
             <p>Acesso exclusivo para Super Admin e Staff.</p>
             <Link href="/public">Ver área pública</Link>
           </div>
+          <details className="demo-access"><summary>Acessos de demonstração</summary><p>Admin: ana@ufpe.br · intereng2026</p><p>Gestor: bruno@ufpe.br · futsal2026</p></details>
         </div>
       </section>
+      {recovering ? <div className="app-dialog-backdrop"><form className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="recover-title" onSubmit={recover}><Mail size={30} /><h2 id="recover-title">RECUPERAR ACESSO</h2><p>Informe o e-mail cadastrado no staff.</p><label><span>E-mail</span><input type="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} autoFocus /></label><div><button type="button" className="secondary-button" onClick={() => setRecovering(false)}>Cancelar</button><button type="submit" className="primary-button">Solicitar recuperação</button></div></form></div> : null}
     </main>
   );
 }

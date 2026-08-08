@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { StatefulMatchCard } from './StatefulMatchCard';
 import { EmptyState } from './AppShell';
 import { useFrontendState } from '../lib/frontend-state';
+import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '../lib/date-utils';
 
 type ScheduleMatch = {
   id: string;
@@ -21,31 +22,27 @@ type ScheduleMatch = {
   status: string;
 };
 
-const days = [
-  { label: 'ONTEM', date: '12 OUT' },
-  { label: 'HOJE', date: '13 OUT' },
-  { label: 'AMANHÃ', date: '14 OUT' },
-];
-
-export function MatchSchedule({ matches, discipline }: { matches: readonly ScheduleMatch[]; discipline: string }) {
-  const [dayIndex, setDayIndex] = useState(1);
+export function MatchSchedule({ matches, discipline, hrefBase = '/matches', allowedStatuses }: { matches: readonly ScheduleMatch[]; discipline: string; hrefBase?: string; allowedStatuses?: readonly string[] }) {
+  const today = toDateKey(new Date());
+  const [selectedDate, setSelectedDate] = useState(today);
   const { state } = useFrontendState();
-  const day = days[dayIndex];
+  const day = formatAgendaDate(selectedDate, today);
   const created = Object.entries(state.matches).filter(([, item]) => item.created && item.discipline === discipline).map(([id, item]) => ({ id, time: item.time ?? '--:--', date: item.date ?? 'Hoje', discipline: item.discipline ?? discipline, entryA: item.entryA ?? 'Equipe A', logoA: item.logoA ?? '', entryB: item.entryB ?? 'Equipe B', logoB: item.logoB ?? '', scoreA: item.scoreA ?? null, scoreB: item.scoreB ?? null, venue: item.venue ?? 'A definir', status: item.status ?? 'Agendada' }));
-  const visibleMatches = dayIndex === 1 ? [...matches, ...created] : [];
+  const visibleMatches = [...matches, ...created].filter((match) => resolveMatchDate(match.date) === selectedDate && (!allowedStatuses || allowedStatuses.includes(state.matches[match.id]?.status ?? match.status))).sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <>
       <div className="date-switcher">
-        <button type="button" onClick={() => setDayIndex((value) => Math.max(0, value - 1))} disabled={dayIndex === 0} aria-label="Dia anterior">‹</button>
-        <span><CalendarDays size={18} /><strong>{day.label}</strong><small>{day.date}</small></span>
-        <button type="button" onClick={() => setDayIndex((value) => Math.min(days.length - 1, value + 1))} disabled={dayIndex === days.length - 1} aria-label="Próximo dia">›</button>
+        <button type="button" onClick={() => setSelectedDate((value) => moveDateKey(value, -1))} aria-label="Dia anterior">‹</button>
+        <label className="date-switcher-current" title="Abrir calendário">
+          <CalendarDays size={18} /><span><strong>{day.label}</strong><small>{day.short}</small></span>
+          <input type="date" value={selectedDate} onChange={(event) => event.target.value && setSelectedDate(event.target.value)} aria-label="Escolher data da agenda" />
+        </label>
+        <button type="button" onClick={() => setSelectedDate((value) => moveDateKey(value, 1))} aria-label="Próximo dia">›</button>
       </div>
       <section className="match-list" aria-label="Jogos filtrados por modalidade e data">
-        {visibleMatches.map((match) => (
-          <StatefulMatchCard key={match.id} match={{ ...match, phase: '' }} href={`/matches/${match.id}`} />
-        ))}
-        {!visibleMatches.length ? <EmptyState title="SEM JOGOS NESTA DATA" copy="Selecione outro dia para consultar a agenda da modalidade." /> : null}
+        {visibleMatches.map((match) => <StatefulMatchCard key={match.id} match={{ ...match, phase: '' }} href={`${hrefBase}/${match.id}`} />)}
+        {!visibleMatches.length ? <EmptyState title="SEM JOGOS NESTA DATA" copy={`${day.long}. Navegue pelos dias ou abra o calendário para consultar a agenda de ${discipline}.`} /> : null}
       </section>
     </>
   );

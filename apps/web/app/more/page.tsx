@@ -1,6 +1,9 @@
+'use client';
+
 import Link from 'next/link';
 import { Dumbbell, History, ShieldCheck, Trophy, UserRound, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
+import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 
 const sections = [
   { href: '/competitions', label: 'Competições e edições', meta: 'Contexto ativo e histórico', icon: Trophy },
@@ -11,10 +14,12 @@ const sections = [
 ];
 
 export default function MorePage() {
+  const { session } = useFrontendSession();
+  const visibleSections = canManageEdition(session) ? sections : [];
   return (
     <AppShell active="profile" eyebrow="GESTÃO" title="MAIS" subtitle="Configurações e ferramentas da edição">
-      <Link href="/profile" className="account-strip"><span className="avatar-frame avatar-0"><UserRound size={24} /></span><span><strong>Ana Coordenadora</strong><small>Perfil, acessos e preferências</small></span><span>›</span></Link>
-      <section className="section-block"><SectionTitle eyebrow="ADMINISTRAÇÃO" title="MÓDULOS" /><div className="module-list">{sections.map(({ href, label, meta, icon: Icon }) => <Link href={href} key={href}><span><Icon size={21} /></span><div><strong>{label}</strong><small>{meta}</small></div><b>›</b></Link>)}</div></section>
+      <Link href="/profile" className="account-strip"><span className="avatar-frame avatar-0"><UserRound size={24} /></span><span><strong>{session?.name ?? 'Usuário'}</strong><small>Perfil, acessos e preferências</small></span><span>›</span></Link>
+      {visibleSections.length ? <section className="section-block"><SectionTitle eyebrow="ADMINISTRAÇÃO" title="MÓDULOS" /><div className="module-list">{visibleSections.map(({ href, label, meta, icon: Icon }) => <Link href={href} key={href}><span><Icon size={21} /></span><div><strong>{label}</strong><small>{meta}</small></div><b>›</b></Link>)}</div></section> : <section className="section-block"><SectionTitle eyebrow="MEU ESCOPO" title={session?.scope?.toUpperCase() ?? 'MODALIDADE'} /><div className="module-list"><Link href={`/matches?modalidade=${encodeURIComponent(session?.scope ?? 'Futsal')}`}><span><Trophy size={21} /></span><div><strong>Operar minha modalidade</strong><small>Jogos e placares autorizados</small></div><b>›</b></Link></div></section>}
       <section className="section-block"><SectionTitle eyebrow="VISUALIZAÇÃO" title="ÁREA PÚBLICA" /><div className="module-list"><Link href="/public"><span><Trophy size={21} /></span><div><strong>Visualizar como espectador</strong><small>App público sem ações administrativas</small></div><b>›</b></Link></div></section>
     </AppShell>
   );

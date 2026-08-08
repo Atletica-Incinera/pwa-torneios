@@ -2,6 +2,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import './motion.css';
 import { PwaRegistration } from './components/PwaRegistration';
+import { UiProvider } from './components/UiProvider';
 
 const kenyanCoffee = localFont({
   src: [
@@ -41,7 +42,7 @@ export const metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${kenyanCoffee.variable} ${ttTravelsNext.variable}`}>
-      <body><PwaRegistration />{children}</body>
+      <body><PwaRegistration /><UiProvider>{children}</UiProvider></body>
     </html>
   );
 }

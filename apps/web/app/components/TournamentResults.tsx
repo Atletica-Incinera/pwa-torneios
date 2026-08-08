@@ -1,22 +1,30 @@
 'use client';
 
 import { ArrowUp, Trophy } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { StatusBadge } from './AppShell';
-import { standings } from '../lib/mock-data';
+import { matches as mockMatches, standings as mockStandings } from '../lib/mock-data';
+import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
+import { useFrontendState } from '../lib/frontend-state';
 
-export function TournamentResults() {
-  const [view, setView] = useState<'a' | 'b' | 'bracket'>('a');
-  const table = view === 'b' ? [...standings].reverse().map((entry, index) => ({ ...entry, rank: index + 1 })) : standings;
+export function TournamentResults({ tournamentId, discipline = 'Futsal', fallbackParticipants }: { tournamentId?: string; discipline?: string; fallbackParticipants?: readonly string[] }) {
+  const { state } = useFrontendState();
+  const setup = tournamentId ? state.tournaments[tournamentId] : undefined;
+  const phases = setup?.phases ?? [];
+  const groupNames = phases.find((phase) => phase.format === 'Grupos')?.groups ?? ['Grupo A', 'Grupo B'];
+  const participants = setup?.participants.length ? setup.participants : [...(fallbackParticipants ?? mockStandings.map((item) => item.name))];
+  const assignments = setup?.assignments ?? Object.fromEntries(participants.map((team, index) => [team, groupNames[index % Math.max(1, groupNames.length)]]));
+  const allMatches = useMemo<TournamentMatch[]>(() => {
+    const staticRows = mockMatches.filter((match) => match.discipline === discipline).map((match) => { const override = state.matches[match.id] ?? {}; return { id: match.id, entryA: match.entryA, entryB: match.entryB, scoreA: override.scoreA ?? match.scoreA, scoreB: override.scoreB ?? match.scoreB, status: override.status ?? match.status, phase: override.phase ?? match.phase, group: override.phase ?? match.phase }; });
+    const createdRows = Object.entries(state.matches).filter(([, match]) => match.created && match.discipline === discipline && (!tournamentId || !match.tournamentId || match.tournamentId === tournamentId)).map(([id, match]) => ({ id, entryA: match.entryA ?? 'Equipe A', entryB: match.entryB ?? 'Equipe B', scoreA: match.scoreA ?? null, scoreB: match.scoreB ?? null, status: match.status ?? 'Agendada', phase: match.phase, group: match.phase }));
+    return [...staticRows, ...createdRows];
+  }, [discipline, state.matches, tournamentId]);
+  const availableGroups = groupNames.length ? groupNames : ['Classificação'];
+  const [view, setView] = useState(availableGroups[0]);
+  const activeView = view === 'Chaveamento' || availableGroups.includes(view) ? view : availableGroups[0];
+  const groupParticipants = activeView === 'Chaveamento' ? [] : participants.filter((team) => assignments[team] === activeView || availableGroups.length === 1);
+  const table = calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView));
+  const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
 
-  return (
-    <div className="tournament-results-view">
-      <div className="filter-strip">
-        <button type="button" className={`filter-chip${view === 'a' ? ' active' : ''}`} onClick={() => setView('a')}>Grupo A</button>
-        <button type="button" className={`filter-chip${view === 'b' ? ' active' : ''}`} onClick={() => setView('b')}>Grupo B</button>
-        <button type="button" className={`filter-chip${view === 'bracket' ? ' active' : ''}`} onClick={() => setView('bracket')}>Chaveamento</button>
-      </div>
-      {view !== 'bracket' ? <><div className="standings-list" aria-label={`Classificação do Grupo ${view.toUpperCase()}`}><div className="standings-head"><span>#</span><span>Equipe</span><span>J</span><span>V</span><span>E</span><span>D</span><span>PTS</span></div>{table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>{entry.won}V • {entry.drawn}E • {entry.lost}D</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}</div><div className="qualification-note"><Trophy size={20} /><div><strong>2 melhores avançam</strong><p>Desempate: pontos, confronto direto e saldo.</p></div><StatusBadge tone="orange"><ArrowUp size={12} /> Mata-mata</StatusBadge></div></> : <div className="phase-timeline" aria-label="Chaveamento"><article><span>SF1</span><div><small>SEMIFINAL</small><h3>Alcateia × Cangaceiros</h3><p>Hoje • 20:00</p></div><Trophy size={20} /></article><article><span>SF2</span><div><small>SEMIFINAL</small><h3>Caótica × Energizada</h3><p>Hoje • 21:30</p></div><Trophy size={20} /></article><article><span>F</span><div><small>FINAL</small><h3>Vencedor SF1 × Vencedor SF2</h3><p>A definir</p></div><Trophy size={20} /></article></div>}
-    </div>
-  );
+  return <div className="tournament-results-view"><div className="filter-strip" role="tablist" aria-label="Etapas da classificação">{availableGroups.map((group) => <button role="tab" aria-selected={activeView === group} type="button" className={`filter-chip${activeView === group ? ' active' : ''}`} onClick={() => setView(group)} key={group}>{group}</button>)}<button role="tab" aria-selected={activeView === 'Chaveamento'} type="button" className={`filter-chip${activeView === 'Chaveamento' ? ' active' : ''}`} onClick={() => setView('Chaveamento')}>Chaveamento</button></div>{activeView !== 'Chaveamento' ? <><div className="standings-list" aria-label={`Classificação de ${activeView}`}><div className="standings-head"><span>#</span><span>Equipe</span><span>J</span><span>V</span><span>E</span><span>D</span><span>PTS</span></div>{table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>Saldo {entry.balance > 0 ? '+' : ''}{entry.balance}</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}</div>{!table.length ? <p className="match-filter-empty">Distribua equipes neste grupo para calcular a classificação.</p> : null}<div className="qualification-note"><Trophy size={20} /><div><strong>{phases[0]?.qualifiers ?? 2} melhores avançam</strong><p>Desempate: pontos, vitórias, saldo e gols marcados.</p></div><StatusBadge tone="orange"><ArrowUp size={12} /> Próxima fase</StatusBadge></div></> : <div className="phase-timeline" aria-label="Chaveamento">{knockout.length ? knockout.map((match, index) => <article key={match.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{match.phase ?? 'MATA-MATA'}</small><h3>{match.entryA} × {match.entryB}</h3><p>{match.status === 'Encerrada' ? `${match.scoreA} × ${match.scoreB}` : match.status}</p></div><Trophy size={20} /></article>) : <p className="match-filter-empty">O chaveamento será exibido quando os confrontos eliminatórios forem gerados.</p>}</div>}</div>;
 }
