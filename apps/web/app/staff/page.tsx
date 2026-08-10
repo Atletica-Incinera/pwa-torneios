@@ -3,8 +3,8 @@
 import { KeyRound, Mail, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
-import { disciplines, staff as seedStaff } from '../lib/mock-data';
-import { StaffState, useFrontendState } from '../lib/frontend-state';
+import { disciplines, staff as seedStaff } from '../lib/repositories/catalog-repository';
+import { StaffState, useFrontendState } from '../lib/repositories/browser-repository';
 import { useUi } from '../components/UiProvider';
 
 export default function StaffPage() {

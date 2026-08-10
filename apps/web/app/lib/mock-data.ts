@@ -1,7 +1,7 @@
 export const currentContext = {
-  competition: 'Jogos de Engenharia',
-  edition: 'InterEng 2026',
-  editionId: 'clx_edition_2026',
+  competition: 'InterEng',
+  edition: '2026',
+  editionId: 'intereng-2026',
   period: '12–19 out',
 };
 
@@ -32,15 +32,15 @@ export const athletes = [
 ] as const;
 
 export const tournaments = [
-  { id: 'futsal-m', name: 'Futsal Masculino', discipline: 'Futsal', status: 'Em andamento', entries: 8, phase: 'Semifinais', progress: 72, tone: 'blue' },
-  { id: 'volei-f', name: 'Vôlei Feminino', discipline: 'Vôlei', status: 'Agendado', entries: 6, phase: 'Fase de grupos', progress: 38, tone: 'pink' },
-  { id: 'xadrez', name: 'Xadrez Individual', discipline: 'Xadrez', status: 'Rascunho', entries: 12, phase: 'Configuração', progress: 16, tone: 'orange' },
+  { id: 'futsal-m', editionId: 'intereng-2026', name: 'Futsal Masculino', discipline: 'Futsal', status: 'Em andamento', entries: 8, phase: 'Semifinais', qualifiers: 2, progress: 72, tone: 'blue' },
+  { id: 'volei-f', editionId: 'intereng-2026', name: 'Vôlei Feminino', discipline: 'Vôlei', status: 'Agendado', entries: 6, phase: 'Fase de grupos', qualifiers: 2, progress: 38, tone: 'pink' },
+  { id: 'xadrez', editionId: 'intereng-2026', name: 'Xadrez Individual', discipline: 'Xadrez', status: 'Rascunho', entries: 12, phase: 'Configuração', qualifiers: 4, progress: 16, tone: 'orange' },
 ] as const;
 
 export const matches = [
-  { id: 'semifinal-1', time: '20:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Alcateia', logoA: '/teams/alcateia.webp', entryB: 'Cangaceiros', logoB: '/teams/cangaceiros.webp', scoreA: 2, scoreB: 1, venue: 'Ginásio CIn', phase: 'Semifinal', status: 'Ao vivo' },
-  { id: 'volei-grupo-a', time: '21:30', date: 'Hoje', discipline: 'Vôlei', entryA: 'Caótica', logoA: '/teams/caotica.webp', entryB: 'Energizada', logoB: '/teams/energizada.webp', scoreA: null, scoreB: null, venue: 'Quadra 2', phase: 'Grupo A', status: 'Agendada' },
-  { id: 'futsal-quartas', time: '18:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Engenhosa', logoA: '/teams/engenhosa.webp', entryB: 'Incinera', logoB: '/teams/incinera.webp', scoreA: 3, scoreB: 3, venue: 'Ginásio CIn', phase: 'Quartas', status: 'Encerrada' },
+  { id: 'semifinal-1', editionId: 'intereng-2026', tournamentId: 'futsal-m', time: '20:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Alcateia', logoA: '/teams/alcateia.webp', entryB: 'Cangaceiros', logoB: '/teams/cangaceiros.webp', scoreA: 2, scoreB: 1, venue: 'Ginásio CIn', phase: 'Semifinal', status: 'Ao vivo' },
+  { id: 'volei-grupo-a', editionId: 'intereng-2026', tournamentId: 'volei-f', time: '21:30', date: 'Hoje', discipline: 'Vôlei', entryA: 'Caótica', logoA: '/teams/caotica.webp', entryB: 'Energizada', logoB: '/teams/energizada.webp', scoreA: null, scoreB: null, venue: 'Quadra 2', phase: 'Grupo A', status: 'Agendada' },
+  { id: 'futsal-quartas', editionId: 'intereng-2026', tournamentId: 'futsal-m', time: '18:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Engenhosa', logoA: '/teams/engenhosa.webp', entryB: 'Incinera', logoB: '/teams/incinera.webp', scoreA: 3, scoreB: 3, venue: 'Ginásio CIn', phase: 'Quartas', status: 'Encerrada' },
 ] as const;
 
 export function getMatchStatusLabel(status: string) {

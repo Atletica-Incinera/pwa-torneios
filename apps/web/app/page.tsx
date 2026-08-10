@@ -50,7 +50,7 @@ export default function LoginPage() {
         <div className="brand-mark">
           <Trophy size={42} strokeWidth={2.4} />
         </div>
-        <p className="eyebrow">JOGOS DE ENGENHARIA 2026</p>
+        <p className="eyebrow">INTERENG · EDIÇÃO 2026</p>
         <h1>
           INTERENG
           <br />

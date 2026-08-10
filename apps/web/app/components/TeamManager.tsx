@@ -3,7 +3,7 @@
 import { Archive, Pencil, Save } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { TeamMark } from './AppShell';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUi } from './UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { optimizeImageFile } from '../lib/image-utils';

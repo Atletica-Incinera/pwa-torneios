@@ -1,7 +1,7 @@
 'use client';
 
 import { TeamCard } from './TeamCard';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 type TeamItem = { id: string; name: string; athletes: number; tone: string; initial: string; logo: string };
 export function PublicTeamList({ teams }: { teams: readonly TeamItem[] }) {

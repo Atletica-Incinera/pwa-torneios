@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { useFrontendSession } from '../lib/frontend-session';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUi } from '../components/UiProvider';
 
 export default function ProfilePage() {

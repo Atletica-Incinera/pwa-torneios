@@ -1,6 +1,6 @@
 import { AppShell } from '../../../../components/AppShell';
 import { TeamAthleteForm } from '../../../../components/TeamAthleteForm';
-import { disciplines, teams } from '../../../../lib/mock-data';
+import { disciplines, teams } from '../../../../lib/repositories/catalog-repository';
 
 export default async function NewTeamAthletePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

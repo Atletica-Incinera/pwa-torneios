@@ -1,10 +1,11 @@
-const VERSION = 'intereng-v3';
+const VERSION = 'intereng-v5';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
-const PRE_CACHE = ['/offline', '/public', '/public/matches', '/public/teams', '/public/tournaments', '/icon.svg'];
+const PRE_CACHE = ['/offline', '/public', '/public/matches', '/public/teams', '/public/tournaments', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
 
-self.addEventListener('install', (event) => event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll(PRE_CACHE)).then(() => self.skipWaiting())));
+self.addEventListener('install', (event) => event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll(PRE_CACHE))));
 self.addEventListener('activate', (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)))).then(() => self.clients.claim())));
+self.addEventListener('message', (event) => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 
 async function networkFirst(request) {
   try {
@@ -25,6 +26,9 @@ async function staleWhileRevalidate(request) {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== location.origin) return;
+  // Chunks do Next/HMR nunca devem entrar no cache do PWA. Em desenvolvimento
+  // isso evita servir artefatos antigos depois de um rebuild.
+  if (new URL(event.request.url).pathname.startsWith('/_next/')) return;
   if (event.request.mode === 'navigate') { event.respondWith(networkFirst(event.request)); return; }
   const destination = event.request.destination;
   if (['image', 'font', 'style', 'script'].includes(destination)) event.respondWith(staleWhileRevalidate(event.request));

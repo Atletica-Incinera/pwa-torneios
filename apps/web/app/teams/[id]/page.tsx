@@ -1,5 +1,5 @@
 import { TeamDetailView } from '../../components/TeamDetailView';
-import { athletes, disciplines, teams } from '../../lib/mock-data';
+import { athletes, disciplines, teams } from '../../lib/repositories/catalog-repository';
 
 export default async function TeamDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

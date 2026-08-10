@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ChevronDown, Plus, Save, UserRound, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { EmptyState } from './AppShell';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 
 type ExistingAthlete = { id: string; name: string; modalities: readonly string[] };

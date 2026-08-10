@@ -2,7 +2,7 @@
 
 import { Pencil, Save, UserRound } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 

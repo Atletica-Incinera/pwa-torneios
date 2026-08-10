@@ -1,7 +1,7 @@
 'use client';
 
 import { MatchScoreCard } from './MatchScoreCard';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 type MatchCardData = { id: string; time: string; date: string; discipline: string; entryA: string; logoA: string; entryB: string; logoB: string; scoreA: number | null; scoreB: number | null; venue: string; phase: string; status: string };
 

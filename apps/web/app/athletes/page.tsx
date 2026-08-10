@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { Search, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
-import { athletes, teams } from '../lib/mock-data';
-import { useFrontendState } from '../lib/frontend-state';
+import { athletes, teams } from '../lib/repositories/catalog-repository';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 export default function AthletesPage() {
   const [query, setQuery] = useState('');

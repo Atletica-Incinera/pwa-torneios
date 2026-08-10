@@ -4,7 +4,7 @@ import { AppShell, EmptyState } from './AppShell';
 import { PublicAppShell } from './PublicAppShell';
 import { MatchDetailClient } from './MatchDetailClient';
 import { MatchManager } from './MatchManager';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 type Base = { id: string; discipline: string; phase: string; status: string; entryA: string; logoA: string; entryB: string; logoB: string; scoreA: number | null; scoreB: number | null; date: string; time: string; venue: string };
 export function MatchRouteView({ id, initial, mode }: { id: string; initial?: Base; mode: 'admin' | 'manage' | 'public' }) {

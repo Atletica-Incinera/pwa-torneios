@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { CalendarDays } from 'lucide-react';
 import { StatusBadge, TeamMark } from './AppShell';
-import { getMatchStatusLabel } from '../lib/mock-data';
+import { getMatchStatusLabel } from '../lib/repositories/catalog-repository';
 
 type MatchScoreCardProps = {
   href: string;

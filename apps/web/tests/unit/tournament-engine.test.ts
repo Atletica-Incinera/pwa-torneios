@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateStandings, distributeGroups, formatClock, generateRoundRobin } from '../../app/lib/tournament-engine.ts';
+import { calculateStandings, distributeGroups, formatClock, generateRoundRobin, qualifiedTeams } from '../../app/lib/tournament-engine.ts';
 
 test('calcula J, V, E, D e pontos com desempate', () => {
   const table = calculateStandings(['A', 'B', 'C'], [
@@ -24,4 +24,17 @@ test('distribui seeds em serpentina e gera turno completo', () => {
 test('formata relógio real da partida', () => {
   assert.equal(formatClock(0), '00:00');
   assert.equal(formatClock(4365), '72:45');
+});
+
+test('respeita quantidades diferentes de classificados por grupo', () => {
+  const groups = [{ name: 'Grupo A', participants: ['A', 'B', 'C'] }];
+  const matches = [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 2, scoreB: 0, status: 'Encerrada', group: 'Grupo A' },
+    { id: '2', entryA: 'A', entryB: 'C', scoreA: 1, scoreB: 0, status: 'Encerrada', group: 'Grupo A' },
+    { id: '3', entryA: 'B', entryB: 'C', scoreA: 1, scoreB: 0, status: 'Encerrada', group: 'Grupo A' },
+  ];
+
+  assert.deepEqual(qualifiedTeams(groups, matches, 1), ['A']);
+  assert.deepEqual(qualifiedTeams(groups, matches, 2), ['A', 'B']);
+  assert.deepEqual(qualifiedTeams(groups, matches, 3), ['A', 'B', 'C']);
 });

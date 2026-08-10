@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronDown, Cloud, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Cloud, Plus } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from './BottomNav';
 import { AdminRouteGuard } from './AdminRouteGuard';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 type NavKey = 'home' | 'tournaments' | 'matches' | 'teams' | 'profile';
 
@@ -31,13 +32,15 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
   return (
     <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">
-        <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, ${edition.name}, contexto ativo`}>
+        <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, edição ${edition.year}, contexto ativo`}>
           <span className="context-mark">{String(edition.year).slice(-2)}</span>
-          <span><small>{competition.name}</small><strong>{edition.name}</strong></span>
+          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
           <ChevronDown size={16} />
         </Link>
         <span className="sync-state"><Cloud size={15} /> Modo local</span>
       </div>
+
+      <PageNavigation title={title} />
 
       <header className="mobile-header page-heading">
         <div>
@@ -54,6 +57,26 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
       <BottomNav active={active} />
     </main></AdminRouteGuard>
   );
+}
+
+const routeLabels: Record<string, string> = {
+  athletes: 'Atletas', audit: 'Auditoria', competitions: 'InterEng', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Modalidades', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
+};
+
+export function PageNavigation({ title, publicMode = false }: { title: string; publicMode?: boolean }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const segments = pathname.split('/').filter(Boolean);
+  const contentSegments = publicMode && segments[0] === 'public' ? segments.slice(1) : segments;
+  if (contentSegments.length < 2) return null;
+  const rootHref = publicMode ? '/public' : '/dashboard';
+  const rootLabel = publicMode ? 'Início' : 'Dashboard';
+  const crumbs = contentSegments.map((segment, index) => {
+    const sourceSegments = publicMode ? ['public', ...contentSegments.slice(0, index + 1)] : contentSegments.slice(0, index + 1);
+    return { href: `/${sourceSegments.join('/')}`, label: index === contentSegments.length - 1 ? title : routeLabels[segment] ?? 'Detalhes' };
+  });
+  const parentHref = crumbs.length > 1 ? crumbs[crumbs.length - 2].href : rootHref;
+  return <div className="page-navigation"><button type="button" className="back-button" onClick={() => router.push(parentHref)} aria-label="Voltar"><ArrowLeft size={18} /><span>Voltar</span></button><nav className="breadcrumbs" aria-label="Caminho da página"><Link href={rootHref}>{rootLabel}</Link>{crumbs.map((crumb, index) => <span key={`${crumb.href}-${index}`}><ChevronRight size={13} />{index === crumbs.length - 1 ? <b aria-current="page">{crumb.label}</b> : <Link href={crumb.href}>{crumb.label}</Link>}</span>)}</nav></div>;
 }
 
 export function SectionTitle({ eyebrow, title, href, linkLabel = 'Ver tudo' }: { eyebrow?: string; title: string; href?: string; linkLabel?: string }) {

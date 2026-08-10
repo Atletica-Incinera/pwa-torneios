@@ -3,8 +3,8 @@
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
-import { disciplines } from '../lib/mock-data';
-import { StaffState, useFrontendState } from '../lib/frontend-state';
+import { disciplines } from '../lib/repositories/catalog-repository';
+import { StaffState, useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
 function initialsFrom(name: string) { return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join(''); }

@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, useMemo, useState } from 'react';
-import { MatchState, useFrontendState } from '../lib/frontend-state';
+import { MatchState, useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { useUi } from './UiProvider';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';

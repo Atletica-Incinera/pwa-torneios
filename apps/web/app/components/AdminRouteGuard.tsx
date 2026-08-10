@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
 import { clearFrontendSession, useFrontendSession } from '../lib/frontend-session';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 const editionAdminPrefixes = ['/competitions', '/disciplines', '/staff', '/audit', '/athletes', '/teams/new', '/tournaments/new'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {

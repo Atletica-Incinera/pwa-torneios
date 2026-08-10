@@ -3,7 +3,7 @@
 import { Filter, History, Radio, Shield, Trophy } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from '../components/AppShell';
-import { AuditState, useFrontendState } from '../lib/frontend-state';
+import { AuditState, useFrontendState } from '../lib/repositories/browser-repository';
 
 const exampleLogs: AuditState[] = [
   { id: 'example-1', at: '2026-10-13T14:34:00', actor: 'Bruno Martins', action: 'Placar atualizado', entity: 'Alcateia 2 × 1 Cangaceiros', before: '1 × 1', after: '2 × 1' },
@@ -25,8 +25,8 @@ export default function AuditPage() {
     <section className="section-block no-top"><SectionTitle eyebrow="ATIVIDADE" title="ALTERAÇÕES" /><div className="audit-list">
       {visibleLogs.map((log) => {
         const category = categoryOf(log);
-        const Icon = category === 'Partidas' ? Radio : /torneio|fase/i.test(log.action) ? Trophy : Shield;
-        const tone = category === 'Partidas' ? 'orange' : /torneio|fase/i.test(log.action) ? 'pink' : 'blue';
+        const Icon = category === 'Partidas' ? Radio : /torneio|disputa|fase/i.test(log.action) ? Trophy : Shield;
+        const tone = category === 'Partidas' ? 'orange' : /torneio|disputa|fase/i.test(log.action) ? 'pink' : 'blue';
         const date = new Date(log.at);
         return <details key={log.id}><summary><span className={`audit-icon audit-${tone}`}><Icon size={20} /></span><div><span><time>{Number.isNaN(date.getTime()) ? '--:--' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><StatusBadge tone={tone}>{log.action}</StatusBadge></span><strong>{log.actor}</strong><p>{log.entity}</p><small>Ver dados anteriores e posteriores</small></div></summary><div className="audit-diff"><span><small>ANTES</small><strong>{log.before || '—'}</strong></span><span><small>DEPOIS</small><strong>{log.after || '—'}</strong></span></div></details>;
       })}

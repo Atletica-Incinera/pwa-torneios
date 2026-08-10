@@ -4,8 +4,8 @@ import { Filter, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { TeamCard } from '../components/TeamCard';
-import { teams } from '../lib/mock-data';
-import { useFrontendState } from '../lib/frontend-state';
+import { teams } from '../lib/repositories/catalog-repository';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 
 export default function TeamsPage() {
   const [query, setQuery] = useState('');

@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarDays, Medal, Radio, Shield } from 'lucide-react';
-import { useFrontendState } from '../lib/frontend-state';
+import { Brackets, CalendarDays, ListOrdered, Radio, Trophy } from 'lucide-react';
+import { useFrontendState } from '../lib/repositories/browser-repository';
+import { PageNavigation } from './AppShell';
 
-type PublicNavKey = 'live' | 'matches' | 'teams' | 'tournaments';
+type PublicNavKey = 'live' | 'matches' | 'standings' | 'results' | 'phases' | 'teams' | 'tournaments';
 
 type PublicAppShellProps = {
   active: PublicNavKey;
@@ -17,15 +18,19 @@ type PublicAppShellProps = {
 const themes: Record<PublicNavKey, string> = {
   live: 'theme-matches public-live-readonly',
   matches: 'theme-matches',
+  standings: 'theme-tournaments',
+  results: 'theme-matches',
+  phases: 'theme-tournaments',
   teams: 'theme-teams',
   tournaments: 'theme-tournaments',
 };
 
 const navItems = [
   { key: 'live', label: 'Ao vivo', href: '/public', icon: Radio },
-  { key: 'matches', label: 'Próximos', href: '/public/matches', icon: CalendarDays },
-  { key: 'teams', label: 'Equipes', href: '/public/teams', icon: Shield },
-  { key: 'tournaments', label: 'Torneios', href: '/public/tournaments', icon: Medal },
+  { key: 'matches', label: 'Jogos', href: '/public/matches', icon: CalendarDays },
+  { key: 'standings', label: 'Tabela', ariaLabel: 'Classificação', href: '/public/standings', icon: ListOrdered },
+  { key: 'results', label: 'Resultados', href: '/public/results', icon: Trophy },
+  { key: 'phases', label: 'Fases', href: '/public/phases', icon: Brackets },
 ] as const;
 
 export function PublicAppShell({ active, eyebrow, title, subtitle, children }: PublicAppShellProps) {
@@ -36,12 +41,14 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
   return (
     <main id="app-main" className={`app-screen management-screen public-readonly-screen ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
-        <Link href="/public" className="context-copy" aria-label="InterEng 2026">
+        <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition.year}`}>
           <span className="context-mark">{String(edition.year).slice(-2)}</span>
-          <span><small>{competition.name}</small><strong>{edition.name}</strong></span>
+          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
         </Link>
         <span className="sync-state"><Radio size={15} /> Resultados oficiais</span>
       </div>
+
+      <PageNavigation title={title} publicMode />
 
       <header className="mobile-header page-heading">
         <div><p className="eyebrow orange">{eyebrow}</p><h1>{title}</h1><p>{subtitle}</p></div>
@@ -61,9 +68,9 @@ export function PublicBottomNav({ active }: { active: PublicNavKey }) {
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.key;
-        const href = item.key === 'live' || item.key === 'matches' ? `${item.href}?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}` : item.href;
+        const href = `${item.href}?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`;
         return (
-          <Link key={item.key} href={href} className={`nav-item${isActive ? ' active' : ''}`} aria-current={isActive ? 'page' : undefined}>
+          <Link key={item.key} href={href} className={`nav-item${isActive ? ' active' : ''}`} aria-label={'ariaLabel' in item ? item.ariaLabel : item.label} aria-current={isActive ? 'page' : undefined}>
             <span className="nav-icon"><Icon size={21} strokeWidth={2.2} /></span>
             <span>{item.label}</span>
           </Link>

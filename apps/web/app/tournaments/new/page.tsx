@@ -1,2 +1,5 @@
-import { TournamentCreationForm } from '../../components/TournamentCreationForm';
-export default function NewTournamentPage() { return <TournamentCreationForm />; }
+import { redirect } from 'next/navigation';
+
+export default function LegacyNewTournamentPage() {
+  redirect('/disciplines/new');
+}

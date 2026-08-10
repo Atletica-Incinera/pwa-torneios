@@ -1,23 +1,23 @@
-# Especificação visual implementável — PWA Torneios
+# Especificação visual implementável — InterEng Pernambuco 2026
 
-Este documento transforma a referência visual aprovada em regras objetivas de implementação. A imagem aprovada deve ser tratada como a fonte de verdade visual do produto.
+Este documento transforma a referência visual aprovada em regras objetivas de implementação. O manual **TIPOGRAFIA E CORES — INTERENG 2026** é a fonte de verdade para marca, paleta e tipografia. As regras de layout e interação deste documento continuam válidas.
 
 ## 1. Direção visual oficial
 
-**Nome da linguagem visual:** Brutalismo esportivo assimétrico.
+**Nome da linguagem visual:** InterEng Pernambuco — esportivo, cultural e pernambucano.
 
 A interface deve transmitir competição, velocidade, operação ao vivo e identidade de campeonato.
 
 ### Regras inegociáveis
 
-- Fundo global preto absoluto `#000000`.
-- O app não deve usar dark mode cinza suave como fundo principal.
+- Fundo global azul-marinho `#022734`.
+- O app não deve usar preto ou cinza genérico como fundo principal.
 - Formas assimétricas, recortes diagonais e painéis inclinados devem aparecer nos elementos de destaque.
 - A assimetria deve ser consistente e baseada em regras, não aleatória.
 - O placar ao vivo deve ser a tela mais expressiva do produto.
 - O app não deve parecer um dashboard SaaS genérico.
-- Títulos usam Boldonse.
-- Interface, formulários, placar, cronômetro e textos usam Host Grotesk.
+- Títulos usam Kenyan Coffee, com fallback condensado quando o arquivo licenciado não estiver disponível.
+- Interface, formulários, placar, cronômetro e textos usam TT Travels Next Trl, com Host Grotesk como fallback web.
 
 ---
 
@@ -25,44 +25,41 @@ A interface deve transmitir competição, velocidade, operação ao vivo e ident
 
 ```css
 :root {
-  --color-black: #000000;
-  --color-surface-1: #080808;
-  --color-surface-2: #111114;
-  --color-surface-3: #191923;
+  --color-navy: #022734;
+  --color-blue: #004570;
+  --color-green: #013351;
+  --color-orange: #F6A11A;
+  --color-red: #E23F49;
+  --color-cream: #F7F0E3;
 
-  --color-off-white: #FBFEF9;
-  --color-blue: #0E79B2;
-  --color-magenta: #BF1363;
-  --color-orange: #F39237;
+  --color-text-primary: #F7F0E3;
+  --color-text-secondary: rgba(247, 240, 227, 0.68);
+  --color-text-muted: rgba(247, 240, 227, 0.44);
 
-  --color-text-primary: #FBFEF9;
-  --color-text-secondary: rgba(251, 254, 249, 0.68);
-  --color-text-muted: rgba(251, 254, 249, 0.44);
-
-  --color-border-soft: rgba(251, 254, 249, 0.12);
-  --color-border-medium: rgba(251, 254, 249, 0.24);
-  --color-border-strong: rgba(251, 254, 249, 0.42);
+  --color-border-soft: rgba(247, 240, 227, 0.12);
+  --color-border-medium: rgba(247, 240, 227, 0.24);
+  --color-border-strong: rgba(247, 240, 227, 0.42);
 }
 ```
 
 ### Uso das cores
 
-- **Preto `#000000`:** fundo global.
-- **Off-white `#FBFEF9`:** texto principal, números, ícones de alto contraste.
-- **Azul `#0E79B2`:** ações primárias, Equipe A, seleção ativa, links e informação.
-- **Magenta `#BF1363`:** Equipe B, competição, destaques e eventos fortes.
-- **Laranja `#F39237`:** ao vivo, cronômetro, alertas, gols/pontos recentes e atenção.
-- **`#191923`:** cards, modais, dropdowns e superfícies internas.
+- **Azul-marinho `#022734`:** fundo global e texto sobre superfícies claras.
+- **Creme `#F7F0E3`:** texto principal, números e ícones de alto contraste.
+- **Azul `#004570`:** ações informativas, Equipe A e superfícies secundárias.
+- **Verde `#013351`:** cards, modais, dropdowns e superfícies internas.
+- **Vermelho `#E23F49`:** Equipe B, competição, erros e eventos fortes.
+- **Laranja `#F6A11A`:** ações primárias, ao vivo, cronômetro e atenção.
 
 ### Regra de predominância
 
-Cada tela deve escolher uma cor de destaque predominante. Azul, magenta e laranja não devem competir igualmente em todas as áreas.
+Cada tela deve escolher uma cor de destaque predominante. Azul, verde, vermelho e laranja não devem competir igualmente em todas as áreas.
 
 ---
 
 ## 3. Tipografia
 
-### Boldonse
+### Kenyan Coffee
 
 Usar em:
 
@@ -81,7 +78,7 @@ Não usar em:
 - tabelas;
 - textos pequenos.
 
-### Host Grotesk
+### TT Travels Next Trl
 
 Usar em:
 
@@ -114,7 +111,7 @@ Usar em:
 }
 ```
 
-### Pesos Host Grotesk
+### Pesos da interface
 
 - 400: texto comum.
 - 500: apoio e metadados.
@@ -263,9 +260,9 @@ Formulários longos devem manter alinhamento previsível. A irregularidade deve 
   --border-1: 1px solid rgba(251, 254, 249, 0.12);
   --border-2: 1px solid rgba(251, 254, 249, 0.24);
   --shadow-card: 0 14px 36px rgba(0, 0, 0, 0.45);
-  --shadow-accent-blue: 6px 6px 0 rgba(14, 121, 178, 0.55);
-  --shadow-accent-magenta: 6px 6px 0 rgba(191, 19, 99, 0.55);
-  --shadow-accent-orange: 6px 6px 0 rgba(243, 146, 55, 0.55);
+  --shadow-accent-blue: 6px 6px 0 rgba(0, 69, 112, 0.55);
+  --shadow-accent-red: 6px 6px 0 rgba(226, 63, 73, 0.55);
+  --shadow-accent-orange: 6px 6px 0 rgba(246, 161, 26, 0.55);
 }
 ```
 
@@ -323,8 +320,8 @@ Altura mínima: 48 px.
 Variantes:
 
 - primary: azul;
-- secondary: `#191923`;
-- magenta;
+- secondary: `#004570`;
+- red;
 - orange;
 - danger;
 - ghost;
@@ -343,11 +340,11 @@ Estados:
 
 - altura: 52 px;
 - fundo: `#080808`;
-- borda: `#191923`;
+- borda: `rgba(247, 240, 227, 0.18)`;
 - canto recortado;
 - label acima;
 - foco azul;
-- erro magenta;
+- erro vermelho;
 - ícone opcional.
 
 ### Card
@@ -417,7 +414,7 @@ Item ativo:
 - ícone preenchido;
 - bloco irregular;
 - cor predominante da seção;
-- texto em Host Grotesk 600.
+- texto em TT Travels Next Trl 600.
 
 ---
 
@@ -425,14 +422,14 @@ Item ativo:
 
 ### Estrutura
 
-- fundo preto absoluto;
+- fundo azul-marinho `#022734`;
 - marca/título no topo;
 - painel de formulário recortado;
 - e-mail;
 - senha;
 - botão primário;
 - link de acesso público;
-- detalhes geométricos magenta e laranja.
+- detalhes geométricos vermelhos, verdes e laranja.
 
 ### Medidas mobile
 
@@ -456,10 +453,10 @@ Item ativo:
 ### Cards
 
 - Equipes: azul;
-- Atletas: magenta;
+- Atletas: vermelho;
 - Torneios: laranja;
 - Jogos ao vivo: azul ou laranja;
-- alertas: magenta;
+- alertas: vermelho;
 - próximos jogos: fundo preto com borda e faixa inclinada.
 
 ---
@@ -488,7 +485,7 @@ Medidas mobile:
 
 - hero do time;
 - escudo grande;
-- nome em Boldonse;
+- nome em Kenyan Coffee;
 - estatísticas;
 - lista de atletas;
 - próximos jogos;
@@ -542,8 +539,8 @@ Conteúdo:
 - ao vivo: laranja e pulso discreto;
 - pausada: laranja escuro;
 - encerrada: superfície neutra;
-- cancelada: magenta reduzido;
-- W.O.: magenta com label forte.
+- cancelada: vermelho reduzido;
+- W.O.: vermelho com label forte.
 
 ---
 
@@ -583,13 +580,13 @@ Timeline
 
 ### Team B
 
-- magenta;
+- vermelho;
 - alinhamento à direita;
 - painel inclinado para a esquerda.
 
 ### Placar
 
-- Host Grotesk 800;
+- TT Travels Next Trl 800;
 - 72 a 96 px;
 - alto contraste;
 - animação de escala em atualização.
@@ -597,7 +594,7 @@ Timeline
 ### Cronômetro
 
 - laranja;
-- Host Grotesk 700;
+- TT Travels Next Trl 700;
 - 28 a 36 px;
 - formato irregular próprio.
 
@@ -643,7 +640,7 @@ Destaques:
 
 - 1º: laranja;
 - 2º: azul;
-- 3º: magenta.
+- 3º: vermelho.
 
 ---
 
@@ -656,8 +653,8 @@ Usar:
 - moldura irregular;
 - segunda borda deslocada;
 - badge sobreposto;
-- nome em Boldonse;
-- perfil em Host Grotesk.
+- nome em Kenyan Coffee;
+- perfil em TT Travels Next Trl.
 
 ---
 
@@ -673,7 +670,7 @@ Prioridades:
 - classificação;
 - detalhe da partida.
 
-A landing deve usar hero assimétrico com título grande em Boldonse e card flutuante de partida.
+A landing deve usar hero assimétrico com título grande em Kenyan Coffee e card flutuante de partida.
 
 ---
 
@@ -800,9 +797,9 @@ src/
 
 Antes de aprovar uma tela, verificar:
 
-- O fundo é preto absoluto?
-- Boldonse está restrita aos títulos?
-- Host Grotesk está na interface?
+- O fundo é azul-marinho `#022734`?
+- Kenyan Coffee está restrita aos títulos?
+- TT Travels Next Trl está na interface?
 - A tela tem uma cor predominante?
 - Os componentes de destaque usam recortes ou inclinações?
 - A assimetria mantém legibilidade?

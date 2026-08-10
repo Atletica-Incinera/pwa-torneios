@@ -1,5 +1,5 @@
 import { DisciplineDetailView } from '../../components/DisciplineDetailView';
-import { disciplines } from '../../lib/mock-data';
+import { disciplines } from '../../lib/repositories/catalog-repository';
 
 export default async function DisciplineDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

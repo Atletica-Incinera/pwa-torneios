@@ -1,6 +1,6 @@
 import { AppShell } from '../../components/AppShell';
 import { MatchCreationForm } from '../../components/MatchCreationForm';
-import { standings, tournaments } from '../../lib/mock-data';
+import { standings, tournaments } from '../../lib/repositories/catalog-repository';
 
 type NewMatchPageProps = { searchParams?: Promise<{ modalidade?: string }> };
 

@@ -1,32 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { CalendarClock, Radio, Shield, Trophy, UserRound, Users } from 'lucide-react';
+import { Radio, Shield, Trophy, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
 import { StatefulMatchCard } from '../components/StatefulMatchCard';
-import { athletes, matches, teams, tournaments } from '../lib/mock-data';
-import { useFrontendState } from '../lib/frontend-state';
+import { athletes, matches, teams, tournaments } from '../lib/repositories/catalog-repository';
+import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
 export default function DashboardPage() {
   const { state } = useFrontendState();
+  const activeEdition = getActiveEdition(state);
+  const editionTournaments = tournaments.filter((item) => item.editionId === activeEdition?.id);
+  const editionMatches = matches.filter((item) => item.editionId === activeEdition?.id);
   const createdTeams = Object.values(state.teams).filter((item) => item.created).length;
   const createdAthletes = Object.values(state.athletes).filter((item) => item.created).length;
-  const createdTournaments = Object.values(state.tournaments).filter((item) => item.created).length;
-  const liveMatches = matches.filter((item) => (state.matches[item.id]?.status ?? item.status) === 'Ao vivo').length + Object.values(state.matches).filter((item) => item.created && item.status === 'Ao vivo').length;
-  const drafts = tournaments.filter((item) => (state.tournaments[item.id]?.status ?? item.status) === 'Rascunho').length + Object.values(state.tournaments).filter((item) => item.created && item.status === 'Rascunho').length;
-  const scheduled = matches.filter((item) => (state.matches[item.id]?.status ?? item.status) === 'Agendada').length + Object.values(state.matches).filter((item) => item.created && item.status === 'Agendada').length;
-  const createdMatches = Object.entries(state.matches).filter(([, item]) => item.created).map(([id, item]) => ({ id, time: item.time ?? '--:--', date: item.date ?? 'A definir', discipline: item.discipline ?? state.preferences.selectedDiscipline, entryA: item.entryA ?? 'Equipe A', logoA: item.logoA ?? '', entryB: item.entryB ?? 'Equipe B', logoB: item.logoB ?? '', scoreA: item.scoreA ?? null, scoreB: item.scoreB ?? null, venue: item.venue ?? 'A definir', phase: item.phase ?? 'Fase atual', status: item.status ?? 'Agendada' }));
-  const nextMatch = [...matches, ...createdMatches].find((item) => (state.matches[item.id]?.status ?? item.status) === 'Agendada') ?? matches[0];
+  const createdTournaments = Object.values(state.tournaments).filter((item) => item.created && item.editionId === activeEdition?.id).length;
+  const liveMatches = editionMatches.filter((item) => (state.matches[item.id]?.status ?? item.status) === 'Ao vivo').length + Object.values(state.matches).filter((item) => item.created && item.editionId === activeEdition?.id && item.status === 'Ao vivo').length;
+  const drafts = editionTournaments.filter((item) => (state.tournaments[item.id]?.status ?? item.status) === 'Rascunho').length + Object.values(state.tournaments).filter((item) => item.created && item.editionId === activeEdition?.id && item.status === 'Rascunho').length;
+  const createdMatches = Object.entries(state.matches).filter(([, item]) => item.created && item.editionId === activeEdition?.id).map(([id, item]) => ({ id, editionId: item.editionId, time: item.time ?? '--:--', date: item.date ?? 'A definir', discipline: item.discipline ?? state.preferences.selectedDiscipline, entryA: item.entryA ?? 'Equipe A', logoA: item.logoA ?? '', entryB: item.entryB ?? 'Equipe B', logoB: item.logoB ?? '', scoreA: item.scoreA ?? null, scoreB: item.scoreB ?? null, venue: item.venue ?? 'A definir', phase: item.phase ?? 'Fase atual', status: item.status ?? 'Agendada' }));
+  const nextMatch = [...editionMatches, ...createdMatches].find((item) => (state.matches[item.id]?.status ?? item.status) === 'Agendada') ?? editionMatches[0];
   const stats = [
     { label: 'Equipes', value: String(teams.length + createdTeams), meta: 'Atléticas inscritas', icon: Shield, tone: 'blue', href: '/teams' },
     { label: 'Atletas', value: String(athletes.length + createdAthletes), meta: 'Cadastros ativos', icon: Users, tone: 'pink', href: '/athletes' },
-    { label: 'Torneios', value: String(tournaments.length + createdTournaments), meta: `${drafts} em rascunho`, icon: Trophy, tone: 'orange', href: '/tournaments' },
+    { label: 'Modalidades', value: String(editionTournaments.length + createdTournaments), meta: `${drafts} em configuração`, icon: Trophy, tone: 'orange', href: '/tournaments' },
     { label: 'Jogos ao vivo', value: String(liveMatches), meta: liveMatches ? 'Agora' : 'Nenhum agora', icon: Radio, tone: 'blue', href: `/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}` },
   ] as const;
-  const pendingActions = [
-    { href: '/tournaments', label: `${drafts} torneio(s) em configuração`, meta: 'Finalize fases e participantes', icon: Trophy },
-    { href: '/teams', label: 'Revisar elencos por equipe', meta: 'Cadastre atletas exclusivamente nas equipes', icon: UserRound },
-    { href: `/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`, label: `${scheduled} partida(s) agendada(s)`, meta: 'Revise horário e local', icon: CalendarClock },
-  ];
-  return <AppShell active="home" eyebrow="INTERENG 2026" title="O INTERENG CHEGOU!" subtitle="Visão geral da competição"><section className="stats-grid" aria-label="Resumo da competição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section><section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><StatefulMatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section><section className="section-block compact-list"><SectionTitle eyebrow="GESTÃO" title="PENDÊNCIAS" /><div className="module-list">{pendingActions.map(({ href, label, meta, icon: Icon }) => <Link href={href} key={label}><span><Icon size={21} /></span><div><strong>{label}</strong><small>{meta}</small></div><b>›</b></Link>)}</div></section></AppShell>;
+  return <AppShell active="home" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa"><section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><StatefulMatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
 }

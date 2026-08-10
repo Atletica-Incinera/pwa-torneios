@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Check, ChevronRight, UserPlus } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFrontendState } from '../lib/frontend-state';
+import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
 export function TeamAthleteForm({ teamId, teamName, disciplines, initialAthletes = 0 }: { teamId: string; teamName: string; disciplines: string[]; initialAthletes?: number }) {

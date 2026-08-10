@@ -36,7 +36,16 @@ const ttTravelsNext = localFont({
 
 export const metadata = {
   title: 'InterEng Pernambuco 2026',
-  description: 'Gestão e acompanhamento dos Jogos de Engenharia de Pernambuco',
+  description: 'Gestão e acompanhamento das edições do InterEng',
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
