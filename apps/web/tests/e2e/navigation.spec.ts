@@ -1,4 +1,23 @@
 import { expect, test } from '@playwright/test';
+import { loginAs } from './helpers';
+
+test('detalhe da modalidade abre pela classificação e alterna as abas', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/tournaments/futsal-m');
+
+  const tabs = page.getByRole('navigation', { name: 'Seções da modalidade' });
+  await expect(tabs).toBeVisible();
+  await expect(tabs.getByRole('tab', { name: 'Classificação' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO E FASES' })).toBeVisible();
+
+  await tabs.getByRole('tab', { name: 'Participantes' }).click();
+  await expect(tabs.getByRole('tab', { name: 'Participantes' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'INSCRITOS' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO E FASES' })).toHaveCount(0);
+
+  await tabs.getByRole('link', { name: 'Jogos' }).click();
+  await expect(page).toHaveURL(/\/matches\?modalidade=Futsal/);
+});
 
 test('espectador acessa as cinco prioridades públicas sem controles administrativos', async ({ page }) => {
   await page.goto('/public?modalidade=Futsal');

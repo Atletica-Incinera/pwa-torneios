@@ -88,10 +88,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .phase-editor-list article { min-width: 0; }
 .management-panel-head > div { flex: 1 1 auto; }
 .management-panel-head select { width: min(180px, 100%); min-width: 0; max-width: 100%; }
-.matches-tournament-overview { padding: 16px; border: 1px solid var(--screen-before, var(--orange)); background: var(--screen-surface, var(--green)); }
-.matches-tournament-overview .section-title-row { margin-bottom: 14px; }
-.matches-tournament-overview .section-title-row h2 { font-family: var(--font-display); font-size: var(--type-section); text-transform: uppercase; }
-.matches-tournament-overview .wide-action { margin-top: 14px; }
 .management-panel { padding: 16px; border: 1px solid var(--orange); background: var(--green); }
 .management-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .management-panel-head small, .management-panel-head h2 { display: block; margin: 0; }
@@ -467,6 +463,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .detail-tabs a { flex: 0 0 auto; }
 .detail-tabs a { padding: 12px 0; color: rgba(251,254,249,.48); font-size: 12px; font-weight: 800; }
 .detail-tabs a.active { color: var(--white); border-bottom: 3px solid var(--blue); }
+.tournament-detail-tabs { margin-top: 20px; }
+.tournament-tab-list { display: grid; grid-template-columns: 1.25fr .76fr 1.17fr .72fr; gap: 4px; padding: 4px; border: 1px solid var(--screen-border, var(--orange)); background: var(--screen-control, var(--black)); }
+.tournament-tab-list :is(button, a) { display: grid; min-width: 0; min-height: 46px; padding: 5px 3px; place-items: center; border: 0; background: transparent; color: var(--screen-text-muted, rgba(247,240,227,.62)); font: inherit; font-size: clamp(.61rem, 2.45vw, .75rem); font-weight: 600; letter-spacing: -.02em; line-height: 1.08; overflow-wrap: normal; text-align: center; text-decoration: none; text-wrap: balance; white-space: normal; cursor: pointer; }
+.tournament-tab-list button.active { background: var(--screen-accent, var(--orange)); color: var(--screen-on-accent, var(--black)); box-shadow: inset 0 -3px 0 var(--screen-before, var(--blue)); }
+.tournament-tab-list :is(button, a):focus-visible { outline: 2px solid var(--screen-accent, var(--orange)); outline-offset: 2px; }
+.tournament-tab-panel { margin-top: 20px; }
+.tournament-tab-panel .section-title-row { margin-top: 0; }
+.tournament-tab-panel .wide-action { margin-bottom: 0; }
 .three-up { grid-template-columns: repeat(3, 1fr); }
 .three-up .menu-card { min-height: 118px; }
 .entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
@@ -1520,6 +1524,62 @@ small,
 }
 
 .theme-matches { --screen-after: var(--black); }
+
+/* Jogos: filtros e abas precisam manter hierarquia sobre a tela rosa. */
+.theme-matches .discipline-selector {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.theme-matches .discipline-selector-label {
+  color: var(--orange);
+  font-size: .68rem;
+}
+
+.theme-matches .discipline-selector-track {
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--orange);
+  background: transparent;
+}
+
+.theme-matches .discipline-option {
+  flex: 1 0 auto;
+  min-width: max-content;
+  border-color: transparent;
+  background: transparent;
+  color: var(--white);
+}
+
+.theme-matches .discipline-option.active {
+  background: var(--orange);
+  color: var(--white);
+}
+
+.theme-matches .content-view-tabs {
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.theme-matches .content-view-tabs :is(a, span) {
+  min-height: 46px;
+  border-color: var(--orange);
+  background: transparent;
+  color: var(--white);
+}
+
+.theme-matches .content-view-tabs .active {
+  border-color: var(--orange);
+  background: var(--orange);
+  color: var(--white);
+}
 
 .management-screen::after,
 .live-screen::after {
@@ -3311,4 +3371,42 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
   .team-performance-head { grid-template-columns: 40px minmax(0, 1fr); }
   .team-performance-head .status-badge { grid-column: 2; }
   .team-performance-stats { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Classificação: uma única superfície reutilizada em Jogos, modalidade, gestão e área pública. */
+.tournament-classification {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--orange);
+  background: var(--black);
+  color: var(--white);
+}
+
+.tournament-classification-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-left: 12px;
+  border-left: 4px solid var(--orange);
+}
+
+.tournament-classification-head > div { min-width: 0; }
+.tournament-classification-head .eyebrow { margin: 0 0 5px; color: var(--orange); }
+.tournament-classification-head h2 { margin: 0; font-family: var(--font-display); font-size: var(--type-section); font-weight: 700; line-height: var(--leading-heading); text-transform: uppercase; }
+.tournament-classification-head .status-badge { flex: 0 0 auto; }
+.tournament-classification .filter-strip { margin: 18px 0 16px; padding: 0; }
+.tournament-classification .filter-chip { border-color: var(--orange); background: transparent; color: var(--white); }
+.tournament-classification .filter-chip.active { border-color: var(--orange); background: var(--orange); color: var(--black); }
+.tournament-classification .standing-row { border-color: var(--orange); background: var(--black); }
+.tournament-classification .standings-head { color: rgba(247,240,227,.62); }
+.tournament-classification .qualification-note { border: 1px solid var(--orange); border-left-width: 5px; background: var(--black); }
+.tournament-classification-actions { display: grid; gap: 10px; margin-top: 16px; }
+.tournament-classification-actions .wide-action { min-height: 48px; margin: 0; border-color: var(--orange); background: transparent; color: var(--orange); }
+
+@media (max-width: 430px) {
+  .tournament-classification { padding: 14px 12px; }
+  .tournament-classification-head { padding-left: 10px; }
+  .tournament-classification-head h2 { font-size: clamp(1.22rem, 6vw, 1.55rem); }
+  .tournament-classification-head .status-badge { max-width: 40%; white-space: normal; text-align: center; }
 }

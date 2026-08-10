@@ -7,7 +7,7 @@ import { DisciplineSelector } from './DisciplineSelector';
 import { MatchSchedule } from './MatchSchedule';
 import { PublicAppShell } from './PublicAppShell';
 import { PublicMatchCollection } from './PublicMatchCollection';
-import { TournamentResults } from './TournamentResults';
+import { TournamentClassification } from './TournamentClassification';
 import { matches, tournaments } from '../lib/repositories/catalog-repository';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
@@ -29,7 +29,7 @@ export function MatchesHub({ area, mode = 'upcoming' }: { area: 'admin' | 'publi
   const activeTournament = createdTournament
     ? { id: createdTournament[0], name: createdTournament[1].name ?? 'Disputa da modalidade', phase: createdTournament[1].status }
     : tournaments.find((tournament) => tournament.editionId === activeEdition?.id && tournament.discipline === selected);
-  const overviewHref = area === 'admin' ? `/tournaments/${activeTournament?.id}#results` : `/public/tournaments/${activeTournament?.id}#results`;
+  const overviewHref = area === 'admin' ? `/tournaments/${activeTournament?.id}` : `/public/tournaments/${activeTournament?.id}`;
   const baseHref = area === 'admin' ? '/matches' : '/public/matches';
   const viewTabs = (
     <nav className="content-view-tabs" aria-label="Visualização dos jogos">
@@ -37,14 +37,7 @@ export function MatchesHub({ area, mode = 'upcoming' }: { area: 'admin' | 'publi
       <Link href={`${baseHref}?modalidade=${encodeURIComponent(selected)}&visao=classificacao`} className={activeView === 'classification' ? 'active' : ''} aria-current={activeView === 'classification' ? 'page' : undefined}>Classificação</Link>
     </nav>
   );
-  const classificationView = activeTournament ? (
-    <section className="section-block matches-tournament-overview" aria-label={`Classificação de ${activeTournament.name}`}>
-      <div className="section-title-row"><div><p className="eyebrow">MODALIDADE ESCOLHIDA</p><h2>{activeTournament.name}</h2></div><span className="status-badge status-orange">{activeTournament.phase}</span></div>
-      <TournamentResults tournamentId={activeTournament.id} discipline={selected} />
-      <a href={overviewHref} className="wide-action">VER FASES E DETALHES <span>›</span></a>
-      <Link href={area === 'admin' ? '/standings' : '/public/standings/general'} className="wide-action ranking-general-link">VER CLASSIFICAÇÃO GERAL <span>›</span></Link>
-    </section>
-  ) : <p className="match-filter-empty">Nenhuma disputa publicada para esta modalidade na edição ativa.</p>;
+  const classificationView = activeTournament ? <TournamentClassification tournamentId={activeTournament.id} discipline={selected} heading={{ eyebrow: 'MODALIDADE ESCOLHIDA', title: activeTournament.name, phase: activeTournament.phase }} detailsHref={overviewHref} generalRankingHref={area === 'admin' ? '/standings' : '/public/standings/general'} /> : <p className="match-filter-empty">Nenhuma disputa publicada para esta modalidade na edição ativa.</p>;
 
   if (area === 'admin') {
     return <AppShell active="matches" eyebrow={`${activeView === 'games' ? 'AGENDA' : 'CLASSIFICAÇÃO'} · ${selected.toUpperCase()}`} title="JOGOS" subtitle={`Jogos e resultados somente de ${selected}`} actionHref={`/matches/new?modalidade=${encodeURIComponent(selected)}`} actionLabel={`Agendar jogo de ${selected}`} actionPermission="discipline" actionDiscipline={selected}><DisciplineSelector options={options} />{viewTabs}{activeView === 'classification' ? classificationView : <MatchSchedule matches={staticMatches} discipline={selected} />}</AppShell>;

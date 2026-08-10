@@ -1,13 +1,27 @@
 'use client';
 
+import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { StatusBadge } from './AppShell';
 import { matches as mockMatches, standings as mockStandings, tournaments as mockTournaments } from '../lib/repositories/catalog-repository';
 import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
-export function TournamentResults({ tournamentId, discipline = 'Futsal', fallbackParticipants }: { tournamentId?: string; discipline?: string; fallbackParticipants?: readonly string[] }) {
+type ClassificationHeading = { eyebrow?: string; title?: string; phase?: string };
+
+type TournamentClassificationProps = {
+  tournamentId?: string;
+  discipline?: string;
+  fallbackParticipants?: readonly string[];
+  heading?: ClassificationHeading;
+  detailsHref?: string;
+  generalRankingHref?: string;
+  managementAction?: ReactNode;
+  className?: string;
+};
+
+export function TournamentClassification({ tournamentId, discipline = 'Futsal', fallbackParticipants, heading, detailsHref, generalRankingHref, managementAction, className = '' }: TournamentClassificationProps) {
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const setup = tournamentId ? state.tournaments[tournamentId] : undefined;
@@ -27,13 +41,17 @@ export function TournamentResults({ tournamentId, discipline = 'Futsal', fallbac
   const table = calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView));
   const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
   const classificationPhase = phases.find((phase) => phase.format !== 'Mata-mata' && (phase.format === 'Liga' || phase.groups.includes(activeView))) ?? phases.find((phase) => phase.format !== 'Mata-mata');
-  const fallbackQualifiers = mockTournaments.find((tournament) => tournament.id === tournamentId)?.qualifiers;
-  const qualifierCount = classificationPhase?.qualifiers ?? fallbackQualifiers;
+  const qualifierCount = classificationPhase?.qualifiers ?? mockTournaments.find((tournament) => tournament.id === tournamentId)?.qualifiers;
   const advancementLabel = qualifierCount ? `${qualifierCount} ${qualifierCount === 1 ? 'equipe avança' : 'equipes avançam'}` : 'Avanço ainda não configurado';
   const phaseIndex = classificationPhase ? phases.findIndex((phase) => phase.id === classificationPhase.id) : -1;
   const nextPhase = phaseIndex >= 0 ? phases[phaseIndex + 1] : undefined;
+  const title = heading?.title ?? 'CLASSIFICAÇÃO E FASES';
 
-  return (
+  return <section className={`tournament-classification ${className}`.trim()} aria-label={`Classificação de ${discipline}`}>
+    <header className="tournament-classification-head">
+      <div><p className="eyebrow">{heading?.eyebrow ?? 'ACOMPANHAMENTO'}</p><h2>{title}</h2></div>
+      {heading?.phase ? <StatusBadge tone="pink">{heading.phase}</StatusBadge> : null}
+    </header>
     <div className="tournament-results-view">
       <div className="filter-strip" role="tablist" aria-label="Etapas da classificação">
         {availableGroups.map((group) => <button role="tab" aria-selected={activeView === group} type="button" className={`filter-chip${activeView === group ? ' active' : ''}`} onClick={() => setView(group)} key={group}>{group}</button>)}
@@ -48,5 +66,10 @@ export function TournamentResults({ tournamentId, discipline = 'Futsal', fallbac
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Desempate: pontos, vitórias, saldo e gols marcados.</p></div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>
       </> : <div className="phase-timeline" aria-label="Chaveamento">{knockout.length ? knockout.map((match, index) => <article key={match.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{match.phase ?? 'MATA-MATA'}</small><h3>{match.entryA} × {match.entryB}</h3><p>{match.status === 'Encerrada' ? `${match.scoreA} × ${match.scoreB}` : match.status}</p></div><Trophy size={20} /></article>) : <p className="match-filter-empty">O chaveamento será exibido quando os confrontos eliminatórios forem gerados.</p>}</div>}
     </div>
-  );
+    {(detailsHref || generalRankingHref || managementAction) ? <footer className="tournament-classification-actions">
+      {detailsHref ? <Link href={detailsHref} className="wide-action">VER FASES E DETALHES <span>›</span></Link> : null}
+      {generalRankingHref ? <Link href={generalRankingHref} className="wide-action ranking-general-link">VER CLASSIFICAÇÃO GERAL <span>›</span></Link> : null}
+      {managementAction}
+    </footer> : null}
+  </section>;
 }

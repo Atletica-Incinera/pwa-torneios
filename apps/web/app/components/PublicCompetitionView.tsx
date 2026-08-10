@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { PublicAppShell } from './PublicAppShell';
 import { DisciplineSelector } from './DisciplineSelector';
 import { SectionTitle } from './AppShell';
-import { TournamentResults } from './TournamentResults';
+import { TournamentClassification } from './TournamentClassification';
 import { StatefulMatchCard } from './StatefulMatchCard';
 import { matches, standings, tournaments } from '../lib/repositories/catalog-repository';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
@@ -44,7 +44,7 @@ export function PublicCompetitionView({ view }: { view: View }) {
   return <PublicAppShell {...shell}>
     {view === 'standings' ? <nav className="content-view-tabs ranking-scope-tabs" aria-label="Escopo da classificação"><span className="active" aria-current="page">Por modalidade</span><Link href="/public/standings/general">Classificação geral</Link></nav> : null}
     <DisciplineSelector options={options} />
-    {view === 'standings' ? <section className="section-block public-priority-section"><SectionTitle eyebrow={activeTournament?.name ?? selected} title="TABELA E CHAVEAMENTO" /><TournamentResults tournamentId={activeTournament?.id} discipline={selected} fallbackParticipants={setup?.participants ?? standings.map((item) => item.name)} /></section> : null}
+    {view === 'standings' ? <TournamentClassification className="section-block public-priority-section" tournamentId={activeTournament?.id} discipline={selected} fallbackParticipants={setup?.participants ?? standings.map((item) => item.name)} heading={{ eyebrow: activeTournament?.name ?? selected, title: 'TABELA E CHAVEAMENTO' }} /> : null}
     {view === 'results' ? <section className="section-block public-priority-section"><SectionTitle eyebrow={activeTournament?.name ?? selected} title="JOGOS ENCERRADOS" /><div className="match-list public-readonly-list">{completed.length ? completed.map((match) => <StatefulMatchCard key={match.id} className="public-result-score" href={`/public/matches/${match.id}`} match={match} />) : <p className="match-filter-empty">Ainda não há resultados encerrados nesta modalidade.</p>}</div></section> : null}
     {view === 'phases' ? <section className="section-block public-priority-section"><SectionTitle eyebrow={activeTournament?.name ?? selected} title="ETAPAS DA DISPUTA" /><div className="phase-timeline public-phase-timeline">{phases.map((phase, index) => <article key={phase.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{index === 0 ? 'ETAPA INICIAL' : 'ETAPA SEGUINTE'}</small><h3>{phase.name}</h3><p>{phase.format}{phase.groups.length ? ` · ${phase.groups.join(', ')}` : ''}</p></div><Flag size={18} /></article>)}</div></section> : null}
     <Link href="/public/teams" className="wide-action public-secondary-link"><Shield size={18} /> VER EQUIPES E ELENCOS <span>›</span></Link>

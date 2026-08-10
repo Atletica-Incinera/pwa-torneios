@@ -1,8 +1,8 @@
 'use client';
 
-import { AppShell, EmptyState, SectionTitle } from './AppShell';
+import { AppShell, EmptyState } from './AppShell';
 import { TournamentManager } from './TournamentManager';
-import { TournamentResults } from './TournamentResults';
+import { TournamentClassification } from './TournamentClassification';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
 type Base = { id: string; editionId?: string; name: string; discipline: string; status: string };
@@ -21,8 +21,7 @@ export function TournamentManageView({ id, initial, teamNames }: { id: string; i
   return (
     <AppShell active="tournaments" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="GESTÃO DA MODALIDADE" subtitle={`${tournament.discipline} · ${tournament.name}`}>
       <section className="management-panel tournament-live-overview" id="tournament-overview">
-        <SectionTitle eyebrow="ACOMPANHAMENTO" title="CLASSIFICAÇÃO E FASES" />
-        <TournamentResults tournamentId={id} discipline={tournament.discipline} fallbackParticipants={teamNames} />
+        <TournamentClassification tournamentId={id} discipline={tournament.discipline} fallbackParticipants={teamNames} />
       </section>
       <nav className="detail-tabs management-tabs" aria-label="Seções da modalidade">
         <a href="#tournament-overview">Classificação</a>
