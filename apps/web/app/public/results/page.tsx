@@ -1,6 +1,6 @@
-import { Suspense } from 'react';
-import { PublicCompetitionView } from '../../components/PublicCompetitionView';
+import { redirect } from 'next/navigation';
 
-export default function PublicResultsPage() {
-  return <Suspense fallback={<main className="global-state-screen"><span className="loading-mark">26</span><div className="loading-line" /><p>Carregando resultados...</p></main>}><PublicCompetitionView view="results" /></Suspense>;
+/** Agenda, tabela, resultados e fases agora vivem dentro de cada categoria. */
+export default function LegacyPublicresultsPage() {
+  redirect('/public/tournaments');
 }

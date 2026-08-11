@@ -43,13 +43,17 @@ test('cards mantêm seu conteúdo dentro do pai em largura mínima', async ({ pa
   await loginAs(page);
 
   for (const route of [
-    '/dashboard', '/teams', '/teams/alcateia', '/athletes', '/disciplines',
-    '/tournaments', '/matches', '/matches/semifinal-1', '/matches/live?partida=semifinal-1',
+    '/dashboard', '/teams', '/teams/alcateia', '/athletes', '/disciplines', '/disciplines/futsal',
+    '/tournaments/futsal-m', '/tournaments/futsal-m?aba=jogos', '/tournaments/futsal-m?aba=fases',
+    '/tournaments/futsal-m?aba=participantes', '/tournaments/futsal-m?aba=regras', '/tournaments/new',
+    '/matches', '/matches/semifinal-1', '/matches/live?partida=semifinal-1',
     '/staff', '/standings', '/competitions',
   ]) await expectCardsInsideParents(page, route);
 
   for (const route of [
-    '/public', '/public/matches', '/public/teams', '/public/teams/alcateia',
-    '/public/tournaments', '/public/results', '/public/standings', '/public/standings/general', '/public/phases',
+    '/public', '/public/teams', '/public/teams/alcateia', '/public/tournaments',
+    '/public/tournaments/futsal-m', '/public/tournaments/futsal-m?aba=agenda',
+    '/public/tournaments/futsal-m?aba=resultados', '/public/tournaments/futsal-m?aba=fases',
+    '/public/standings/general',
   ]) await expectCardsInsideParents(page, route);
 });

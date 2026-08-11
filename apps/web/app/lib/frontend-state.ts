@@ -1,20 +1,46 @@
-'use client';
-
-import { useCallback, useEffect, useState } from 'react';
+import type { CompletionRule, KnockoutMethod, KnockoutRule, RosterRule, ScoringAction, SecondaryAction, StandingsRule, WalkoverRule } from './regulation.ts';
+import { seedAthletes, seedDisciplines, seedMatches, seedStaff, seedTeams, seedTournaments } from './repositories/edition-seed.ts';
 
 export type CompetitionState = { id: string; name: string; slug: string; active: boolean };
 export type EditionState = { id: string; name: string; year: number; start: string; end: string; status: 'Planejamento' | 'Em andamento' | 'Finalizada' | 'Arquivada'; active: boolean; competitionId?: string };
-export type TeamState = { name?: string; initials?: string; responsible?: string; logo?: string; archived?: boolean; created?: boolean; athletes?: number; tone?: 'blue' | 'pink' | 'orange' };
-export type AthleteState = { name?: string; teamId?: string; modalities?: string[]; created?: boolean };
-export type DisciplineRule = { periodLabel: string; periodCount: number; periodDurationMinutes: number; clockMode: 'progressive' | 'countdown' | 'none'; scoringEvent: string; secondaryEvents: [string, string] };
-export type DisciplineState = { config?: string; rules?: DisciplineRule; enabled?: boolean; created?: boolean; name?: string; mode?: 'Coletiva' | 'Individual'; tournaments?: number; tone?: 'blue' | 'pink' | 'orange' };
+export type TeamState = { name?: string; initials?: string; responsible?: string; logo?: string; archived?: boolean; created?: boolean; tone?: 'blue' | 'pink' | 'orange' };
+export type AthleteState = { name?: string; teamId?: string; modalities?: string[]; created?: boolean; /** Saiu da equipe: o registro fica para o histórico, mas não conta no elenco. */ removed?: boolean };
+export type DisciplineRule = {
+  periodLabel: string;
+  periodCount: number;
+  periodDurationMinutes: number;
+  clockMode: 'progressive' | 'countdown' | 'none';
+  scoringEvent: string;
+  secondaryEvents: [string, string];
+  /** Regulamento esportivo. Opcionais para manter compatível o estado já salvo. */
+  scoring?: ScoringAction[];
+  secondary?: SecondaryAction[];
+  completion?: CompletionRule;
+  roster?: RosterRule;
+  standings?: StandingsRule;
+  knockout?: KnockoutRule;
+  walkover?: WalkoverRule;
+};
+export type DisciplineState = { config?: string; rules?: DisciplineRule; enabled?: boolean; created?: boolean; name?: string; mode?: 'Coletiva' | 'Individual'; tournaments?: number; tone?: 'blue' | 'pink' | 'orange'; startedAt?: string };
 export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number };
-export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; editionId?: string; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange' };
-export type MatchEventState = { id: string; at: string; elapsedSeconds: number; period?: number; periodElapsedSeconds?: number; type: string; detail: string; side: 'home' | 'away' | 'neutral'; scoreA: number; scoreB: number; previousScoreA?: number; previousScoreB?: number };
-export type MatchState = { date?: string; time?: string; venue?: string; status?: 'Agendada' | 'Ao vivo' | 'Encerrada' | 'Adiada' | 'Cancelada' | 'W.O.'; reason?: string; scoreA?: number | null; scoreB?: number | null; created?: boolean; editionId?: string; discipline?: string; entryA?: string; entryB?: string; logoA?: string; logoB?: string; phase?: string; tournamentId?: string; rules?: DisciplineRule; currentPeriod?: number; clockSeconds?: number; runningSince?: string; paused?: boolean; events?: MatchEventState[]; operatorId?: string; operatorName?: string; operatorHeartbeat?: string };
-export type OverallMetricState = { id: string; name: string; defaultPoints: number };
-export type OverallAwardState = { id: string; editionId: string; teamId: string; discipline: string; metricId: string; points: number; note?: string; createdAt: string };
-export type OverallRankingState = { metrics: OverallMetricState[]; awards: OverallAwardState[] };
+/** Origem das equipes do mata-mata: quantas por grupo, melhores terceiros e cruzamento. */
+export type TournamentAdvancement = { perGroup: number; bestThirds: number; crossing: 'padrao' | 'sequencial'; thirdPlaceMatch: boolean };
+export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado' | 'Arquivado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; editionId?: string; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange'; advancement?: TournamentAdvancement; /** Equipes que avançam sem jogar, por posição no chaveamento. */ byes?: Record<string, string> };
+/** Estado do placar imediatamente antes do evento, usado para desfazer. */
+export type MatchScoreSnapshot = { scoreA: number; scoreB: number; periodScoreA: number; periodScoreB: number; currentPeriod: number };
+export type MatchEventState = { id: string; at: string; elapsedSeconds: number; period?: number; periodElapsedSeconds?: number; type: string; detail: string; side: 'home' | 'away' | 'neutral'; scoreA: number; scoreB: number; previousScoreA?: number; previousScoreB?: number; points?: number; previous?: MatchScoreSnapshot };
+/** Desempate obrigatório de partida eliminatória terminada empatada. */
+export type MatchTiebreakState = { method: KnockoutMethod; label: string; scoreA: number; scoreB: number; winner: string; reason: string; decidedBy: string; at: string };
+/** Retificação de resultado após o encerramento. */
+export type MatchCorrectionState = { id: string; at: string; actor: string; reason: string; before: string; after: string };
+export type MatchState = { date?: string; time?: string; venue?: string; status?: 'Agendada' | 'Ao vivo' | 'Encerrada' | 'Adiada' | 'Cancelada' | 'W.O.'; reason?: string; scoreA?: number | null; scoreB?: number | null; created?: boolean; editionId?: string; discipline?: string; entryA?: string; entryB?: string; logoA?: string; logoB?: string; phase?: string; tournamentId?: string; rules?: DisciplineRule; currentPeriod?: number; clockSeconds?: number; runningSince?: string; paused?: boolean; events?: MatchEventState[]; operatorId?: string; operatorName?: string; operatorHeartbeat?: string; periodScoreA?: number; periodScoreB?: number; periodResults?: Array<{ period: number; scoreA: number; scoreB: number }>; startedAt?: string; startedBy?: string; startNote?: string; tiebreak?: MatchTiebreakState; corrections?: MatchCorrectionState[]; walkoverWinner?: string };
+/** Posição do pódio que gera bonificação automática a partir do resultado oficial. */
+export type OverallPosition = 'campeao' | 'vice' | 'terceiro' | 'participacao';
+export type OverallMetricState = { id: string; name: string; defaultPoints: number; position?: OverallPosition };
+export type OverallAwardState = { id: string; editionId: string; teamId: string; discipline: string; metricId: string; points: number; note?: string; createdAt: string; origin?: 'manual' | 'automatico'; revokedAt?: string; revokedBy?: string; revokeReason?: string };
+/** Fechamento oficial do ranking geral da edição. */
+export type OverallClosureState = { editionId: string; at: string; actor: string; note?: string };
+export type OverallRankingState = { metrics: OverallMetricState[]; awards: OverallAwardState[]; closures?: OverallClosureState[] };
 export type StaffState = {
   name: string;
   email: string;
@@ -23,7 +49,7 @@ export type StaffState = {
   scope: string;
   revoked?: boolean;
 };
-export type AuditState = { id: string; at: string; actor: string; action: string; entity: string; before?: string; after?: string };
+export type AuditState = { id: string; at: string; actor: string; action: string; entity: string; before?: string; after?: string; reason?: string };
 
 export type FrontendState = {
   competitions: CompetitionState[];
@@ -39,8 +65,10 @@ export type FrontendState = {
   preferences: { selectedDiscipline: string; notifications: boolean; soundEffects: boolean };
 };
 
-const storageKey = 'intereng:app-state:v1';
-const eventName = 'intereng:state-change';
+export const storageKey = 'intereng:app-state:v1';
+export const stateChangeEvent = 'intereng:state-change';
+const eventName = stateChangeEvent;
+const sessionKey = 'intereng:frontend-session';
 
 export const initialFrontendState: FrontendState = {
   competitions: [{ id: 'jogos-engenharia', name: 'InterEng', slug: 'intereng', active: true }],
@@ -56,16 +84,31 @@ export const initialFrontendState: FrontendState = {
   matches: {},
   overallRanking: {
     metrics: [
-      { id: 'metric-champion', name: 'Campeão da modalidade', defaultPoints: 10 },
-      { id: 'metric-runner-up', name: 'Vice-campeão', defaultPoints: 7 },
-      { id: 'metric-third', name: 'Terceiro lugar', defaultPoints: 5 },
-      { id: 'metric-participation', name: 'Participação', defaultPoints: 1 },
+      { id: 'metric-champion', name: 'Campeão da modalidade', defaultPoints: 10, position: 'campeao' },
+      { id: 'metric-runner-up', name: 'Vice-campeão', defaultPoints: 7, position: 'vice' },
+      { id: 'metric-third', name: 'Terceiro lugar', defaultPoints: 5, position: 'terceiro' },
+      { id: 'metric-participation', name: 'Participação', defaultPoints: 1, position: 'participacao' },
     ],
     awards: [],
+    closures: [],
   },
   staff: {},
   audit: [],
   preferences: { selectedDiscipline: 'Futsal', notifications: true, soundEffects: true },
+};
+
+/**
+ * O primeiro snapshot do adaptador local: o esqueleto com os dados da edição.
+ * É o equivalente ao que o servidor devolverá em `GET /editions/:id/snapshot`.
+ */
+export const seededFrontendState: FrontendState = {
+  ...initialFrontendState,
+  teams: seedTeams,
+  athletes: seedAthletes,
+  disciplines: seedDisciplines,
+  tournaments: seedTournaments,
+  matches: seedMatches,
+  staff: seedStaff,
 };
 
 export function getActiveCompetition(state: Pick<FrontendState, 'competitions'>) {
@@ -79,70 +122,51 @@ export function getActiveEdition(state: Pick<FrontendState, 'competitions' | 'ed
 }
 
 function parseState(value: string | null): FrontendState {
-  if (!value) return initialFrontendState;
+  if (!value) return seededFrontendState;
   try {
     const parsed = JSON.parse(value) as Partial<FrontendState>;
-    const competitions = (parsed.competitions ?? initialFrontendState.competitions).map((competition) => competition.id === 'jogos-engenharia' && competition.name === 'Jogos de Engenharia' ? { ...competition, name: 'InterEng', slug: 'intereng' } : competition);
-    const editions = (parsed.editions ?? initialFrontendState.editions).map((edition) => /^InterEng\s+\d{4}$/i.test(edition.name) ? { ...edition, name: String(edition.year) } : edition);
+    const competitions = (parsed.competitions ?? seededFrontendState.competitions).map((competition) => competition.id === 'jogos-engenharia' && competition.name === 'Jogos de Engenharia' ? { ...competition, name: 'InterEng', slug: 'intereng' } : competition);
+    const editions = (parsed.editions ?? seededFrontendState.editions).map((edition) => /^InterEng\s+\d{4}$/i.test(edition.name) ? { ...edition, name: String(edition.year) } : edition);
     const activeEditionId = getActiveEdition({ competitions, editions })?.id ?? 'intereng-2026';
     const tournaments = Object.fromEntries(Object.entries(parsed.tournaments ?? {}).map(([id, item]) => [id, { ...item, editionId: item.editionId ?? activeEditionId }]));
     const matches = Object.fromEntries(Object.entries(parsed.matches ?? {}).map(([id, item]) => [id, { ...item, editionId: item.editionId ?? activeEditionId }]));
     return {
-      ...initialFrontendState,
+      ...seededFrontendState,
       ...parsed,
       competitions,
       editions,
-      teams: { ...initialFrontendState.teams, ...parsed.teams },
-      athletes: { ...initialFrontendState.athletes, ...parsed.athletes },
-      disciplines: { ...initialFrontendState.disciplines, ...parsed.disciplines },
-      tournaments: { ...initialFrontendState.tournaments, ...tournaments },
-      matches: { ...initialFrontendState.matches, ...matches },
+      teams: { ...seededFrontendState.teams, ...parsed.teams },
+      athletes: { ...seededFrontendState.athletes, ...parsed.athletes },
+      disciplines: { ...seededFrontendState.disciplines, ...parsed.disciplines },
+      tournaments: { ...seededFrontendState.tournaments, ...tournaments },
+      matches: { ...seededFrontendState.matches, ...matches },
       overallRanking: {
-        metrics: parsed.overallRanking?.metrics ?? initialFrontendState.overallRanking.metrics,
-        awards: parsed.overallRanking?.awards ?? initialFrontendState.overallRanking.awards,
+        metrics: parsed.overallRanking?.metrics ?? seededFrontendState.overallRanking.metrics,
+        awards: parsed.overallRanking?.awards ?? seededFrontendState.overallRanking.awards,
+        closures: parsed.overallRanking?.closures ?? [],
       },
-      staff: { ...initialFrontendState.staff, ...parsed.staff },
+      staff: { ...seededFrontendState.staff, ...parsed.staff },
       audit: parsed.audit ?? [],
-      preferences: { ...initialFrontendState.preferences, ...parsed.preferences },
+      preferences: { ...seededFrontendState.preferences, ...parsed.preferences },
     };
-  } catch { return initialFrontendState; }
+  } catch { return seededFrontendState; }
 }
 
 export function readFrontendState() {
-  if (typeof window === 'undefined') return initialFrontendState;
+  if (typeof window === 'undefined') return seededFrontendState;
   return parseState(window.localStorage.getItem(storageKey));
 }
 
-export function useFrontendState() {
-  const [state, setState] = useState<FrontendState>(initialFrontendState);
-  const [hydrated, setHydrated] = useState(false);
+/** Grava o snapshot e avisa as telas abertas. Lança se o storage recusar. */
+export function writeFrontendState(next: FrontendState) {
+  window.localStorage.setItem(storageKey, JSON.stringify(next));
+  window.dispatchEvent(new Event(eventName));
+}
 
-  useEffect(() => {
-    setState(readFrontendState());
-    setHydrated(true);
-    const sync = () => setState(readFrontendState());
-    window.addEventListener(eventName, sync);
-    window.addEventListener('storage', sync);
-    return () => { window.removeEventListener(eventName, sync); window.removeEventListener('storage', sync); };
-  }, []);
-
-  const commit = useCallback((update: (current: FrontendState) => FrontendState, audit?: Omit<AuditState, 'id' | 'at' | 'actor'>) => {
-    try {
-      const current = readFrontendState();
-      const updated = update(current);
-      const sessionRaw = window.localStorage.getItem('intereng:frontend-session') ?? window.sessionStorage.getItem('intereng:frontend-session');
-      const actor = sessionRaw ? (JSON.parse(sessionRaw) as { name?: string }).name ?? 'Usuário do app' : 'Usuário do app';
-      const next = audit ? { ...updated, audit: [{ id: `audit-${Date.now()}`, at: new Date().toISOString(), actor, ...audit }, ...updated.audit] } : updated;
-      window.localStorage.setItem(storageKey, JSON.stringify(next));
-      setState(next);
-      window.dispatchEvent(new Event(eventName));
-      if (audit) window.dispatchEvent(new CustomEvent('intereng:toast', { detail: { message: audit.action, tone: 'success' } }));
-      return true;
-    } catch {
-      window.dispatchEvent(new CustomEvent('intereng:toast', { detail: { message: 'Não foi possível salvar. Tente novamente.', tone: 'error' } }));
-      return false;
-    }
-  }, []);
-
-  return { state, commit, hydrated };
+/** Quem está operando, para a auditoria. Lido da sessão gravada no navegador. */
+export function readActor() {
+  try {
+    const raw = window.localStorage.getItem(sessionKey) ?? window.sessionStorage.getItem(sessionKey);
+    return raw ? (JSON.parse(raw) as { name?: string }).name ?? 'Usuário do app' : 'Usuário do app';
+  } catch { return 'Usuário do app'; }
 }

@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Activity, ChevronRight, Medal, Trophy } from 'lucide-react';
 import { SectionTitle, StatusBadge } from './AppShell';
-import { matches as catalogMatches, tournaments as catalogTournaments, teams as catalogTeams } from '../lib/repositories/catalog-repository';
+import { listCategories, listMatches, listTeams } from '../lib/edition-catalog';
+import { isOfficialResult } from '../lib/status';
 import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
@@ -11,17 +12,8 @@ export function TeamPerformance({ teamId, teamName, publicView = false }: { team
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const currentName = state.teams[teamId]?.name ?? teamName;
-  const categories = [
-    ...catalogTournaments.filter((item) => item.editionId === activeEdition?.id).map((item) => ({ id: item.id, name: item.name, discipline: item.discipline, phase: state.tournaments[item.id]?.phases[0]?.name ?? item.phase })),
-    ...Object.entries(state.tournaments).filter(([, item]) => item.created && item.editionId === activeEdition?.id).map(([id, item]) => ({ id, name: item.name ?? 'Categoria', discipline: item.discipline ?? 'Modalidade', phase: item.phases[0]?.name ?? 'Fase atual' })),
-  ];
-  const effectiveMatches = [
-    ...catalogMatches.filter((match) => match.editionId === activeEdition?.id).map((match) => {
-      const override = state.matches[match.id];
-      return { ...match, scoreA: override?.scoreA ?? match.scoreA, scoreB: override?.scoreB ?? match.scoreB, status: override?.status ?? match.status, phase: override?.phase ?? match.phase };
-    }),
-    ...Object.entries(state.matches).filter(([, match]) => match.created && match.editionId === activeEdition?.id).map(([id, match]) => ({ id, editionId: match.editionId, tournamentId: match.tournamentId ?? '', time: match.time ?? '', date: match.date ?? '', discipline: match.discipline ?? 'Modalidade', entryA: match.entryA ?? 'Equipe A', logoA: match.logoA ?? '', entryB: match.entryB ?? 'Equipe B', logoB: match.logoB ?? '', scoreA: match.scoreA ?? null, scoreB: match.scoreB ?? null, venue: match.venue ?? '', phase: match.phase ?? '', status: match.status ?? 'Agendada' })),
-  ];
+  const categories = listCategories(state, activeEdition?.id);
+  const effectiveMatches = listMatches(state, activeEdition?.id);
   const performances = categories.map((category) => {
     const setup = state.tournaments[category.id];
     const categoryMatches = effectiveMatches.filter((match) => match.tournamentId === category.id);
@@ -31,14 +23,14 @@ export function TeamPerformance({ teamId, teamName, publicView = false }: { team
     const rows: TournamentMatch[] = categoryMatches.map((match) => ({ id: match.id, entryA: match.entryA, entryB: match.entryB, scoreA: match.scoreA, scoreB: match.scoreB, status: match.status, phase: match.phase, group: match.phase }));
     const standing = calculateStandings(participants, rows).find((row) => row.name === currentName);
     const teamMatches = categoryMatches.filter((match) => match.entryA === currentName || match.entryB === currentName);
-    const completed = teamMatches.filter((match) => match.status === 'Encerrada');
+    const completed = teamMatches.filter((match) => isOfficialResult(match.status));
     const scored = completed.reduce((total, match) => total + (match.entryA === currentName ? match.scoreA ?? 0 : match.scoreB ?? 0), 0);
     const conceded = completed.reduce((total, match) => total + (match.entryA === currentName ? match.scoreB ?? 0 : match.scoreA ?? 0), 0);
     return { ...category, standing, scheduled: teamMatches.length, scored, conceded };
   }).filter((item): item is NonNullable<typeof item> => Boolean(item));
 
   const editionAwards = state.overallRanking.awards.filter((award) => award.editionId === activeEdition?.id);
-  const rankingTeams = [...catalogTeams.map((team) => ({ id: team.id, name: state.teams[team.id]?.name ?? team.name })), ...Object.entries(state.teams).filter(([, team]) => team.created && !team.archived).map(([id, team]) => ({ id, name: team.name ?? 'Equipe' }))];
+  const rankingTeams = listTeams(state);
   const overallRows = rankingTeams.map((team) => ({ ...team, points: editionAwards.filter((award) => award.teamId === team.id).reduce((total, award) => total + award.points, 0) })).sort((a, b) => b.points - a.points || a.name.localeCompare(b.name, 'pt-BR'));
   const overallPoints = overallRows.find((team) => team.id === teamId)?.points ?? 0;
   const overallPosition = overallPoints > 0 ? overallRows.findIndex((team) => team.id === teamId) + 1 : 0;

@@ -1,3 +1,8 @@
+import { Suspense } from 'react';
 import { PublicTournamentDetailView } from '../../../components/PublicTournamentDetailView';
-import { matches, tournaments } from '../../../lib/repositories/catalog-repository';
-export default async function PublicTournamentDetailPage({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; const tournament = tournaments.find((item) => item.id === id); return <PublicTournamentDetailView id={id} initial={tournament} matches={matches} index={tournament ? tournaments.indexOf(tournament) : tournaments.length} />; }
+import { LoadingScreen } from '../../../components/LoadingScreen';
+
+export default async function PublicCategoryPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <Suspense fallback={<LoadingScreen message="Carregando categoria..." />}><PublicTournamentDetailView id={id} /></Suspense>;
+}

@@ -4,18 +4,14 @@ import { Filter, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { TeamCard } from '../components/TeamCard';
-import { teams } from '../lib/repositories/catalog-repository';
 import { useFrontendState } from '../lib/repositories/browser-repository';
+import { listAllTeams } from '../lib/edition-catalog';
 
 export default function TeamsPage() {
   const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const { state } = useFrontendState();
-  const allTeams = useMemo(() => {
-    const seeded = teams.map((team) => { const override = state.teams[team.id] ?? {}; return { ...team, name: override.name ?? team.name, initial: override.initials?.[0] ?? team.initial, logo: override.logo ?? team.logo, athletes: override.athletes ?? team.athletes, tone: override.tone ?? team.tone, archived: override.archived ?? false }; });
-    const created = Object.entries(state.teams).filter(([, item]) => item.created).map(([id, item], index) => ({ id, name: item.name ?? 'Nova equipe', initial: item.initials?.[0] ?? 'E', logo: item.logo ?? '', athletes: item.athletes ?? 0, tone: item.tone ?? (index % 2 ? 'pink' : 'blue'), archived: item.archived ?? false }));
-    return [...seeded, ...created];
-  }, [state.teams]);
+  const allTeams = useMemo(() => listAllTeams(state), [state]);
   const filteredTeams = useMemo(() => allTeams.filter((team) => {
     const matchesQuery = team.name.toLocaleLowerCase('pt-BR').includes(query.trim().toLocaleLowerCase('pt-BR'));
     return matchesQuery && (showArchived || !team.archived);

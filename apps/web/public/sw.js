@@ -1,7 +1,7 @@
-const VERSION = 'intereng-v5';
+const VERSION = 'intereng-v6';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
-const PRE_CACHE = ['/offline', '/public', '/public/matches', '/public/teams', '/public/tournaments', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
+const PRE_CACHE = ['/offline', '/public', '/public/teams', '/public/tournaments', '/public/standings/general', '/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
 
 self.addEventListener('install', (event) => event.waitUntil(caches.open(PAGE_CACHE).then((cache) => cache.addAll(PRE_CACHE))));
 self.addEventListener('activate', (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)))).then(() => self.clients.claim())));

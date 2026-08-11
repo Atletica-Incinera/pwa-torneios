@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Brackets, CalendarDays, ListOrdered, Radio, Trophy } from 'lucide-react';
+import { Radio, Shield, Trophy } from 'lucide-react';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { PageNavigation } from './AppShell';
+import { ErrorScreen } from './ErrorScreen';
+import { LoadingScreen } from './LoadingScreen';
 
-type PublicNavKey = 'live' | 'matches' | 'standings' | 'results' | 'phases' | 'teams' | 'tournaments';
+/** Três destinos: o que acontece agora, as modalidades e as equipes. */
+type PublicNavKey = 'live' | 'disciplines' | 'teams';
 
 type PublicAppShellProps = {
   active: PublicNavKey;
@@ -17,27 +20,25 @@ type PublicAppShellProps = {
 
 const themes: Record<PublicNavKey, string> = {
   live: 'theme-matches public-live-readonly',
-  matches: 'theme-matches',
-  standings: 'theme-tournaments',
-  results: 'theme-matches',
-  phases: 'theme-tournaments',
+  disciplines: 'theme-tournaments',
   teams: 'theme-teams',
-  tournaments: 'theme-tournaments',
 };
 
 const navItems = [
   { key: 'live', label: 'Ao vivo', href: '/public', icon: Radio },
-  { key: 'matches', label: 'Jogos', href: '/public/matches', icon: CalendarDays },
-  { key: 'standings', label: 'Tabela', ariaLabel: 'Classificação', href: '/public/standings', icon: ListOrdered },
-  { key: 'results', label: 'Resultados', href: '/public/results', icon: Trophy },
-  { key: 'phases', label: 'Fases', href: '/public/phases', icon: Brackets },
+  { key: 'disciplines', label: 'Modalidades', href: '/public/tournaments', icon: Trophy },
+  { key: 'teams', label: 'Equipes', href: '/public/teams', icon: Shield },
 ] as const;
 
 export function PublicAppShell({ active, eyebrow, title, subtitle, children }: PublicAppShellProps) {
-  const { state } = useFrontendState();
+  const { state, status, error, refresh } = useFrontendState();
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
   const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
   const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
+  // O espectador só vê resultado oficial: enquanto o snapshot não chega, nada é
+  // mostrado como se fosse definitivo.
+  if (status === 'loading') return <LoadingScreen message="Carregando a edição..." />;
+  if (status === 'error') return <ErrorScreen message={error} onRetry={() => void refresh()} />;
   return (
     <main id="app-main" className={`app-screen management-screen public-readonly-screen ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
@@ -62,15 +63,13 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
 }
 
 export function PublicBottomNav({ active }: { active: PublicNavKey }) {
-  const { state } = useFrontendState();
   return (
     <nav className="bottom-nav public-bottom-nav" aria-label="Navegação pública">
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.key;
-        const href = `${item.href}?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`;
         return (
-          <Link key={item.key} href={href} className={`nav-item${isActive ? ' active' : ''}`} aria-label={'ariaLabel' in item ? item.ariaLabel : item.label} aria-current={isActive ? 'page' : undefined}>
+          <Link key={item.key} href={item.href} className={`nav-item${isActive ? ' active' : ''}`} aria-current={isActive ? 'page' : undefined}>
             <span className="nav-icon"><Icon size={21} strokeWidth={2.2} /></span>
             <span>{item.label}</span>
           </Link>

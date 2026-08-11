@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { Dumbbell, History, ListOrdered, ShieldCheck, Trophy, UserRound, Users } from 'lucide-react';
+import { History, ListOrdered, ShieldCheck, Trophy, UserRound, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
-import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { canManageEdition, canReadAudit, useFrontendSession } from '../lib/frontend-session';
 
 const sections = [
   { href: '/competitions', label: 'Competições e edições', meta: 'Contexto ativo e histórico', icon: Trophy },
-  { href: '/disciplines', label: 'Modalidades', meta: 'Regras e configurações', icon: Dumbbell },
   { href: '/standings', label: 'Classificação geral', meta: 'Métricas e pontos por equipe', icon: ListOrdered },
   { href: '/staff', label: 'Staff e permissões', meta: 'Papéis por edição', icon: ShieldCheck },
   { href: '/athletes', label: 'Consulta de atletas', meta: 'Busca global e histórico', icon: Users },
@@ -16,7 +15,7 @@ const sections = [
 
 export default function MorePage() {
   const { session } = useFrontendSession();
-  const visibleSections = canManageEdition(session) ? sections : [];
+  const visibleSections = canManageEdition(session) ? sections.filter((item) => item.href !== '/audit' || canReadAudit(session)) : [];
   return (
     <AppShell active="profile" eyebrow="GESTÃO" title="MAIS" subtitle="Configurações e ferramentas da edição">
       <Link href="/profile" className="account-strip"><span className="avatar-frame avatar-0"><UserRound size={24} /></span><span><strong>{session?.name ?? 'Usuário'}</strong><small>Perfil, acessos e preferências</small></span><span>›</span></Link>

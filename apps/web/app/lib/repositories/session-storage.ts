@@ -1,0 +1,69 @@
+import { sessionDurationMs, type FrontendSession } from './auth-adapter.ts';
+
+/**
+ * Onde a sessão fica no navegador.
+ *
+ * É comum aos dois adaptadores de autenticação: muda quem emite o token, não
+ * onde ele é guardado. `remembered` decide entre `localStorage` (persiste) e
+ * `sessionStorage` (só nesta aba).
+ */
+export const sessionKey = 'intereng:frontend-session';
+export const sessionChangeEvent = 'intereng:session-change';
+
+// Fallback para ambientes de teste ou modo privado que bloqueiam storage.
+let volatileSession: FrontendSession | null = null;
+
+/** Sessão guardada, mesmo vencida — quem decide o que fazer é quem chama. */
+export function readStoredSession(): FrontendSession | null {
+  if (typeof window === 'undefined') return null;
+  let local: string | null = null;
+  let raw: string | null = null;
+  try {
+    local = window.localStorage.getItem(sessionKey);
+    raw = local ?? window.sessionStorage.getItem(sessionKey);
+  } catch {
+    return volatileSession;
+  }
+  if (!raw) return volatileSession;
+  try {
+    const parsed = JSON.parse(raw) as Partial<FrontendSession>;
+    if (!parsed.email || !parsed.role) return null;
+    return {
+      email: parsed.email,
+      name: parsed.name ?? parsed.email.split('@')[0],
+      role: parsed.role,
+      scope: parsed.scope,
+      remembered: parsed.remembered ?? Boolean(local),
+      token: parsed.token ?? '',
+      // Sessão gravada antes de existir prazo vale até o próximo login.
+      expiresAt: parsed.expiresAt ?? new Date(Date.now() + sessionDurationMs).toISOString(),
+    };
+  } catch { return null; }
+}
+
+export function writeStoredSession(session: FrontendSession) {
+  volatileSession = session;
+  try {
+    const target = session.remembered ? window.localStorage : window.sessionStorage;
+    const other = session.remembered ? window.sessionStorage : window.localStorage;
+    other.removeItem(sessionKey);
+    target.setItem(sessionKey, JSON.stringify(session));
+  } catch {
+    // A sessão volátil permite continuar durante testes/offline.
+  }
+  window.dispatchEvent(new Event(sessionChangeEvent));
+}
+
+export function clearStoredSession() {
+  if (typeof window === 'undefined') return;
+  volatileSession = null;
+  try { window.localStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
+  try { window.sessionStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
+  window.dispatchEvent(new Event(sessionChangeEvent));
+}
+
+/** O token em vigor, para as requisições do adaptador HTTP. */
+export function readSessionToken(): string | null {
+  const session = readStoredSession();
+  return session?.token || null;
+}

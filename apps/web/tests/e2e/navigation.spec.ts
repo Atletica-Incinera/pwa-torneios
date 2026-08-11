@@ -1,37 +1,82 @@
 import { expect, test } from '@playwright/test';
 import { loginAs } from './helpers';
 
-test('detalhe da modalidade abre pela classificação e alterna as abas', async ({ page }) => {
+test('categoria abre na tabela e alterna as abas sem sair da tela', async ({ page }) => {
   await loginAs(page);
   await page.goto('/tournaments/futsal-m');
 
-  const tabs = page.getByRole('navigation', { name: 'Seções da modalidade' });
+  const tabs = page.getByRole('tablist', { name: 'Seções da categoria' });
   await expect(tabs).toBeVisible();
-  await expect(tabs.getByRole('tab', { name: 'Classificação' })).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.getByRole('tab', { name: 'Tabela' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO E FASES' })).toBeVisible();
 
   await tabs.getByRole('tab', { name: 'Participantes' }).click();
   await expect(tabs.getByRole('tab', { name: 'Participantes' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByRole('heading', { name: 'INSCRITOS' })).toBeVisible();
+  await expect(page).toHaveURL(/aba=participantes/);
   await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO E FASES' })).toHaveCount(0);
 
-  await tabs.getByRole('link', { name: 'Jogos' }).click();
-  await expect(page).toHaveURL(/\/matches\?modalidade=Futsal/);
+  await tabs.getByRole('tab', { name: 'Jogos' }).click();
+  await expect(page.getByRole('heading', { name: 'AGENDA DA CATEGORIA' })).toBeVisible();
+
+  // Abas navegam por seta, como manda o padrão ARIA.
+  await tabs.getByRole('tab', { name: 'Jogos' }).press('ArrowRight');
+  await expect(tabs.getByRole('tab', { name: 'Fases' })).toHaveAttribute('aria-selected', 'true');
+  await tabs.getByRole('tab', { name: 'Fases' }).press('Home');
+  await expect(tabs.getByRole('tab', { name: 'Tabela' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/tournaments\/futsal-m/);
 });
 
-test('espectador acessa as cinco prioridades públicas sem controles administrativos', async ({ page }) => {
-  await page.goto('/public?modalidade=Futsal');
+test('a gestão da categoria virou a aba Regras', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/tournaments/futsal-m/manage');
+  await expect(page).toHaveURL(/\/tournaments\/futsal-m\?aba=regras/);
+  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E SEEDS' })).toBeVisible();
+});
+
+test('modalidade lista suas categorias e leva à categoria', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/disciplines');
+  await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
+  await page.getByRole('link', { name: /futsal/i }).first().click();
+  await expect(page.getByRole('heading', { name: 'CATEGORIAS' })).toBeVisible();
+  await page.getByRole('link', { name: /futsal masculino/i }).first().click();
+  await expect(page).toHaveURL(/\/tournaments\/futsal-m/);
+});
+
+test('espectador navega por três destinos e vê as abas da categoria', async ({ page }) => {
+  await page.goto('/public');
   await expect(page.getByRole('heading', { name: 'AO VIVO' })).toBeVisible();
   await expect(page.getByText(/registrar gol|editar partida|configurações/i)).toHaveCount(0);
-  await page.getByRole('link', { name: /^jogos$/i }).last().click();
-  await expect(page.getByRole('heading', { name: 'JOGOS' })).toBeVisible();
-  await page.getByRole('link', { name: /classificação/i }).last().click();
-  await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO' })).toBeVisible();
-  await page.getByRole('link', { name: /resultados/i }).last().click();
-  await expect(page.getByRole('heading', { name: 'RESULTADOS' })).toBeVisible();
-  await page.getByRole('link', { name: /^fases$/i }).last().click();
-  await expect(page.getByRole('heading', { name: 'FASES' })).toBeVisible();
+
+  const nav = page.getByRole('navigation', { name: 'Navegação pública' });
+  await expect(nav.getByRole('link')).toHaveCount(3);
+
+  await nav.getByRole('link', { name: 'Modalidades' }).click();
+  await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
+  await page.getByRole('link', { name: /futsal masculino/i }).first().click();
+
+  const tabs = page.getByRole('tablist', { name: 'Seções da categoria' });
+  await expect(tabs.getByRole('tab', { name: 'Tabela' })).toHaveAttribute('aria-selected', 'true');
+  await tabs.getByRole('tab', { name: 'Resultados' }).click();
+  await expect(page.getByRole('heading', { name: 'JOGOS ENCERRADOS' })).toBeVisible();
+  await tabs.getByRole('tab', { name: 'Fases' }).click();
+  await expect(page.getByRole('heading', { name: 'ETAPAS DA DISPUTA' })).toBeVisible();
   await expect(page.getByText(/registrar gol|editar partida|configurações/i)).toHaveCount(0);
+});
+
+test('cards mostram inscrição pendente em vez de número inventado', async ({ page }) => {
+  await page.goto('/public/tournaments');
+  const card = page.locator('.tournament-card').filter({ hasText: 'Futsal Masculino' });
+  // Sem participantes configurados, o card não finge um total.
+  await expect(card).toContainText('Inscrição pendente');
+  await expect(card).not.toContainText('8 inscritos');
+});
+
+test('as rotas públicas antigas levam para modalidades', async ({ page }) => {
+  for (const legacy of ['/public/matches', '/public/standings', '/public/results', '/public/phases']) {
+    await page.goto(legacy);
+    await expect(page).toHaveURL(/\/public\/tournaments/);
+  }
 });
 
 test('barra de navegação permanece fixa durante a rolagem', async ({ page }) => {
@@ -43,15 +88,6 @@ test('barra de navegação permanece fixa durante a rolagem', async ({ page }) =
   expect(initial).not.toBeNull();
   expect(afterScroll).not.toBeNull();
   expect(Math.abs((afterScroll?.y ?? 0) - (initial?.y ?? 0))).toBeLessThan(2);
-});
-
-test('jogos abre na agenda e mostra classificação somente pela aba', async ({ page }) => {
-  await page.goto('/public/matches?modalidade=Futsal');
-  await expect(page.getByRole('heading', { name: 'JOGOS' })).toBeVisible();
-  await expect(page.locator('.standings-list')).toHaveCount(0);
-  await page.getByRole('link', { name: 'Classificação' }).first().click();
-  await expect(page).toHaveURL(/visao=classificacao/);
-  await expect(page.locator('.standings-list')).toBeVisible();
 });
 
 test('detalhe da equipe apresenta classificação e desempenho por modalidade', async ({ page }) => {
@@ -71,8 +107,8 @@ test('admin entra e preserva a modalidade ao navegar', async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard/);
   await page.goto('/matches?modalidade=V%C3%B4lei');
   await page.getByRole('button', { name: 'Vôlei' }).click();
-  await page.getByRole('link', { name: /equipes/i }).last().click();
-  await page.getByRole('link', { name: /jogos/i }).last().click();
+  await page.getByRole('link', { name: /^equipes$/i }).last().click();
+  await page.getByRole('link', { name: /^jogos$/i }).last().click();
   await expect(page).toHaveURL(/modalidade=V%C3%B4lei/);
 });
 
@@ -86,12 +122,12 @@ test('regressão visual: equipes públicas', async ({ page }) => {
 test('regressão visual: placares públicos', async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('intereng:pwa-install-dismissed', 'true'));
   await page.clock.setFixedTime(new Date('2026-10-13T12:00:00-03:00'));
-  await page.goto('/public?modalidade=Futsal');
+  await page.goto('/public');
   const mobile = test.info().project.name === 'mobile-chromium';
   await expect(page).toHaveScreenshot(mobile ? 'public-live-mobile.png' : 'public-live-desktop.png', { fullPage: true, timeout: 30_000 });
 });
 
-test('regressão visual: torneios públicos', async ({ page }) => {
+test('regressão visual: modalidades públicas', async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('intereng:pwa-install-dismissed', 'true'));
   await page.goto('/public/tournaments');
   const mobile = test.info().project.name === 'mobile-chromium';
@@ -103,4 +139,21 @@ test('regressão visual: detalhes da equipe pública', async ({ page }) => {
   await page.goto('/public/teams/alcateia');
   const mobile = test.info().project.name === 'mobile-chromium';
   await expect(page).toHaveScreenshot(mobile ? 'public-team-detail-mobile.png' : 'public-team-detail-desktop.png', { fullPage: true });
+});
+
+test('sem os dados da edição, a tela pública avisa e oferece nova tentativa', async ({ page }) => {
+  // O espectador só vê resultado oficial: falhando o snapshot, nada é exibido
+  // como se fosse definitivo — aparece o aviso com nova tentativa.
+  await page.addInitScript(() => {
+    const original = Storage.prototype.getItem;
+    Storage.prototype.getItem = function getItem(key: string) {
+      if (key === 'intereng:app-state:v1') throw new Error('Armazenamento indisponível.');
+      return original.call(this, key);
+    };
+  });
+  await page.goto('/public');
+  const alert = page.locator('main.global-state-screen[role="alert"]');
+  await expect(alert).toContainText('DADOS INDISPONÍVEIS');
+  await expect(alert.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AO VIVO', exact: true })).toHaveCount(0);
 });

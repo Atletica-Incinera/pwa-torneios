@@ -1,80 +1,84 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { initialFrontendState, readFrontendState } from './repositories/browser-repository';
+import { AuthError, type AuthAdapter, type FrontendRole, type FrontendSession } from './repositories/auth-adapter';
+import { createLocalAuthAdapter, demoUsers } from './repositories/local-auth-adapter';
+import { createHttpAuthAdapter } from './repositories/http-auth-adapter';
+import { clearStoredSession, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
+import { resolveDataSource } from './repositories/state-adapter';
 
-export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
-export type FrontendSession = { email: string; name: string; role: FrontendRole; scope?: string; remembered: boolean };
+export type { FrontendRole, FrontendSession };
+export { demoUsers };
 
-const sessionKey = 'intereng:frontend-session';
-const sessionEvent = 'intereng:session-change';
-export const demoUsers = [
-  { email: 'super@intereng.com', password: 'super2026', name: 'Super Admin', role: 'SUPER_ADMIN' as const },
-  { email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora', role: 'EDITION_ADMIN' as const },
-  { email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins', role: 'DISCIPLINE_MANAGER' as const, scope: 'Futsal' },
-];
-
-// Fallback para ambientes de teste ou modo privado que bloqueiam storage.
-let volatileSession: FrontendSession | null = null;
-
-export function readFrontendSession(): FrontendSession | null {
-  if (typeof window === 'undefined') return null;
-  let local: string | null = null;
-  let raw: string | null = null;
-  try {
-    local = window.localStorage.getItem(sessionKey);
-    raw = local ?? window.sessionStorage.getItem(sessionKey);
-  } catch {
-    return volatileSession;
-  }
-  if (!raw) return volatileSession;
-  try {
-    const parsed = JSON.parse(raw) as Partial<FrontendSession>;
-    if (!parsed.email || !parsed.role) return null;
-    const demo = demoUsers.find((user) => user.email === parsed.email);
-    return { email: parsed.email, name: parsed.name ?? demo?.name ?? parsed.email.split('@')[0], role: parsed.role, scope: parsed.scope, remembered: parsed.remembered ?? Boolean(local) };
-  } catch { return null; }
+function createAuthAdapter(): AuthAdapter {
+  // Mesma escolha de ambiente da origem de dados: token local ou token da API.
+  if (resolveDataSource() === 'http') return createHttpAuthAdapter();
+  return createLocalAuthAdapter();
 }
 
-export function authenticateFrontend(email: string, password: string, remembered: boolean): { session?: FrontendSession; error?: string } {
-  const normalized = email.trim().toLowerCase();
-  const state = (() => { try { return readFrontendState(); } catch { return initialFrontendState; } })();
-  const stored = state.staff[normalized];
-  if (stored?.revoked) return { error: 'Este acesso foi revogado pelo administrador da edição.' };
-  const normalizedPassword = password.trim();
-  const demo = demoUsers.find((user) => user.email === normalized && user.password === normalizedPassword);
-  const invited = stored && password === 'intereng2026' ? { email: normalized, name: stored.name, role: stored.role === 'Admin da edição' ? 'EDITION_ADMIN' as const : 'DISCIPLINE_MANAGER' as const, scope: stored.scope } : undefined;
-  const user = demo ?? invited;
-  if (!user) return { error: 'E-mail ou senha inválidos.' };
-  const session: FrontendSession = { email: user.email, name: user.name, role: user.role, scope: 'scope' in user ? user.scope : undefined, remembered };
-  volatileSession = session;
+const adapter = createAuthAdapter();
+
+/** A sessão em vigor, ou `null` quando não há nenhuma ou o prazo venceu. */
+export function readFrontendSession(): FrontendSession | null {
+  const session = readStoredSession();
+  if (!session) return null;
+  return Date.parse(session.expiresAt) > Date.now() ? session : null;
+}
+
+/** Havia sessão, mas o prazo acabou: a tela avisa em vez de só mandar entrar. */
+export function isSessionExpired() {
+  const session = readStoredSession();
+  return Boolean(session && Date.parse(session.expiresAt) <= Date.now());
+}
+
+export async function signIn(email: string, password: string, remembered: boolean): Promise<{ session?: FrontendSession; error?: string }> {
   try {
-    const target = remembered ? window.localStorage : window.sessionStorage;
-    const other = remembered ? window.sessionStorage : window.localStorage;
-    other.removeItem(sessionKey);
-    target.setItem(sessionKey, JSON.stringify(session));
-  } catch {
-    // A sessão volátil permite continuar durante testes/offline.
+    return { session: await adapter.signIn(email, password, remembered) };
+  } catch (caught) {
+    if (caught instanceof AuthError) return { error: caught.message };
+    return { error: 'Não foi possível entrar. Tente novamente.' };
   }
-  window.dispatchEvent(new Event(sessionEvent));
-  return { session };
 }
 
 export function clearFrontendSession() {
-  if (typeof window === 'undefined') return;
-  volatileSession = null;
-  try { window.localStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
-  try { window.sessionStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
-  window.dispatchEvent(new Event(sessionEvent));
+  clearStoredSession();
 }
 
 export function useFrontendSession() {
   const [session, setSession] = useState<FrontendSession | null>(null);
+  const [expired, setExpired] = useState(false);
   const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { const sync = () => { setSession(readFrontendSession()); setHydrated(true); }; sync(); window.addEventListener(sessionEvent, sync); window.addEventListener('storage', sync); return () => { window.removeEventListener(sessionEvent, sync); window.removeEventListener('storage', sync); }; }, []);
-  const logout = useCallback(() => clearFrontendSession(), []);
-  return { session, hydrated, logout };
+  useEffect(() => {
+    let active = true;
+    const sync = () => {
+      // O prazo é lido antes de restaurar: restaurar já descarta a sessão vencida.
+      const wasExpired = isSessionExpired();
+      void adapter.restore().then((restored) => {
+        if (!active) return;
+        setSession(restored);
+        setExpired(!restored && wasExpired);
+        setHydrated(true);
+      });
+    };
+    sync();
+    window.addEventListener(sessionChangeEvent, sync);
+    window.addEventListener('storage', sync);
+    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+  }, []);
+  const logout = useCallback(() => { void adapter.signOut(); }, []);
+  return { session, hydrated, expired, logout };
 }
 
-export function canManageEdition(session: FrontendSession | null) { return session?.role === 'SUPER_ADMIN' || session?.role === 'EDITION_ADMIN'; }
+/** Super admin é o desenvolvedor do app, não a organização do evento. */
+export function isSuperAdmin(session: FrontendSession | null) { return session?.role === 'SUPER_ADMIN'; }
+
+export function canManageEdition(session: FrontendSession | null) { return isSuperAdmin(session) || session?.role === 'EDITION_ADMIN'; }
+
+/** Só o super admin cria ou promove Admin da edição. */
+export function canGrantRole(session: FrontendSession | null, role: 'Admin da edição' | 'Gestor de modalidade') {
+  return role === 'Admin da edição' ? isSuperAdmin(session) : canManageEdition(session);
+}
+
+/** A auditoria completa da edição é exclusiva do super admin. */
+export function canReadAudit(session: FrontendSession | null) { return isSuperAdmin(session); }
 export function canManageDiscipline(session: FrontendSession | null, discipline?: string) { return canManageEdition(session) || (session?.role === 'DISCIPLINE_MANAGER' && (!discipline || session.scope === discipline)); }

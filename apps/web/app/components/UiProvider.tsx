@@ -6,12 +6,19 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 type ToastTone = 'success' | 'error' | 'info';
 type Toast = { id: number; message: string; tone: ToastTone };
 type ConfirmOptions = { title: string; message: string; confirmLabel?: string; tone?: 'danger' | 'warning'; danger?: boolean };
-type UiContextValue = { toast: (message: string, tone?: ToastTone) => void; confirm: (options: ConfirmOptions) => Promise<boolean> };
+/** Confirmação que exige um texto — motivo, justificativa ou responsável. */
+type PromptOptions = ConfirmOptions & { label: string; placeholder?: string; minLength?: number; initialValue?: string };
+type DialogState =
+  | ({ kind: 'confirm'; resolve: (answer: boolean) => void } & ConfirmOptions)
+  | ({ kind: 'prompt'; resolve: (answer: string | null) => void } & PromptOptions);
+type UiContextValue = { toast: (message: string, tone?: ToastTone) => void; confirm: (options: ConfirmOptions) => Promise<boolean>; prompt: (options: PromptOptions) => Promise<string | null> };
 const UiContext = createContext<UiContextValue | null>(null);
 
 export function UiProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [dialog, setDialog] = useState<(ConfirmOptions & { resolve: (answer: boolean) => void }) | null>(null);
+  const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [draft, setDraft] = useState('');
+  const [draftError, setDraftError] = useState('');
   const [navigating, setNavigating] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -25,7 +32,13 @@ export function UiProvider({ children }: { children: React.ReactNode }) {
   }, []);
   const confirm = useCallback((options: ConfirmOptions) => new Promise<boolean>((resolve) => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    setDialog({ ...options, resolve });
+    setDialog({ ...options, kind: 'confirm', resolve });
+  }), []);
+  const prompt = useCallback((options: PromptOptions) => new Promise<string | null>((resolve) => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setDraft(options.initialValue ?? '');
+    setDraftError('');
+    setDialog({ ...options, kind: 'prompt', resolve });
   }), []);
 
   useEffect(() => {
@@ -56,7 +69,21 @@ export function UiProvider({ children }: { children: React.ReactNode }) {
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown); };
   }, [dialog]);
 
-  function answer(value: boolean) { const current = dialog; setDialog(null); current?.resolve(value); window.requestAnimationFrame(() => openerRef.current?.focus()); }
+  function answer(value: boolean) {
+    const current = dialog;
+    if (current?.kind === 'prompt') {
+      if (!value) { setDialog(null); current.resolve(null); window.requestAnimationFrame(() => openerRef.current?.focus()); return; }
+      const text = draft.trim();
+      if (text.length < (current.minLength ?? 3)) { setDraftError(`Descreva com pelo menos ${current.minLength ?? 3} caracteres.`); return; }
+      setDialog(null);
+      current.resolve(text);
+      window.requestAnimationFrame(() => openerRef.current?.focus());
+      return;
+    }
+    setDialog(null);
+    current?.resolve(value);
+    window.requestAnimationFrame(() => openerRef.current?.focus());
+  }
   function skipToMain(event: ReactMouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
     const main = document.querySelector<HTMLElement>('main');
@@ -66,13 +93,13 @@ export function UiProvider({ children }: { children: React.ReactNode }) {
     main.focus({ preventScroll: true });
     main.scrollIntoView?.({ block: 'start' });
   }
-  return <UiContext.Provider value={{ toast, confirm }}>
+  return <UiContext.Provider value={{ toast, confirm, prompt }}>
     <a href="#app-main" className="skip-link" onClick={skipToMain}>Pular para o conteúdo</a>
     <div className={`route-progress${navigating ? ' is-active' : ''}`} aria-hidden="true" />
     <div className="sr-only" aria-live="assertive" aria-atomic="true">{announcement}</div>
     {children}
     <div className="toast-region" aria-live="polite" aria-atomic="false">{toasts.map((item) => { const Icon = item.tone === 'success' ? CheckCircle2 : item.tone === 'error' ? AlertTriangle : Info; return <div className={`app-toast toast-${item.tone}`} role={item.tone === 'error' ? 'alert' : 'status'} key={item.id}><Icon size={19} /><span>{item.message}</span><button type="button" onClick={() => setToasts((current) => current.filter((entry) => entry.id !== item.id))} aria-label="Fechar mensagem"><X size={17} /></button></div>; })}</div>
-    {dialog ? <div className="app-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) answer(false); }}><section ref={dialogRef} className={`app-dialog dialog-${dialog.danger ? 'danger' : dialog.tone ?? 'warning'}`} role="alertdialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message"><AlertTriangle size={30} aria-hidden="true" /><h2 id="app-dialog-title">{dialog.title}</h2><p id="app-dialog-message">{dialog.message}</p><div><button type="button" className="secondary-button" onClick={() => answer(false)}>Cancelar</button><button ref={confirmRef} type="button" className="primary-button" onClick={() => answer(true)}>{dialog.confirmLabel ?? 'Confirmar'}</button></div></section></div> : null}
+    {dialog ? <div className="app-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) answer(false); }}><section ref={dialogRef} className={`app-dialog dialog-${dialog.danger ? 'danger' : dialog.tone ?? 'warning'}`} role="alertdialog" aria-modal="true" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message"><AlertTriangle size={30} aria-hidden="true" /><h2 id="app-dialog-title">{dialog.title}</h2><p id="app-dialog-message">{dialog.message}</p>{dialog.kind === 'prompt' ? <label className="app-dialog-field"><span>{dialog.label}</span><input value={draft} onChange={(event) => { setDraft(event.target.value); setDraftError(''); }} placeholder={dialog.placeholder} aria-invalid={Boolean(draftError)} />{draftError ? <small role="alert">{draftError}</small> : null}</label> : null}<div><button type="button" className="secondary-button" onClick={() => answer(false)}>Cancelar</button><button ref={confirmRef} type="button" className="primary-button" onClick={() => answer(true)}>{dialog.confirmLabel ?? 'Confirmar'}</button></div></section></div> : null}
   </UiContext.Provider>;
 }
 

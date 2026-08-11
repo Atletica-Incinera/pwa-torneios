@@ -6,31 +6,21 @@ import { StatefulMatchCard } from './StatefulMatchCard';
 import { EmptyState } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '../lib/date-utils';
+import { isPublicMatch } from '../lib/publication';
+import { listMatches } from '../lib/edition-catalog';
 
-type ScheduleMatch = {
-  id: string;
-  editionId?: string;
-  time: string;
-  date: string;
-  discipline: string;
-  entryA: string;
-  logoA: string;
-  entryB: string;
-  logoB: string;
-  scoreA: number | null;
-  scoreB: number | null;
-  venue: string;
-  status: string;
-};
 
-export function MatchSchedule({ matches, discipline, hrefBase = '/matches', allowedStatuses }: { matches: readonly ScheduleMatch[]; discipline: string; hrefBase?: string; allowedStatuses?: readonly string[] }) {
+export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatuses, publicView = false, tournamentId }: { discipline: string; hrefBase?: string; allowedStatuses?: readonly string[]; publicView?: boolean; tournamentId?: string }) {
   const today = toDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const day = formatAgendaDate(selectedDate, today);
-  const created = Object.entries(state.matches).filter(([, item]) => item.created && item.editionId === activeEdition?.id && item.discipline === discipline).map(([id, item]) => ({ id, editionId: item.editionId, time: item.time ?? '--:--', date: item.date ?? 'Hoje', discipline: item.discipline ?? discipline, entryA: item.entryA ?? 'Equipe A', logoA: item.logoA ?? '', entryB: item.entryB ?? 'Equipe B', logoB: item.logoB ?? '', scoreA: item.scoreA ?? null, scoreB: item.scoreB ?? null, venue: item.venue ?? 'A definir', status: item.status ?? 'Agendada' }));
-  const visibleMatches = [...matches, ...created].filter((match) => resolveMatchDate(match.date) === selectedDate && (!allowedStatuses || allowedStatuses.includes(state.matches[match.id]?.status ?? match.status))).sort((a, b) => a.time.localeCompare(b.time));
+  const visibleMatches = listMatches(state, activeEdition?.id, { discipline, tournamentId })
+    // Na área pública, só entram jogos de disputas publicadas.
+    .filter((match) => !publicView || isPublicMatch(state, match))
+    .filter((match) => resolveMatchDate(match.date) === selectedDate && (!allowedStatuses || allowedStatuses.includes(match.status)))
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <>

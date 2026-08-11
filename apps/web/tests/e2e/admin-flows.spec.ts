@@ -21,10 +21,9 @@ test('valida, confirma descarte e cadastra uma equipe sem duplicar ações', asy
   expect(team?.name).toBe('Aurora E2E');
 });
 
-test('rota antiga converge para o fluxo único de modalidade e salva suas regras', async ({ page }) => {
+test('adicionar modalidade carrega e salva o regulamento padrão', async ({ page }) => {
   await loginAs(page);
-  await page.goto('/tournaments/new');
-  await expect(page).toHaveURL(/\/disciplines\/new/);
+  await page.goto('/disciplines/new');
   await page.getByLabel('Modalidade do catálogo').selectOption('Basquete');
   await expect(page.getByLabel('Quantidade de etapas')).toHaveValue('2');
   await expect(page.getByLabel('Minutos por etapa')).toHaveValue('10');
@@ -36,14 +35,144 @@ test('rota antiga converge para o fluxo único de modalidade e salva suas regras
   expect(discipline?.rules?.clockMode).toBe('countdown');
 });
 
+test('o + da modalidade cria categoria, não outra modalidade', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/tournaments/new?modalidade=Futsal');
+  await expect(page.getByRole('heading', { name: 'CRIAR CATEGORIA' })).toBeVisible();
+  await expect(page.getByLabel('Modalidade')).toHaveValue('Futsal');
+  await page.getByLabel('Nome da categoria').fill('Futsal Misto E2E');
+  await page.getByRole('button', { name: 'Criar categoria' }).click();
+  await expect(page).toHaveURL(/\/tournaments\/category-[a-z0-9-]+\?aba=regras/);
+  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E SEEDS' })).toBeVisible();
+  const created = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('intereng:app-state:v1') ?? '{}').tournaments ?? {}).find((item: unknown) => (item as { name?: string }).name === 'Futsal Misto E2E'));
+  expect((created as { discipline?: string; status?: string })?.discipline).toBe('Futsal');
+  expect((created as { discipline?: string; status?: string })?.status).toBe('Rascunho');
+});
+
+test('remove atleta da equipe e o elenco recalcula', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/teams/alcateia');
+  // O cabeçalho conta o elenco real, não o número fixo do catálogo.
+  await expect(page.getByText('2 atletas cadastrados na edição')).toBeVisible();
+
+  // Ana Lima joga Futsal, que já está no mata-mata: o elenco está travado.
+  await page.getByRole('button', { name: 'Remover Ana Lima da equipe' }).click();
+  await expect(page.locator('.app-toast.toast-error')).toContainText(/mata-mata/i);
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+
+  // Vôlei ainda está na fase de grupos: o elenco pode ser alterado.
+  await page.locator('details.team-modality').filter({ hasText: 'Vôlei' }).locator('summary').click();
+  await page.getByRole('button', { name: 'Remover Marina Souza da equipe' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Remover' }).click();
+
+  await expect(page.getByText('1 atleta cadastrado na edição')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remover Marina Souza da equipe' })).toHaveCount(0);
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('intereng:app-state:v1') ?? '{}').athletes?.['marina-souza']);
+  expect(stored?.removed).toBe(true);
+  expect(stored?.name).toBe('Marina Souza');
+});
+
+test('auditoria é exclusiva do super admin', async ({ page }) => {
+  await loginAs(page, 'ana@ufpe.br', 'intereng2026');
+  await page.goto('/audit');
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  await page.goto('/more');
+  await expect(page.getByRole('link', { name: /auditoria/i })).toHaveCount(0);
+});
+
+test('auditoria começa vazia e passa a registrar o que foi feito', async ({ page }) => {
+  await loginAs(page, 'super@intereng.com', 'super2026');
+  await page.goto('/audit');
+  // Nunca mostrar exemplo: um registro inventado aqui seria lido como real.
+  await expect(page.locator('.empty-state').getByText('SEM REGISTROS')).toBeVisible();
+  await expect(page.getByText('Nenhuma alteração registrada ainda.')).toBeVisible();
+
+  await page.goto('/teams/alcateia');
+  await page.locator('details.team-modality').filter({ hasText: 'Vôlei' }).locator('summary').click();
+  await page.getByRole('button', { name: 'Remover Marina Souza da equipe' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Remover' }).click();
+
+  await page.goto('/audit');
+  await expect(page.locator('.empty-state')).toHaveCount(0);
+  await expect(page.getByText('Atleta removido da equipe')).toBeVisible();
+});
+
+test('só o super admin concede acesso de admin da edição', async ({ page }) => {
+  await loginAs(page, 'ana@ufpe.br', 'intereng2026');
+  await page.goto('/staff/new');
+  // O organizador convida gestor, não outro admin.
+  await expect(page.getByLabel('Papel').locator('option')).toHaveText(['Gestor de modalidade']);
+
+  await page.goto('/');
+  await loginAs(page, 'super@intereng.com', 'super2026');
+  await page.goto('/staff/new');
+  await expect(page.getByLabel('Papel').locator('option')).toHaveText(['Admin da edição', 'Gestor de modalidade']);
+});
+
+test('gestor cria categoria dentro da própria modalidade', async ({ page }) => {
+  await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
+  await page.goto('/tournaments/new');
+  await expect(page.getByRole('heading', { name: 'CRIAR CATEGORIA' })).toBeVisible();
+  // Só a modalidade do escopo dele é oferecida.
+  await expect(page.getByLabel('Modalidade').locator('option')).toHaveText(['Futsal']);
+});
+
+test('renomeia categoria e torneio, e a correção aparece nas listas', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/tournaments/futsal-m?aba=regras');
+  await page.getByRole('button', { name: 'Renomear categoria' }).click();
+  await page.getByLabel('Nome da categoria').fill('Futsal Masculino A');
+  await page.getByRole('button', { name: 'Salvar nome' }).click();
+  await page.goto('/disciplines/futsal');
+  await expect(page.getByText('Futsal Masculino A')).toBeVisible();
+
+  await page.goto('/competitions');
+  await page.getByRole('button', { name: /Renomear InterEng/i }).click();
+  await page.getByLabel('Nome do torneio').fill('InterEng UFPE');
+  await page.getByRole('button', { name: 'Salvar nome' }).click();
+  await expect(page.getByRole('button', { name: 'InterEng UFPE', exact: true })).toBeVisible();
+});
+
+test('a migalha do cadastro de atleta não leva a lugar nenhum', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/teams/alcateia/athletes/new');
+  await page.getByRole('navigation', { name: 'Caminho da página' }).getByRole('link', { name: 'Atletas' }).click();
+  // Antes caía em 404; agora volta para a equipe, onde o elenco vive.
+  await expect(page).toHaveURL(/\/teams\/alcateia$/);
+  await expect(page.getByRole('heading', { name: 'ALCATEIA', exact: true })).toBeVisible();
+});
+
 test('gestor fica restrito à própria modalidade', async ({ page }) => {
   await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
   await page.goto('/competitions');
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  await page.goto('/teams/new');
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  await page.goto('/teams/alcateia/athletes/new');
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
   await page.goto('/matches?modalidade=V%C3%B4lei');
   await expect(page.getByRole('link', { name: /agendar jogo/i })).toHaveCount(0);
   await page.goto('/matches/new?modalidade=V%C3%B4lei');
   await expect(page.getByLabel('Modalidade').locator('option')).toHaveText(['Selecione a modalidade', 'Futsal']);
+});
+
+test('gestor alcança a própria modalidade pela navegação principal', async ({ page }) => {
+  await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
+  await page.getByRole('navigation', { name: 'Navegação principal' }).getByRole('link', { name: 'Modalidades' }).click();
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
+  // Vê apenas o próprio escopo, e não pode adicionar modalidade.
+  await expect(page.locator('.discipline-card')).toHaveCount(1);
+  await expect(page.locator('.discipline-card')).toContainText('Futsal');
+  await expect(page.getByRole('link', { name: 'Adicionar modalidade' })).toHaveCount(0);
+
+  await page.locator('.discipline-card').click();
+  await expect(page.getByRole('heading', { name: 'CATEGORIAS' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Editar regras' })).toBeVisible();
+  // Habilitar/remover modalidade continua sendo do admin da edição.
+  await expect(page.getByRole('button', { name: 'Remover da edição' })).toHaveCount(0);
 });
 
 test('opera placar, anuncia atualização e desfaz com confirmação personalizada', async ({ page }) => {
@@ -87,4 +216,41 @@ test('admin configura pontos e publica o ranking geral', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO GERAL' })).toBeVisible();
   await expect(page.locator('.overall-ranking-row').filter({ hasText: 'Alcateia' })).toContainText('10');
   await expect(page.getByText(/Conceder pontos|Métricas de pontuação/i)).toHaveCount(0);
+});
+
+test('falha ao gravar mostra erro e preserva o que foi digitado', async ({ page }) => {
+  await loginAs(page);
+  // Conexão é obrigatória: sem fila offline, a escrita que falha precisa avisar.
+  await page.addInitScript(() => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      if (key === 'intereng:app-state:v1') throw new Error('Não foi possível salvar.');
+      return original.call(this, key, value);
+    };
+  });
+  await page.goto('/teams/new');
+  await page.getByLabel('Nome da equipe').fill('Equipe Sem Rede');
+  await page.getByLabel('Sigla').fill('ESR');
+  await page.getByLabel('Responsável').fill('Pessoa Responsável');
+  await page.getByRole('button', { name: 'Cadastrar equipe' }).click();
+
+  await expect(page.locator('.app-toast.toast-error')).toContainText(/não foi possível salvar/i);
+  await expect(page).toHaveURL(/\/teams\/new/);
+  await expect(page.getByLabel('Nome da equipe')).toHaveValue('Equipe Sem Rede');
+  await expect(page.getByRole('button', { name: 'Cadastrar equipe' })).toBeEnabled();
+});
+
+test('sessão expirada volta ao login com aviso', async ({ page }) => {
+  await loginAs(page);
+  // O prazo da sessão vence enquanto o app está aberto.
+  await page.evaluate(() => {
+    for (const store of [localStorage, sessionStorage]) {
+      const raw = store.getItem('intereng:frontend-session');
+      if (raw) store.setItem('intereng:frontend-session', JSON.stringify({ ...JSON.parse(raw), expiresAt: new Date(Date.now() - 1000).toISOString() }));
+    }
+  });
+
+  await page.goto('/teams');
+  await expect(page).toHaveURL(/\?access=expired/);
+  await expect(page.getByRole('status')).toContainText(/sessão expirou/i);
 });

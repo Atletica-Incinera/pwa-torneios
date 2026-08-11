@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authenticateFrontend } from './lib/frontend-session';
+import { signIn } from './lib/frontend-session';
 import { useUi } from './components/UiProvider';
 
 export default function LoginPage() {
@@ -18,16 +18,21 @@ export default function LoginPage() {
   const [recovering, setRecovering] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  useEffect(() => { if (new URL(window.location.href).searchParams.get('access') === 'revoked') setMessage('Seu acesso foi revogado pelo administrador da edição.'); }, []);
+  useEffect(() => {
+    const access = new URL(window.location.href).searchParams.get('access');
+    if (access === 'revoked') setMessage('Seu acesso foi revogado pelo administrador da edição.');
+    if (access === 'expired') setMessage('Sua sessão expirou. Entre novamente para continuar.');
+  }, []);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
     if (!email.includes('@') || !password) {
       setMessage('Informe seu e-mail e sua senha.');
       return;
     }
     setSubmitting(true);
-    const result = authenticateFrontend(email, password, remember);
+    const result = await signIn(email, password, remember);
     if (!result.session) { setMessage(result.error ?? 'Não foi possível entrar.'); setSubmitting(false); return; }
     const redirect = new URL(window.location.href).searchParams.get('redirect');
     toast(`Bem-vindo, ${result.session.name}.`);
@@ -73,7 +78,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <form className="auth-form" onSubmit={submit} noValidate>
+          <form className="auth-form" onSubmit={(event) => void submit(event)} noValidate>
             <label>
               <span>E-MAIL</span>
               <div className="field cut-field">

@@ -5,10 +5,6 @@ import { useMemo, useState } from 'react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from '../components/AppShell';
 import { AuditState, useFrontendState } from '../lib/repositories/browser-repository';
 
-const exampleLogs: AuditState[] = [
-  { id: 'example-1', at: '2026-10-13T14:34:00', actor: 'Bruno Martins', action: 'Placar atualizado', entity: 'Alcateia 2 × 1 Cangaceiros', before: '1 × 1', after: '2 × 1' },
-  { id: 'example-2', at: '2026-10-13T13:10:00', actor: 'Ana Coordenadora', action: 'Equipe inscrita', entity: 'Alcateia · Futsal Masculino', before: 'Não inscrita', after: 'Inscrita' },
-];
 
 function categoryOf(log: AuditState) {
   return /placar|partida|jogo|confronto/i.test(`${log.action} ${log.entity}`) ? 'Partidas' : 'Cadastros';
@@ -17,7 +13,9 @@ function categoryOf(log: AuditState) {
 export default function AuditPage() {
   const { state } = useFrontendState();
   const [filter, setFilter] = useState<'Tudo' | 'Partidas' | 'Cadastros'>('Tudo');
-  const logs = state.audit.length ? state.audit : exampleLogs;
+  // A auditoria nunca mostra exemplo: um registro inventado aqui seria lido
+  // como alteração real, com nome de pessoa e placar que nunca existiram.
+  const logs = state.audit;
   const visibleLogs = useMemo(() => filter === 'Tudo' ? logs : logs.filter((log) => categoryOf(log) === filter), [filter, logs]);
 
   return <AppShell active="profile" eyebrow="SEGURANÇA" title="AUDITORIA" subtitle="Histórico real das alterações da edição">
@@ -28,9 +26,9 @@ export default function AuditPage() {
         const Icon = category === 'Partidas' ? Radio : /torneio|disputa|fase/i.test(log.action) ? Trophy : Shield;
         const tone = category === 'Partidas' ? 'orange' : /torneio|disputa|fase/i.test(log.action) ? 'pink' : 'blue';
         const date = new Date(log.at);
-        return <details key={log.id}><summary><span className={`audit-icon audit-${tone}`}><Icon size={20} /></span><div><span><time>{Number.isNaN(date.getTime()) ? '--:--' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><StatusBadge tone={tone}>{log.action}</StatusBadge></span><strong>{log.actor}</strong><p>{log.entity}</p><small>Ver dados anteriores e posteriores</small></div></summary><div className="audit-diff"><span><small>ANTES</small><strong>{log.before || '—'}</strong></span><span><small>DEPOIS</small><strong>{log.after || '—'}</strong></span></div></details>;
+        return <details key={log.id}><summary><span className={`audit-icon audit-${tone}`}><Icon size={20} /></span><div><span><time>{Number.isNaN(date.getTime()) ? '--:--' : date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</time><StatusBadge tone={tone}>{log.action}</StatusBadge></span><strong>{log.actor}</strong><p>{log.entity}</p><small>Ver dados anteriores e posteriores</small></div></summary><div className="audit-diff"><span><small>ANTES</small><strong>{log.before || '—'}</strong></span><span><small>DEPOIS</small><strong>{log.after || '—'}</strong></span>{log.reason ? <span className="audit-reason"><small>MOTIVO</small><strong>{log.reason}</strong></span> : null}</div></details>;
       })}
-    </div>{!visibleLogs.length ? <EmptyState title="SEM REGISTROS" copy="Não há atividade para este filtro." /> : null}</section>
-    <div className="info-banner"><History size={19} /><p>{logs.length} registros disponíveis. Alterações sensíveis preservam os dados anteriores e posteriores.</p></div>
+    </div>{!visibleLogs.length ? <EmptyState title="SEM REGISTROS" copy={logs.length ? "Não há atividade para este filtro." : "As alterações feitas no app aparecem aqui, com quem fez, o que mudou e o motivo."} /> : null}</section>
+    <div className="info-banner"><History size={19} /><p>{logs.length ? `${logs.length} ${logs.length === 1 ? 'registro' : 'registros'} nesta sessão.` : 'Nenhuma alteração registrada ainda.'} Alterações sensíveis preservam os dados anteriores, os posteriores e o motivo.</p></div>
   </AppShell>;
 }

@@ -10,7 +10,7 @@ type BottomNavProps = {
 
 const items = [
   { key: 'home', label: 'Início', href: '/dashboard', icon: Home, tone: 'orange' },
-  { key: 'tournaments', label: 'Torneio', href: '/tournaments', icon: Medal, tone: 'blue' },
+  { key: 'tournaments', label: 'Modalidades', href: '/disciplines', icon: Medal, tone: 'blue' },
   { key: 'matches', label: 'Jogos', href: '/matches', icon: Radio, tone: 'pink' },
   { key: 'teams', label: 'Equipes', href: '/teams', icon: Shield, tone: 'green' },
   { key: 'profile', label: 'Mais', href: '/more', icon: Menu, tone: 'cream' },

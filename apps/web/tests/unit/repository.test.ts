@@ -1,10 +1,34 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { catalogRepository } from '../../app/lib/repositories/catalog-repository.ts';
+import { seededFrontendState } from '../../app/lib/frontend-state.ts';
+import { listCategories, listDisciplines, listMatches, listTeams } from '../../app/lib/edition-catalog.ts';
+import { getMatchStatusLabel } from '../../app/lib/status.ts';
 
-test('repositório centraliza o catálogo inicial sem duplicar fontes', () => {
-  assert.ok(catalogRepository.teams.length >= 16);
-  assert.ok(catalogRepository.disciplines.some((item) => item.name === 'Futsal'));
-  assert.ok(catalogRepository.matches.every((match) => match.discipline));
-  assert.equal(catalogRepository.getMatchStatusLabel('Agendada'), 'Próximo');
+const editionId = 'intereng-2026';
+
+test('o snapshot inicial já traz a edição inteira, sem catálogo à parte', () => {
+  assert.ok(listTeams(seededFrontendState).length >= 16);
+  assert.ok(listDisciplines(seededFrontendState, editionId).some((item) => item.name === 'Futsal'));
+  assert.ok(listMatches(seededFrontendState, editionId).every((match) => match.discipline));
+  assert.equal(getMatchStatusLabel('Agendada'), 'Próximo');
+});
+
+test('as listas leem só do estado: o que não está no snapshot não aparece', () => {
+  const vazio = { ...seededFrontendState, teams: {}, athletes: {}, matches: {}, tournaments: {}, disciplines: {} };
+
+  assert.deepEqual(listTeams(vazio), []);
+  assert.deepEqual(listMatches(vazio, editionId), []);
+  assert.deepEqual(listCategories(vazio, editionId), []);
+  assert.deepEqual(listDisciplines(vazio, editionId), []);
+});
+
+test('categoria sem inscritos não inventa total e a partida herda os defaults', () => {
+  const [categoria] = listCategories(seededFrontendState, editionId);
+  assert.equal(categoria.entries, null);
+
+  const parcial = { ...seededFrontendState, matches: { avulsa: { editionId } } };
+  const [match] = listMatches(parcial, editionId);
+  assert.equal(match.entryA, 'Equipe A');
+  assert.equal(match.status, 'Agendada');
+  assert.equal(match.venue, 'A definir');
 });

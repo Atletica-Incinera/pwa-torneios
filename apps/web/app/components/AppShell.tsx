@@ -60,8 +60,14 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
 }
 
 const routeLabels: Record<string, string> = {
-  athletes: 'Atletas', audit: 'Auditoria', competitions: 'InterEng', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Modalidades', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
+  athletes: 'Atletas', audit: 'Auditoria', competitions: 'Competições', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Modalidades', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
 };
+
+/**
+ * Na área pública, agenda e classificação viraram abas dentro da categoria.
+ * A migalha aponta para onde o clique realmente leva, e não para o nome antigo.
+ */
+const publicRouteLabels: Record<string, string> = { matches: 'Modalidades', standings: 'Modalidades' };
 
 export function PageNavigation({ title, publicMode = false }: { title: string; publicMode?: boolean }) {
   const pathname = usePathname();
@@ -73,7 +79,8 @@ export function PageNavigation({ title, publicMode = false }: { title: string; p
   const rootLabel = publicMode ? 'Início' : 'Dashboard';
   const crumbs = contentSegments.map((segment, index) => {
     const sourceSegments = publicMode ? ['public', ...contentSegments.slice(0, index + 1)] : contentSegments.slice(0, index + 1);
-    return { href: `/${sourceSegments.join('/')}`, label: index === contentSegments.length - 1 ? title : routeLabels[segment] ?? 'Detalhes' };
+    const label = index === contentSegments.length - 1 ? title : (publicMode ? publicRouteLabels[segment] : undefined) ?? routeLabels[segment] ?? 'Detalhes';
+    return { href: `/${sourceSegments.join('/')}`, label };
   });
   const parentHref = crumbs.length > 1 ? crumbs[crumbs.length - 2].href : rootHref;
   return <div className="page-navigation"><button type="button" className="back-button" onClick={() => router.push(parentHref)} aria-label="Voltar"><ArrowLeft size={18} /><span>Voltar</span></button><nav className="breadcrumbs" aria-label="Caminho da página"><Link href={rootHref}>{rootLabel}</Link>{crumbs.map((crumb, index) => <span key={`${crumb.href}-${index}`}><ChevronRight size={13} />{index === crumbs.length - 1 ? <b aria-current="page">{crumb.label}</b> : <Link href={crumb.href}>{crumb.label}</Link>}</span>)}</nav></div>;

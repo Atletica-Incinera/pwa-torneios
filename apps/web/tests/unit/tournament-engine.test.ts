@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateStandings, distributeGroups, formatClock, generateRoundRobin, qualifiedTeams } from '../../app/lib/tournament-engine.ts';
+import { resolveRegulation, type StandingsRule } from '../../app/lib/regulation.ts';
 
 test('calcula J, V, E, D e pontos com desempate', () => {
   const table = calculateStandings(['A', 'B', 'C'], [
@@ -37,4 +38,61 @@ test('respeita quantidades diferentes de classificados por grupo', () => {
   assert.deepEqual(qualifiedTeams(groups, matches, 1), ['A']);
   assert.deepEqual(qualifiedTeams(groups, matches, 2), ['A', 'B']);
   assert.deepEqual(qualifiedTeams(groups, matches, 3), ['A', 'B', 'C']);
+});
+
+test('aplica a pontuação configurada no regulamento da modalidade', () => {
+  // FIBA: vitória vale 2 e derrota vale 1, e o empate não existe.
+  const table = calculateStandings(['A', 'B', 'C'], [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 80, scoreB: 70, status: 'Encerrada' },
+    { id: '2', entryA: 'A', entryB: 'C', scoreA: 60, scoreB: 90, status: 'Encerrada' },
+  ], resolveRegulation('Basquete').standings);
+
+  assert.deepEqual(table.map((row) => [row.name, row.points]), [['A', 3], ['C', 2], ['B', 1]]);
+});
+
+test('desempata por confronto direto antes do saldo', () => {
+  const rule: StandingsRule = { win: 3, draw: 1, loss: 0, tiebreakers: ['confronto-direto', 'saldo', 'marcados'] };
+  // A e B terminam com 3 pontos; B tem saldo melhor, mas A venceu o confronto direto.
+  const table = calculateStandings(['A', 'B', 'C'], [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 1, scoreB: 0, status: 'Encerrada' },
+    { id: '2', entryA: 'B', entryB: 'C', scoreA: 5, scoreB: 0, status: 'Encerrada' },
+  ], rule);
+
+  assert.deepEqual(table.map((row) => [row.name, row.points, row.balance]), [['A', 3, 1], ['B', 3, 4], ['C', 0, -5]]);
+  assert.equal(table[0].tiebreak, 'Confronto direto');
+});
+
+test('desempata blocos com mais de duas equipes e registra o critério de cada uma', () => {
+  const rule: StandingsRule = { win: 3, draw: 1, loss: 0, tiebreakers: ['confronto-direto', 'saldo', 'marcados', 'sorteio'] };
+  // Triplo empate em 3 pontos: A bateu B, B bateu C, C bateu A.
+  const table = calculateStandings(['A', 'B', 'C'], [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 3, scoreB: 0, status: 'Encerrada' },
+    { id: '2', entryA: 'B', entryB: 'C', scoreA: 2, scoreB: 0, status: 'Encerrada' },
+    { id: '3', entryA: 'C', entryB: 'A', scoreA: 1, scoreB: 0, status: 'Encerrada' },
+  ], rule);
+
+  assert.deepEqual(table.map((row) => row.points), [3, 3, 3]);
+  assert.deepEqual(table.map((row) => row.name), ['A', 'B', 'C']);
+  assert.deepEqual(table.map((row) => row.tiebreak), ['Confronto direto', 'Pontos marcados', 'Pontos marcados']);
+});
+
+test('conta W.O. como resultado oficial e ignora cancelada', () => {
+  const table = calculateStandings(['A', 'B', 'C'], [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 1, scoreB: 0, status: 'W.O.' },
+    { id: '2', entryA: 'A', entryB: 'C', scoreA: 3, scoreB: 0, status: 'Cancelada' },
+  ]);
+
+  assert.equal(table.find((row) => row.name === 'A')?.points, 3);
+  assert.equal(table.find((row) => row.name === 'A')?.played, 1);
+  assert.equal(table.find((row) => row.name === 'C')?.played, 0);
+});
+
+test('fair play usa os pontos disciplinares da partida', () => {
+  const rule: StandingsRule = { win: 3, draw: 1, loss: 0, tiebreakers: ['fair-play'] };
+  const table = calculateStandings(['A', 'B'], [
+    { id: '1', entryA: 'A', entryB: 'B', scoreA: 1, scoreB: 1, status: 'Encerrada', disciplinaryA: 3, disciplinaryB: 0 },
+  ], rule);
+
+  assert.deepEqual(table.map((row) => row.name), ['B', 'A']);
+  assert.equal(table[0].tiebreak, 'Fair play');
 });
