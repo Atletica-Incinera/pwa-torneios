@@ -57,7 +57,9 @@ test('espectador navega por três destinos e vê as abas da categoria', async ({
 
   const tabs = page.getByRole('tablist', { name: 'Seções da categoria' });
   await expect(tabs.getByRole('tab', { name: 'Tabela' })).toHaveAttribute('aria-selected', 'true');
-  await tabs.getByRole('tab', { name: 'Resultados' }).click();
+  await tabs.getByRole('tab', { name: 'Jogos' }).click();
+  // Uma aba só para os jogos, como no admin: próximos e encerrados na sequência.
+  await expect(page.getByRole('heading', { name: 'PRÓXIMOS JOGOS' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'JOGOS ENCERRADOS' })).toBeVisible();
   await tabs.getByRole('tab', { name: 'Fases' }).click();
   await expect(page.getByRole('heading', { name: 'ETAPAS DA DISPUTA' })).toBeVisible();
@@ -156,4 +158,12 @@ test('sem os dados da edição, a tela pública avisa e oferece nova tentativa',
   await expect(alert).toContainText('DADOS INDISPONÍVEIS');
   await expect(alert.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AO VIVO', exact: true })).toHaveCount(0);
+});
+
+test('endereço antigo de aba pública ainda abre a seção certa', async ({ page }) => {
+  // Agenda e resultados viraram uma aba só; o link antigo continua funcionando.
+  await page.goto('/public/tournaments/futsal-m?aba=resultados');
+  const tabs = page.getByRole('tablist', { name: 'Seções da categoria' });
+  await expect(tabs.getByRole('tab', { name: 'Jogos' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'JOGOS ENCERRADOS' })).toBeVisible();
 });

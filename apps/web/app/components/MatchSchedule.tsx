@@ -2,7 +2,7 @@
 
 import { CalendarDays } from 'lucide-react';
 import { useState } from 'react';
-import { StatefulMatchCard } from './StatefulMatchCard';
+import { MatchCard } from './MatchCard';
 import { EmptyState } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '../lib/date-utils';
@@ -33,7 +33,7 @@ export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatus
         <button type="button" onClick={() => setSelectedDate((value) => moveDateKey(value, 1))} aria-label="Próximo dia">›</button>
       </div>
       <section className="match-list" aria-label="Jogos filtrados por modalidade e data">
-        {visibleMatches.map((match) => <StatefulMatchCard key={match.id} match={{ ...match, phase: '' }} href={`${hrefBase}/${match.id}`} />)}
+        {visibleMatches.map((match) => <MatchCard key={match.id} match={{ ...match, phase: '' }} href={`${hrefBase}/${match.id}`} />)}
         {!visibleMatches.length ? <EmptyState title="SEM JOGOS NESTA DATA" copy={`${day.long}. Navegue pelos dias ou abra o calendário para consultar a agenda de ${discipline}.`} /> : null}
       </section>
     </>

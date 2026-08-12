@@ -15,7 +15,9 @@ export function createLocalStateAdapter(): StateAdapter {
       return readFrontendState();
     },
 
-    async apply(action: Action, current: FrontendState) {
+    async apply(action: Action) {
+      // Lê na hora de gravar: outra aba pode ter mudado o estado neste meio-tempo.
+      const current = readFrontendState();
       const next = applyAction(current, action, { actor: readActor() });
       if (next === current) return current;
       writeFrontendState(next);

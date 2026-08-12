@@ -15,27 +15,40 @@ negociável pelo front-end: as telas já foram escritas contra este formato.
 ## O princípio
 
 Uma edição inteira é pequena — ~16 equipes, ~50 atletas, ~10 categorias, ~100
-partidas. Cabe num único snapshot. Então o contrato tem **duas rotas de dados**:
-uma que devolve a edição inteira e uma que executa uma operação e devolve a
-edição inteira de novo. Não há atualização otimista: **a resposta do servidor é a
-verdade**, e todo id nasce lá.
+partidas. Cabe num único snapshot. Então o contrato é curto: rotas que devolvem
+a edição inteira e uma que executa uma operação e devolve a edição inteira de
+novo. Não há atualização otimista — **a resposta do servidor é a verdade** — mas
+o id de quem nasce vem do cliente, para a navegação e o reenvio funcionarem
+(veja *Quem escolhe o id*).
 
 O formato do snapshot é o tipo `FrontendState`
 (`apps/web/app/lib/frontend-state.ts`), que é praticamente o schema do banco.
 
 ## Rotas
 
-| Método | Rota | Devolve |
-| --- | --- | --- |
-| `GET` | `/editions/active/snapshot` | `FrontendState` da edição vigente |
-| `GET` | `/editions/:id/snapshot` | `FrontendState` da edição pedida |
-| `POST` | `/editions/:id/actions` | `FrontendState` já com a operação aplicada |
-| `POST` | `/auth/login` | `{ token, expiresAt, user: { email, name, role, scope? } }` |
-| `POST` | `/auth/logout` | `204` |
+| Método | Rota | Autenticação | Devolve |
+| --- | --- | --- | --- |
+| `GET` | `/editions/:id/snapshot` | obrigatória | `FrontendState` completo |
+| `GET` | `/editions/:id/public-snapshot` | nenhuma | `FrontendState` reduzido |
+| `POST` | `/editions/:id/actions` | obrigatória | `FrontendState` já com a operação aplicada |
+| `POST` | `/auth/login` | nenhuma | `{ token, expiresAt, user: { email, name, role, scope? } }` |
+| `POST` | `/auth/logout` | obrigatória | `204` |
 
-Coleções vazias podem ser omitidas no snapshot: o cliente completa
-(`normalizeSnapshot`). `role` é `SUPER_ADMIN`, `EDITION_ADMIN` ou
-`DISCIPLINE_MANAGER`.
+`:id` aceita `active`, e aí é o servidor que resolve qual é a edição vigente.
+Coleções vazias podem ser omitidas: o cliente completa (`normalizeSnapshot`).
+`role` é `SUPER_ADMIN`, `EDITION_ADMIN` ou `DISCIPLINE_MANAGER`.
+
+### O snapshot público é outro payload, não o mesmo filtrado
+
+O app do espectador roda sem sessão e chama `public-snapshot`. Esse payload
+**não pode conter**:
+
+- `staff` (são e-mails de pessoas),
+- `audit` (o histórico de quem mexeu em quê),
+- categorias em `Rascunho` ou `Arquivado`, nem as partidas delas.
+
+Filtrar só na tela não resolve: o dado sairia do servidor de qualquer forma. O
+front-end já sabe qual dos dois pedir — a decisão é a presença do token.
 
 Toda requisição autenticada leva `Authorization: Bearer <token>`. **`401` em
 qualquer rota encerra a sessão** e devolve o usuário ao login com aviso
@@ -57,7 +70,7 @@ O corpo de `POST /editions/:id/actions` é uma ação da união em
 O `audit` é o que entra no registro; **autor e horário são carimbados pelo
 servidor**, a partir do token — nunca pelo cliente.
 
-As 33 operações que o servidor precisa aceitar:
+As 32 operações que o servidor precisa aceitar:
 
 | Domínio | `type` |
 | --- | --- |
@@ -68,7 +81,20 @@ As 33 operações que o servidor precisa aceitar:
 | Ranking geral | `ranking/addMetric`, `ranking/updateMetric`, `ranking/removeMetric`, `ranking/addAwards`, `ranking/revokeAward`, `ranking/close`, `ranking/reopen` |
 | Torneio e edição | `competition/create`, `competition/rename`, `competition/activate`, `edition/create`, `edition/update`, `edition/activate` |
 | Staff | `staff/upsert` |
-| Preferências | `preferences/update` |
+
+### Quem escolhe o id
+
+**O cliente.** Todo `payload.id` vem pronto na operação e o servidor o aceita
+como veio. Isso mantém a navegação depois de criar (`/teams/<id>` logo após o
+cadastro) e torna o reenvio idempotente: repetir a mesma operação por falha de
+rede não pode criar dois registros.
+
+Em troca, o servidor precisa garantir a unicidade:
+
+- id repetido numa criação → `409`, e a mesma operação byte a byte é tratada
+  como repetição inofensiva (devolve o estado, não duplica);
+- equipe usa slug legível (`aurora`), então **nome duplicado também é `409`** —
+  o formulário já mostra "Já existe uma equipe com este nome".
 
 ### Consequências que o servidor precisa reproduzir
 
@@ -103,9 +129,17 @@ há patch para reconciliar nem ordem de eventos para acertar: quem recebe,
 substitui. É o que faz o placar do ginásio e o celular da arquibancada mostrarem
 o mesmo número.
 
+Queda de conexão não é silenciosa: o cliente escuta `connect`, `disconnect` e
+`connect_error` e troca o selo da barra de contexto para **Sem conexão**. Quando
+a rede volta, ele recarrega o snapshot sozinho.
+
 ## O que o front-end continua fazendo sozinho
 
 - Toda a navegação, permissões de tela e componentes.
+- As **preferências do aparelho** — modalidade selecionada, som do placar e
+  notificações. Ficam em `intereng:preferences:v1`, não viram operação, não
+  entram na auditoria e nunca chegam ao servidor: o celular do operador e o
+  telão do ginásio podem discordar sem que isso seja conflito.
 - O cálculo de regras antes de enviar (regulamento, elegibilidade, conflito de
   agenda): o payload já vai com o resultado. O servidor **revalida** — as funções
   `canManageEdition` e companhia são guarda de navegação, não segurança.

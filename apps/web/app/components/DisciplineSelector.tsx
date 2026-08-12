@@ -11,13 +11,13 @@ export function DisciplineSelector({ options }: DisciplineSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { state, dispatch } = useFrontendState();
+  const { state, setPreference } = useFrontendState();
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
   const selected = options.includes(requested) ? requested : options.includes(preferred) ? preferred : (options[0] ?? '');
 
   function handleChange(value: string) {
-    void dispatch({ type: 'preferences/update', payload: { selectedDiscipline: value } });
+    void setPreference({ selectedDiscipline: value });
     const params = new URLSearchParams(searchParams.toString());
     params.set('modalidade', value);
     const query = params.toString();

@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, ChevronRight, Cloud, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from './BottomNav';
 import { AdminRouteGuard } from './AdminRouteGuard';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
+import { ConnectionBadge } from './ConnectionBadge';
 
 type NavKey = 'home' | 'tournaments' | 'matches' | 'teams' | 'profile';
 
@@ -23,7 +24,7 @@ type AppShellProps = {
 };
 
 export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
-  const { state } = useFrontendState();
+  const { state, source, connection } = useFrontendState();
   const { session } = useFrontendSession();
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
   const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
@@ -37,7 +38,7 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
           <ChevronDown size={16} />
         </Link>
-        <span className="sync-state"><Cloud size={15} /> Modo local</span>
+        <ConnectionBadge source={source} connection={connection} />
       </div>
 
       <PageNavigation title={title} />

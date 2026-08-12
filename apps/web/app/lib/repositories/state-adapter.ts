@@ -11,11 +11,20 @@ import type { Action } from './actions.ts';
 export type StateAdapter = {
   /** Snapshot completo da edição. */
   load(): Promise<FrontendState>;
-  /** Executa uma operação e devolve o estado resultante, que é a verdade. */
-  apply(action: Action, current: FrontendState): Promise<FrontendState>;
-  /** Avisa quando o estado mudou por fora (outra aba hoje, socket depois). */
-  subscribe(onRemoteChange: (next: FrontendState) => void): () => void;
+  /**
+   * Executa uma operação e devolve o estado resultante, que é a verdade.
+   * Quem aplica é quem sabe do estado atual — o cliente não o carrega junto.
+   */
+  apply(action: Action): Promise<FrontendState>;
+  /**
+   * Avisa quando o estado mudou por fora (outra aba, ou o socket da API) e
+   * quando a ligação com a origem cai ou volta.
+   */
+  subscribe(onRemoteChange: (next: FrontendState) => void, onConnection?: (state: ConnectionState) => void): () => void;
 };
+
+/** A ligação com a origem dos dados. No modo local está sempre de pé. */
+export type ConnectionState = 'online' | 'offline';
 
 export type DataSource = 'local' | 'http';
 

@@ -393,6 +393,8 @@ ul.form-feedback li { line-height: 1.45; }
 .context-copy strong { font-size: 13px; }
 .context-mark { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 auto; background: var(--orange); color: #000; font-weight: 900; clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%); }
 .sync-state { display: inline-flex; align-items: center; gap: 5px; color: var(--orange); font-size: 10px; white-space: nowrap; }
+/* Queda de conexão precisa saltar: o app promete tempo real. */
+.sync-state.sync-offline { color: var(--pink); }
 .page-heading { margin-bottom: 24px; }
 .page-heading h1 { overflow-wrap: anywhere; }
 .header-action { flex: 0 0 auto; text-decoration: none; cursor: pointer; }

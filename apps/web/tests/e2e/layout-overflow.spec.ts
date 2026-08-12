@@ -52,8 +52,8 @@ test('cards mantêm seu conteúdo dentro do pai em largura mínima', async ({ pa
 
   for (const route of [
     '/public', '/public/teams', '/public/teams/alcateia', '/public/tournaments',
-    '/public/tournaments/futsal-m', '/public/tournaments/futsal-m?aba=agenda',
-    '/public/tournaments/futsal-m?aba=resultados', '/public/tournaments/futsal-m?aba=fases',
+    '/public/tournaments/futsal-m', '/public/tournaments/futsal-m?aba=jogos',
+    '/public/tournaments/futsal-m?aba=fases',
     '/public/standings/general',
   ]) await expectCardsInsideParents(page, route);
 });

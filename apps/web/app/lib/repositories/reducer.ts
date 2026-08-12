@@ -21,9 +21,6 @@ function cascade(state: FrontendState, id: string): FrontendState {
 
 function reduce(current: FrontendState, action: Action): FrontendState {
   switch (action.type) {
-    case 'preferences/update':
-      return { ...current, preferences: { ...current.preferences, ...action.payload } };
-
     case 'match/schedule':
       return { ...current, matches: { ...current.matches, [action.payload.id]: action.payload.match } };
 

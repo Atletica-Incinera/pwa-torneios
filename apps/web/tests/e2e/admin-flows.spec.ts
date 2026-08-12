@@ -254,3 +254,31 @@ test('sessão expirada volta ao login com aviso', async ({ page }) => {
   await expect(page).toHaveURL(/\?access=expired/);
   await expect(page.getByRole('status')).toContainText(/sessão expirou/i);
 });
+
+test('o painel do gestor não oferece porta fechada', async ({ page }) => {
+  await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
+  await page.goto('/dashboard');
+
+  // A consulta global de atletas é da edição inteira: some do painel do gestor.
+  await expect(page.locator('.stat-card')).toHaveCount(3);
+  await expect(page.getByRole('link', { name: /atletas/i })).toHaveCount(0);
+  for (const card of await page.locator('.stat-card').all()) {
+    await card.click();
+    await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toHaveCount(0);
+    await page.goBack();
+  }
+});
+
+test('preferência do aparelho não vira operação da edição', async ({ page }) => {
+  await loginAs(page, 'super@intereng.com', 'super2026');
+  await page.goto('/matches?modalidade=Futsal');
+  await page.getByRole('button', { name: 'Vôlei' }).click();
+  await expect(page).toHaveURL(/modalidade=V%C3%B4lei/);
+
+  const preferencia = await page.evaluate(() => JSON.parse(localStorage.getItem('intereng:preferences:v1') ?? '{}'));
+  expect(preferencia.selectedDiscipline).toBe('Vôlei');
+
+  // Som, modalidade e notificação são do aparelho: não entram na auditoria.
+  await page.goto('/audit');
+  await expect(page.getByText(/preferência/i)).toHaveCount(0);
+});

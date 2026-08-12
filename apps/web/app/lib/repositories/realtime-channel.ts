@@ -18,7 +18,7 @@ import { normalizeSnapshot, type RealtimeConnect } from './http-adapter.ts';
 export const snapshotEvent = 'edition-snapshot';
 
 export function createRealtimeChannel(namespace = 'live-matches'): RealtimeConnect {
-  return (onSnapshot: (next: FrontendState) => void) => {
+  return (onSnapshot: (next: FrontendState) => void, onConnection?: (state: 'online' | 'offline') => void) => {
     const base = apiBaseUrl();
     const origin = base.startsWith('http') ? base : window.location.origin;
     let socket: Socket | undefined;
@@ -27,6 +27,10 @@ export function createRealtimeChannel(namespace = 'live-matches'): RealtimeConne
       if (closed) return;
       socket = io(`${origin}/${namespace}`, { transports: ['websocket'], auth: { token: readSessionToken() } });
       socket.on(snapshotEvent, (payload: Partial<FrontendState>) => onSnapshot(normalizeSnapshot(payload)));
+      // Queda de conexão não pode ser silenciosa: o app promete tempo real.
+      socket.on('connect', () => onConnection?.('online'));
+      socket.on('disconnect', () => onConnection?.('offline'));
+      socket.on('connect_error', () => onConnection?.('offline'));
     });
     return () => { closed = true; socket?.close(); };
   };

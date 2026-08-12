@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
+import { createId } from '../lib/create-id';
 
 function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 
@@ -26,7 +27,7 @@ export function CompetitionCreationForm() {
     if (form.end < form.start) { setError('O encerramento deve acontecer depois do início.'); return; }
     if (state.competitions.some((item) => item.slug === finalSlug)) { setError('Este identificador público já está em uso.'); return; }
     setSubmitting(true);
-    const id = `competition-${Date.now()}`; const editionId = `edition-${Date.now()}`;
+    const id = createId('competition'); const editionId = createId('edition');
     const saved = await dispatch({
       type: 'competition/create',
       payload: {

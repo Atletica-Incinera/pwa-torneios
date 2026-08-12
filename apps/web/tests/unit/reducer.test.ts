@@ -21,8 +21,8 @@ test('a ação aplica a mudança e registra a auditoria com autor e horário', (
 });
 
 test('o registro mais recente entra no topo da auditoria', () => {
-  const first = applyAction(initialFrontendState, { type: 'preferences/update', payload: { notifications: true }, audit: { action: 'Primeira', entity: 'X' } }, context);
-  const second = applyAction(first, { type: 'preferences/update', payload: { notifications: false }, audit: { action: 'Segunda', entity: 'X' } }, context);
+  const first = applyAction(initialFrontendState, { type: 'competition/rename', payload: { id: 'jogos-engenharia', name: 'InterEng' }, audit: { action: 'Primeira', entity: 'X' } }, context);
+  const second = applyAction(first, { type: 'competition/rename', payload: { id: 'jogos-engenharia', name: 'InterEng' }, audit: { action: 'Segunda', entity: 'X' } }, context);
 
   assert.deepEqual(second.audit.map((item) => item.action), ['Segunda', 'Primeira']);
 });

@@ -2,7 +2,7 @@ import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
 import { apiRequest } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
 import type { Action } from './actions.ts';
-import type { StateAdapter } from './state-adapter.ts';
+import type { ConnectionState, StateAdapter } from './state-adapter.ts';
 
 /**
  * O snapshot que o servidor devolve tem o mesmo formato do estado local, mas
@@ -29,7 +29,7 @@ export function normalizeSnapshot(payload: Partial<FrontendState>): FrontendStat
 }
 
 /** Conexão de tempo real. Recebe o snapshot novo e devolve como se desligar. */
-export type RealtimeConnect = (onSnapshot: (next: FrontendState) => void) => () => void;
+export type RealtimeConnect = (onSnapshot: (next: FrontendState) => void, onConnection?: (state: ConnectionState) => void) => () => void;
 
 export type HttpAdapterOptions = {
   /** Edição a carregar. `active` deixa o servidor resolver qual é a vigente. */
@@ -56,17 +56,21 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
 
   return {
     async load() {
-      return normalizeSnapshot(await request<Partial<FrontendState>>(`/editions/${edition}/snapshot`, 'GET'));
+      // Sem sessão, o app é o do espectador: o servidor devolve a versão
+      // pública, sem staff, sem auditoria e sem categoria em rascunho. Filtrar
+      // isso só na tela deixaria o dado sair do servidor mesmo assim.
+      const path = token() ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
+      return normalizeSnapshot(await request<Partial<FrontendState>>(path, 'GET'));
     },
 
     async apply(action: Action) {
       return normalizeSnapshot(await request<Partial<FrontendState>>(`/editions/${edition}/actions`, 'POST', action));
     },
 
-    subscribe(onRemoteChange) {
+    subscribe(onRemoteChange, onConnection) {
       // Sem canal configurado o app continua funcionando: cada operação já
       // devolve o estado novo; o que falta é ver a mudança dos outros.
-      return options.connect?.((next) => onRemoteChange(next)) ?? (() => {});
+      return options.connect?.((next) => onRemoteChange(next), onConnection) ?? (() => {});
     },
   };
 }

@@ -8,6 +8,7 @@ import { EditionState, useFrontendState } from '../lib/repositories/browser-repo
 import { listDisciplines } from '../lib/edition-catalog';
 import { useUi } from '../components/UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
+import { createId } from '../lib/create-id';
 
 export default function CompetitionsPage() {
   const { state, dispatch } = useFrontendState();
@@ -21,7 +22,7 @@ export default function CompetitionsPage() {
   const [draft, setDraft] = useState({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); const [dates, setDates] = useState({ start: '', end: '' });
   useUnsavedChanges((creating && Boolean(draft.start || draft.end)) || Boolean(editing && dates.start));
 
-  function createEdition(event: FormEvent) { event.preventDefault(); if (!draft.year || !draft.start || !draft.end) { toast('Preencha ano e período da edição.', 'error'); return; } if (draft.end < draft.start) { toast('A data final deve ser posterior ao início.', 'error'); return; } if (editions.some((edition) => edition.year === Number(draft.year))) { toast('Já existe uma edição neste ano.', 'error'); return; } const edition: EditionState = { id: `edition-${Date.now()}`, name: draft.year, year: Number(draft.year), start: draft.start, end: draft.end, status: 'Planejamento', active: false, competitionId: activeCompetition.id }; void dispatch({ type: 'edition/create', payload: { edition }, audit: { action: 'Edição criada', entity: `${activeCompetition.name} ${edition.year}`, after: 'Planejamento' } }); setCreating(false); setDraft({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); }
+  function createEdition(event: FormEvent) { event.preventDefault(); if (!draft.year || !draft.start || !draft.end) { toast('Preencha ano e período da edição.', 'error'); return; } if (draft.end < draft.start) { toast('A data final deve ser posterior ao início.', 'error'); return; } if (editions.some((edition) => edition.year === Number(draft.year))) { toast('Já existe uma edição neste ano.', 'error'); return; } const edition: EditionState = { id: createId('edition'), name: draft.year, year: Number(draft.year), start: draft.start, end: draft.end, status: 'Planejamento', active: false, competitionId: activeCompetition.id }; void dispatch({ type: 'edition/create', payload: { edition }, audit: { action: 'Edição criada', entity: `${activeCompetition.name} ${edition.year}`, after: 'Planejamento' } }); setCreating(false); setDraft({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); }
   /** Corrigir o nome do torneio: sem isso, um erro de digitação fica para sempre. */
   function renameCompetition(event: FormEvent) {
     event.preventDefault();

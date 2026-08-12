@@ -7,23 +7,25 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PublicAppShell } from './PublicAppShell';
 import { EmptyState, SectionTitle, StatusBadge } from './AppShell';
 import { TournamentClassification } from './TournamentClassification';
-import { StatefulMatchCard } from './StatefulMatchCard';
+import { MatchCard } from './MatchCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { findCategory, listMatches } from '../lib/edition-catalog';
 import { isPublicTournamentStatus } from '../lib/publication';
 import { isLive, isOfficialResult, isPendingMatch } from '../lib/status';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
-type Tab = 'agenda' | 'tabela' | 'resultados' | 'fases';
+type Tab = 'tabela' | 'jogos' | 'fases';
 
+/** As mesmas seções da categoria no admin, na mesma ordem e com o mesmo nome. */
 const tabs: Array<{ id: Tab; label: string }> = [
-  { id: 'agenda', label: 'Agenda' },
   { id: 'tabela', label: 'Tabela' },
-  { id: 'resultados', label: 'Resultados' },
+  { id: 'jogos', label: 'Jogos' },
   { id: 'fases', label: 'Fases' },
 ];
 
 const tabIds = tabs.map((tab) => tab.id);
+/** Endereços antigos, de quando agenda e resultados eram abas separadas. */
+const legacyTabs: Record<string, Tab> = { agenda: 'jogos', resultados: 'jogos' };
 
 export function PublicTournamentDetailView({ id }: { id: string }) {
   const { state } = useFrontendState();
@@ -33,8 +35,9 @@ export function PublicTournamentDetailView({ id }: { id: string }) {
   const activeEdition = getActiveEdition(state);
   const category = findCategory(state, id, activeEdition?.id);
   const stored = state.tournaments[id];
-  const requested = (searchParams.get('aba') ?? '') as Tab;
-  const activeTab: Tab = tabs.some((tab) => tab.id === requested) ? requested : 'tabela';
+  const requested = searchParams.get('aba') ?? '';
+  const resolved = (legacyTabs[requested] ?? requested) as Tab;
+  const activeTab: Tab = tabs.some((tab) => tab.id === resolved) ? resolved : 'tabela';
 
   const openTab = useCallback((tab: Tab) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -67,15 +70,16 @@ export function PublicTournamentDetailView({ id }: { id: string }) {
       <div className="tournament-tab-panel" role="tabpanel" aria-label={tabs.find((tab) => tab.id === activeTab)?.label}>
         {activeTab === 'tabela' ? <TournamentClassification className="section-block public-priority-section" tournamentId={id} discipline={category.discipline} fallbackParticipants={stored?.participants} heading={{ eyebrow: category.name, title: 'TABELA E CHAVEAMENTO' }} /> : null}
 
-        {activeTab === 'agenda' ? <section className="section-block public-priority-section">
-          <SectionTitle eyebrow={category.name} title="PRÓXIMOS JOGOS" />
-          <div className="match-list public-readonly-list">{upcoming.length ? upcoming.map((match) => <StatefulMatchCard key={match.id} className="public-upcoming-score" href={`/public/matches/${match.id}`} match={match} />) : <p className="match-filter-empty">Nenhum jogo programado nesta categoria.</p>}</div>
-        </section> : null}
-
-        {activeTab === 'resultados' ? <section className="section-block public-priority-section">
-          <SectionTitle eyebrow={category.name} title="JOGOS ENCERRADOS" />
-          <div className="match-list public-readonly-list">{results.length ? results.map((match) => <StatefulMatchCard key={match.id} className="public-result-score" href={`/public/matches/${match.id}`} match={match} />) : <p className="match-filter-empty">Ainda não há resultados oficiais nesta categoria.</p>}</div>
-        </section> : null}
+        {activeTab === 'jogos' ? <>
+          <section className="section-block public-priority-section">
+            <SectionTitle eyebrow={category.name} title="PRÓXIMOS JOGOS" />
+            <div className="match-list public-readonly-list">{upcoming.length ? upcoming.map((match) => <MatchCard key={match.id} className="public-upcoming-score" href={`/public/matches/${match.id}`} match={match} />) : <p className="match-filter-empty">Nenhum jogo programado nesta categoria.</p>}</div>
+          </section>
+          <section className="section-block public-priority-section">
+            <SectionTitle eyebrow={category.name} title="JOGOS ENCERRADOS" />
+            <div className="match-list public-readonly-list">{results.length ? results.map((match) => <MatchCard key={match.id} className="public-result-score" href={`/public/matches/${match.id}`} match={match} />) : <p className="match-filter-empty">Ainda não há resultados oficiais nesta categoria.</p>}</div>
+          </section>
+        </> : null}
 
         {activeTab === 'fases' ? <section className="section-block public-priority-section">
           <SectionTitle eyebrow={category.name} title="ETAPAS DA DISPUTA" />

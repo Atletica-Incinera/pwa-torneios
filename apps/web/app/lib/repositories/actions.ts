@@ -1,15 +1,9 @@
-import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, FrontendState, MatchCorrectionState, MatchEventState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
+import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, MatchCorrectionState, MatchEventState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
 
 /** O que a auditoria registra sobre a operação. Autor e horário entram no reducer. */
 export type ActionAudit = Omit<AuditState, 'id' | 'at' | 'actor'>;
 
 type WithAudit = { audit?: ActionAudit };
-
-/** Preferências locais de quem está usando o app. */
-export type PreferencesAction = WithAudit & {
-  type: 'preferences/update';
-  payload: Partial<FrontendState['preferences']>;
-};
 
 /**
  * Operações de partida.
@@ -108,4 +102,4 @@ export type StaffAction =
  * Toda mutação que o app sabe fazer. Todo payload é serializável: esta união é,
  * na prática, a lista de endpoints que o backend precisa oferecer.
  */
-export type Action = PreferencesAction | MatchAction | CategoryAction | DisciplineAction | TeamAction | AthleteAction | RankingAction | CompetitionAction | EditionAction | StaffAction;
+export type Action = MatchAction | CategoryAction | DisciplineAction | TeamAction | AthleteAction | RankingAction | CompetitionAction | EditionAction | StaffAction;

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Radio, Shield, Trophy } from 'lucide-react';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { PageNavigation } from './AppShell';
+import { ConnectionBadge } from './ConnectionBadge';
 import { ErrorScreen } from './ErrorScreen';
 import { LoadingScreen } from './LoadingScreen';
 
@@ -31,7 +32,7 @@ const navItems = [
 ] as const;
 
 export function PublicAppShell({ active, eyebrow, title, subtitle, children }: PublicAppShellProps) {
-  const { state, status, error, refresh } = useFrontendState();
+  const { state, status, error, refresh, source, connection } = useFrontendState();
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
   const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
   const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
@@ -46,7 +47,7 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
           <span className="context-mark">{String(edition.year).slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
         </Link>
-        <span className="sync-state"><Radio size={15} /> Resultados oficiais</span>
+        <ConnectionBadge source={source} connection={connection} publicView />
       </div>
 
       <PageNavigation title={title} publicMode />

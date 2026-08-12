@@ -17,7 +17,7 @@ import { tournamentStatus } from '../lib/status';
 
 export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline: string }) {
   const router = useRouter();
-  const { state, dispatch } = useFrontendState();
+  const { state, dispatch, setPreference } = useFrontendState();
   const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
   const [discipline, setDiscipline] = useState(canManageDiscipline(session, requestedDiscipline) ? requestedDiscipline : '');
@@ -68,7 +68,7 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
     setTeamA('');
     setTeamB('');
     setError('');
-    void dispatch({ type: 'preferences/update', payload: { selectedDiscipline: value } });
+    void setPreference({ selectedDiscipline: value });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -114,7 +114,7 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
       <div className="form-contract-note"><Info size={18} /><p>{contractNote}</p></div>
       <label><span>Modalidade</span><select value={discipline} onChange={(event) => changeDiscipline(event.target.value)} required><option value="" disabled>Selecione a modalidade</option>{availableDisciplines.map((item) => <option key={item}>{item}</option>)}</select></label>
       <label><span>Categoria / chave do InterEng</span><select value={effectiveTournamentId} onChange={(event) => { setTournamentId(event.target.value); setTeamA(''); setTeamB(''); setError(''); }} required disabled={!discipline}><option value="" disabled>Selecione a categoria</option>{disciplineTournaments.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-      {tournament && notConfigured ? <p className="form-hint">Esta categoria ainda não tem participantes definidos, então todas as equipes da edição aparecem. <Link href={`/tournaments/${tournament.id}/manage#participants`}>Inscreva os participantes</Link> para restringir a agenda.</p> : null}
+      {tournament && notConfigured ? <p className="form-hint">Esta categoria ainda não tem participantes definidos, então todas as equipes da edição aparecem. <Link href={`/tournaments/${tournament.id}?aba=regras#participants`}>Inscreva os participantes</Link> para restringir a agenda.</p> : null}
       <label><span>Equipe A</span><select value={teamA} onChange={(event) => { setTeamA(event.target.value); setError(''); }} required disabled={!tournament || !eligibleParticipants.length}><option value="" disabled>Selecione</option>{eligibleParticipants.map((item) => <option key={item}>{item}</option>)}</select></label>
       <label><span>Equipe B</span><select value={teamB} onChange={(event) => { setTeamB(event.target.value); setError(''); }} required disabled={!tournament || !eligibleParticipants.length}><option value="" disabled>Selecione</option>{eligibleParticipants.filter((item) => item !== teamA).map((item) => <option key={item}>{item}</option>)}</select></label>
       <label><span>Data e hora</span><input type="datetime-local" value={dateTime} onChange={(event) => { setDateTime(event.target.value); setError(''); }} required /></label>

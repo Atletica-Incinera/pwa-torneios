@@ -44,7 +44,7 @@ function comparable(state: FrontendState) {
 
 async function run(adapter: StateAdapter) {
   let state = await adapter.load();
-  for (const action of sequence) state = await adapter.apply(action, state);
+  for (const action of sequence) state = await adapter.apply(action);
   return state;
 }
 
@@ -64,11 +64,11 @@ describe('contrato entre as origens de dados', () => {
     const { fetchImpl } = createFakeApi(seededFrontendState);
     const action = sequence[0];
 
-    await createLocalStateAdapter().apply(action, seededFrontendState);
+    await createLocalStateAdapter().apply(action);
     expect(JSON.parse(window.localStorage.getItem(storageKey) ?? '{}').teams?.aurora?.name).toBe('Aurora');
 
     window.localStorage.clear();
-    const remote = await createHttpStateAdapter({ fetchImpl }).apply(action, seededFrontendState);
+    const remote = await createHttpStateAdapter({ fetchImpl }).apply(action);
     expect(remote.teams.aurora?.name).toBe('Aurora');
     expect(window.localStorage.getItem(storageKey)).toBeNull();
   });

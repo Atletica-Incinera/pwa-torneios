@@ -32,7 +32,7 @@ export default function LiveMatchPage() {
 function LiveMatchContent() {
   const searchParams = useSearchParams();
   const matchId = searchParams.get('partida');
-  const { state, dispatch, hydrated } = useFrontendState();
+  const { state, dispatch, hydrated, setPreference } = useFrontendState();
   const { session } = useFrontendSession();
   const { confirm, toast } = useUi();
   const operationLock = useRef(false);
@@ -454,7 +454,7 @@ function LiveMatchContent() {
       <header className="live-topbar motion-enter motion-delay-1">
         <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · INTERENG 2026</p><h1>{phase}</h1></div>
         <div className="live-status-actions">
-          <button type="button" className="sound-toggle" onClick={() => void dispatch({ type: 'preferences/update', payload: { soundEffects: !soundEnabled } })} aria-label={soundEnabled ? 'Desativar sons do placar' : 'Ativar sons do placar'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
+          <button type="button" className="sound-toggle" onClick={() => void setPreference({ soundEffects: !soundEnabled })} aria-label={soundEnabled ? 'Desativar sons do placar' : 'Ativar sons do placar'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
           <span className={`live-status ${paused ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : live ? (paused ? 'PAUSADA' : 'AO VIVO') : String(status).toUpperCase()}</span>
         </div>
       </header>
