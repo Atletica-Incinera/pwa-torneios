@@ -62,6 +62,19 @@ export function clearStoredSession() {
   window.dispatchEvent(new Event(sessionChangeEvent));
 }
 
+/**
+ * A sessão foi recusada pelo servidor (401).
+ *
+ * Não é o mesmo que sair: marcar o prazo como vencido faz o app seguir o
+ * caminho que já existe para sessão expirada — com aviso no login. Apagar
+ * calado devolvia a pessoa ao login sem dizer por quê.
+ */
+export function expireStoredSession() {
+  const session = readStoredSession();
+  if (!session) return;
+  writeStoredSession({ ...session, expiresAt: new Date().toISOString() });
+}
+
 /** O token em vigor, para as requisições do adaptador HTTP. */
 export function readSessionToken(): string | null {
   const session = readStoredSession();

@@ -133,6 +133,22 @@ Queda de conexão não é silenciosa: o cliente escuta `connect`, `disconnect` e
 `connect_error` e troca o selo da barra de contexto para **Sem conexão**. Quando
 a rede volta, ele recarrega o snapshot sozinho.
 
+## Como verificar sem o backend pronto
+
+`apps/web/tests/mock-api/server.ts` é uma API de mentira que cumpre este
+contrato: roda o mesmo reducer, exige token, separa o snapshot público e
+carimba autor e horário da auditoria. A suíte do modo `http` compila o app
+contra ela e prova o caminho inteiro:
+
+```bash
+npm run test:e2e:http
+```
+
+São seis cenários: sessão emitida pela API, credencial recusada, operação que
+vai ao servidor e volta como verdade, snapshot público sem staff nem auditoria,
+`401` devolvendo ao login com aviso, e a barra de contexto avisando quando o
+tempo real não sobe. Quando o NestJS existir, é essa suíte que aponta para ele.
+
 ## O que o front-end continua fazendo sozinho
 
 - Toda a navegação, permissões de tela e componentes.

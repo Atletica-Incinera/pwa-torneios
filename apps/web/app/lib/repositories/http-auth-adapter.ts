@@ -48,8 +48,9 @@ export function createHttpAuthAdapter(fetchImpl?: typeof fetch): AuthAdapter {
     async restore() {
       const session = readStoredSession();
       if (!session?.token) return null;
-      if (Date.parse(session.expiresAt) <= Date.now()) { clearStoredSession(); return null; }
-      return session;
+      // Vencida continua gravada, para todas as telas abertas concordarem que
+      // expirou. Sair de verdade é o `signOut`, e o login novo sobrescreve.
+      return Date.parse(session.expiresAt) > Date.now() ? session : null;
     },
   };
 }

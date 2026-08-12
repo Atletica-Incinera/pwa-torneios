@@ -47,9 +47,10 @@ export function createLocalAuthAdapter(): AuthAdapter {
     async restore() {
       const session = readStoredSession();
       if (!session) return null;
-      // Prazo vencido é o mesmo caso de 401: a sessão deixa de existir.
-      if (Date.parse(session.expiresAt) <= Date.now()) { clearStoredSession(); return null; }
-      return session;
+      // Vencida não vale, mas continua gravada: é assim que toda tela aberta
+      // concorda que a sessão expirou, em vez de a primeira apagar o registro e
+      // as outras concluírem que nunca houve login. O próximo login sobrescreve.
+      return Date.parse(session.expiresAt) > Date.now() ? session : null;
     },
   };
 }

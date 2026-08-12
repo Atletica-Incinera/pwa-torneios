@@ -8,7 +8,7 @@ import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
 import { createRealtimeChannel } from './realtime-channel.ts';
 import { UnauthorizedError } from './auth-adapter.ts';
-import { clearStoredSession } from './session-storage.ts';
+import { expireStoredSession } from './session-storage.ts';
 import { resolveDataSource, type ConnectionState, type StateAdapter } from './state-adapter.ts';
 
 export type StateStatus = 'loading' | 'ready' | 'error';
@@ -25,11 +25,11 @@ function toast(message: string, tone: 'success' | 'error') {
 }
 
 /**
- * Sessão recusada pela origem dos dados (o 401 da Fase 5): encerra o acesso.
- * Quem redireciona é a guarda de rota, que já observa a sessão.
+ * Sessão recusada pela origem dos dados: vence o acesso, como se o prazo
+ * tivesse acabado. Quem redireciona é a guarda de rota, que já observa isso.
  */
 function handleUnauthorized(caught: unknown) {
-  if (caught instanceof UnauthorizedError) clearStoredSession();
+  if (caught instanceof UnauthorizedError) expireStoredSession();
 }
 
 export function useFrontendState() {
@@ -89,7 +89,7 @@ export function useFrontendState() {
   const dispatch = useCallback(async (action: Action): Promise<DispatchResult> => {
     try {
       const next = await adapter.apply(action);
-      setState(next);
+      absorb(next);
       if (action.audit) toast(action.audit.action, 'success');
       return { ok: true };
     } catch (caught) {
@@ -98,7 +98,7 @@ export function useFrontendState() {
       toast('Não foi possível salvar. Tente novamente.', 'error');
       return { ok: false, error: message };
     }
-  }, [adapter]);
+  }, [absorb, adapter]);
 
   /**
    * Preferência do aparelho. Não é operação da edição: não vai ao servidor,
