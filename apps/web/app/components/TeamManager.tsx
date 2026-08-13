@@ -8,7 +8,7 @@ import { useUi } from './UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { optimizeImageFile } from '../lib/image-utils';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
-import { athletesOfTeam, type TeamView } from '../lib/edition-catalog';
+import { athletesOfTeam, type TeamView } from '@atletica-incinera/intereng-contract/rules';
 
 export function TeamManager({ team, readOnly = false }: { team: TeamView; readOnly?: boolean }) {
   const { state, dispatch } = useFrontendState(); const { confirm, toast } = useUi(); const { session } = useFrontendSession();

@@ -7,13 +7,7 @@ import { useRouter } from 'next/navigation';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
-import { describeCompletion, resolveRegulation } from '../lib/regulation';
-import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
-import { checkMatchEligibility, teamDirectory } from '../lib/eligibility';
-import { createId } from '../lib/create-id';
-import { findTeamByName, listCategories } from '../lib/edition-catalog';
-import { tournamentStatus } from '../lib/status';
+import { formatDisciplineRule, resolveDisciplineRule, describeCompletion, resolveRegulation, collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration, checkMatchEligibility, teamDirectory, createId, findTeamByName, listCategories, tournamentStatus } from '@atletica-incinera/intereng-contract/rules';
 
 export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline: string }) {
   const router = useRouter();

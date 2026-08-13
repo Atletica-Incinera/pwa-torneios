@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { createId } from '../lib/create-id';
+import { createId } from '@atletica-incinera/intereng-contract/rules';
 
 function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 

@@ -6,7 +6,8 @@ import { AppShell } from './AppShell';
 import { DisciplineSelector } from './DisciplineSelector';
 import { MatchSchedule } from './MatchSchedule';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
+import { disciplineHref } from '../lib/discipline-href';
 
 /**
  * Agenda administrativa da edição. A classificação não vive mais aqui: ela é

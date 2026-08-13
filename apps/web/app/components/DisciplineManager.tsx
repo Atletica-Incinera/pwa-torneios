@@ -3,8 +3,7 @@
 import { Clock3, Goal, Layers3, Settings2, Trophy, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { DisciplineRule, useFrontendState } from '../lib/repositories/browser-repository';
-import { formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
-import { describeTiebreakers, regulationFromRule } from '../lib/regulation';
+import { formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule, describeTiebreakers, regulationFromRule } from '@atletica-incinera/intereng-contract/rules';
 import { RegulationFields } from './RegulationFields';
 import { useUi } from './UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';

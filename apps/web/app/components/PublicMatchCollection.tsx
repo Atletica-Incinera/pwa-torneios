@@ -4,9 +4,7 @@ import { Radio } from 'lucide-react';
 import { StatusBadge } from './AppShell';
 import { MatchCard } from './MatchCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { isPublicMatch } from '../lib/publication';
-import { listMatches } from '../lib/edition-catalog';
-import { isLive, isPendingMatch } from '../lib/status';
+import { isPublicMatch, listMatches, isLive, isPendingMatch } from '@atletica-incinera/intereng-contract/rules';
 
 export function PublicMatchCollection({ discipline, mode }: { discipline?: string; mode: 'live' | 'upcoming' }) {
   const { state } = useFrontendState();

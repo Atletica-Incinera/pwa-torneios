@@ -5,10 +5,8 @@ import { FormEvent, useMemo, useState } from 'react';
 import { SectionTitle, TeamMark } from './AppShell';
 import { useUi } from './UiProvider';
 import { getActiveEdition, OverallMetricState, OverallPosition, useFrontendState } from '../lib/repositories/browser-repository';
-import { activeAwards, computeOverallRanking, editionAwards, hasAward, isRankingClosed, positionLabels, rankingClosure, suggestAutomaticAwards } from '../lib/overall-ranking';
+import { activeAwards, computeOverallRanking, editionAwards, hasAward, isRankingClosed, positionLabels, rankingClosure, suggestAutomaticAwards, listDisciplines, listTeams, createId } from '@atletica-incinera/intereng-contract/rules';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
-import { listDisciplines, listTeams } from '../lib/edition-catalog';
-import { createId } from '../lib/create-id';
 
 export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   const { state, dispatch } = useFrontendState();

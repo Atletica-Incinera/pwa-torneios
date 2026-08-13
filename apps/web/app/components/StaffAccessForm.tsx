@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
-import { listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
 import { canGrantRole, useFrontendSession } from '../lib/frontend-session';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 

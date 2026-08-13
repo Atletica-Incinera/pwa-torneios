@@ -4,12 +4,8 @@ import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { StatusBadge } from './AppShell';
-import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
+import { calculateStandings, TournamentMatch, describeTiebreakers, resolveRegulation, defaultAdvancement, describeAdvancement, listMatches, isOfficialResult } from '@atletica-incinera/intereng-contract/rules';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { describeTiebreakers, resolveRegulation } from '../lib/regulation';
-import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
-import { listMatches } from '../lib/edition-catalog';
-import { isOfficialResult } from '../lib/status';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
 type ClassificationHeading = { eyebrow?: string; title?: string; phase?: string };

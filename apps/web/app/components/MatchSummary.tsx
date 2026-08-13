@@ -1,5 +1,5 @@
 import { CalendarDays, MapPin } from 'lucide-react';
-import { getMatchStatusLabel } from '../lib/status';
+import { getMatchStatusLabel } from '@atletica-incinera/intereng-contract/rules';
 import { StatusBadge, TeamMark } from './AppShell';
 
 type MatchSummaryProps = { match: { phase: string; status: string; entryA: string; logoA: string; entryB: string; logoB: string; scoreA: number | null; scoreB: number | null; date: string; time: string; venue: string } };

@@ -3,15 +3,9 @@
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { getActiveEdition, TournamentAdvancement, TournamentPhase, TournamentState, useFrontendState } from '../lib/repositories/browser-repository';
-import { distributeGroups, generateRoundRobin } from '../lib/tournament-engine';
+import { distributeGroups, generateRoundRobin, resolveDisciplineRule, resolveRegulation, defaultAdvancement, describeAdvancement, checkRoster, eligibleAthletes, findTeamByName, isTournamentStarted, matchStatus, tournamentStatus, createId } from '@atletica-incinera/intereng-contract/rules';
 import { useUi } from './UiProvider';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
-import { resolveDisciplineRule } from '../lib/discipline-rules';
-import { resolveRegulation } from '../lib/regulation';
-import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
-import { checkRoster, eligibleAthletes, findTeamByName } from '../lib/eligibility';
-import { isTournamentStarted, matchStatus, tournamentStatus } from '../lib/status';
-import { createId } from '../lib/create-id';
 
 export function TournamentManager({ id, name, discipline, initialStatus, teamNames }: { id: string; name: string; discipline: string; initialStatus: string; teamNames: string[] }) {
   const { state, dispatch } = useFrontendState();

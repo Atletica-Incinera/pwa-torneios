@@ -5,7 +5,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { DisciplineRule, useFrontendState } from '../lib/repositories/browser-repository';
-import { defaultDisciplineRules, formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
+import { defaultDisciplineRules, formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '@atletica-incinera/intereng-contract/rules';
 import { RegulationFields } from './RegulationFields';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 

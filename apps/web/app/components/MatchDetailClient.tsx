@@ -6,10 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MatchSummary } from './MatchSummary';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
-import { formatClock } from '../lib/tournament-engine';
-import { matchClockLabel, resolveDisciplineRule } from '../lib/discipline-rules';
-import { isLive, isTerminalMatch } from '../lib/status';
-import type { MatchView } from '../lib/edition-catalog';
+import { formatClock, matchClockLabel, resolveDisciplineRule, isLive, isTerminalMatch, type MatchView } from '@atletica-incinera/intereng-contract/rules';
 
 export function MatchDetailClient({ match, readOnly = false }: { match: MatchView; readOnly?: boolean }) {
   const { state } = useFrontendState();

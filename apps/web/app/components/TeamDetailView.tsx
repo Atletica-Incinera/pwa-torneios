@@ -5,7 +5,7 @@ import { TeamManager } from './TeamManager';
 import { TeamRosterManager } from './TeamRosterManager';
 import { TeamPerformance } from './TeamPerformance';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findTeam, listDisciplines } from '../lib/edition-catalog';
+import { findTeam, listDisciplines } from '@atletica-incinera/intereng-contract/rules';
 
 export function TeamDetailView({ id }: { id: string }) {
   const { state } = useFrontendState();

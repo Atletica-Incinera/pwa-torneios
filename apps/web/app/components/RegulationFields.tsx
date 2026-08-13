@@ -2,8 +2,7 @@
 
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { DisciplineRule } from '../lib/repositories/browser-repository';
-import { describeCompletion, knockoutMethodLabels, regulationFromRule, tiebreakerLabels, type CompletionRule, type KnockoutMethod, type ScoringAction, type SecondaryAction, type TiebreakerId } from '../lib/regulation';
-import { createId } from '../lib/create-id';
+import { describeCompletion, knockoutMethodLabels, regulationFromRule, tiebreakerLabels, type CompletionRule, type KnockoutMethod, type ScoringAction, type SecondaryAction, type TiebreakerId, createId } from '@atletica-incinera/intereng-contract/rules';
 
 const tiebreakerOptions = Object.keys(tiebreakerLabels) as TiebreakerId[];
 

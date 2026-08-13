@@ -9,9 +9,9 @@ import { MatchSchedule } from './MatchSchedule';
 import { TournamentClassification } from './TournamentClassification';
 import { TournamentManager } from './TournamentManager';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findCategory, disciplineHref, listTeams } from '../lib/edition-catalog';
+import { findCategory, listTeams, defaultAdvancement, describeAdvancement } from '@atletica-incinera/intereng-contract/rules';
+import { disciplineHref } from '../lib/discipline-href';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
-import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
 type Tab = 'tabela' | 'jogos' | 'fases' | 'participantes' | 'regras';

@@ -5,7 +5,7 @@ import { CalendarDays, Trophy, Users } from 'lucide-react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from './AppShell';
 import { AthleteManager } from './AthleteManager';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findTeam, listCategories } from '../lib/edition-catalog';
+import { findTeam, listCategories } from '@atletica-incinera/intereng-contract/rules';
 
 export function AthleteDetailView({ id }: { id: string }) {
   const { state } = useFrontendState();

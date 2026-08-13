@@ -5,8 +5,7 @@ import { PublicAppShell } from './PublicAppShell';
 import { MatchDetailClient } from './MatchDetailClient';
 import { MatchManager } from './MatchManager';
 import { useFrontendState } from '../lib/repositories/browser-repository';
-import { findMatch } from '../lib/edition-catalog';
-import { isLive } from '../lib/status';
+import { findMatch, isLive } from '@atletica-incinera/intereng-contract/rules';
 
 export function MatchRouteView({ id, mode }: { id: string; mode: 'admin' | 'manage' | 'public' }) {
   const { state } = useFrontendState();

@@ -9,9 +9,7 @@ import { EmptyState, SectionTitle, StatusBadge } from './AppShell';
 import { TournamentClassification } from './TournamentClassification';
 import { MatchCard } from './MatchCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findCategory, listMatches } from '../lib/edition-catalog';
-import { isPublicTournamentStatus } from '../lib/publication';
-import { isLive, isOfficialResult, isPendingMatch } from '../lib/status';
+import { findCategory, listMatches, isPublicTournamentStatus, isLive, isOfficialResult, isPendingMatch } from '@atletica-incinera/intereng-contract/rules';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
 type Tab = 'tabela' | 'jogos' | 'fases';

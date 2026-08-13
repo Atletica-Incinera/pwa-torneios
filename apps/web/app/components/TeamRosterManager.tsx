@@ -7,9 +7,7 @@ import { EmptyState } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { useUi } from './UiProvider';
-import { resolveRegulation } from '../lib/regulation';
-import { checkRoster, checkRosterLock } from '../lib/eligibility';
-import { athletesOfTeam } from '../lib/edition-catalog';
+import { resolveRegulation, checkRoster, checkRosterLock, athletesOfTeam } from '@atletica-incinera/intereng-contract/rules';
 
 type ManagedAthlete = { id: string; name: string; modalities: string[]; created: boolean };
 const tones = ['blue', 'pink', 'orange'] as const;

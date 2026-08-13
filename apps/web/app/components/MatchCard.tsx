@@ -1,8 +1,7 @@
 'use client';
 
 import { MatchScoreCard } from './MatchScoreCard';
-import type { MatchView } from '../lib/edition-catalog';
-import { isLive, matchStatus } from '../lib/status';
+import { type MatchView, isLive, matchStatus } from '@atletica-incinera/intereng-contract/rules';
 
 /**
  * Cartão de partida das listas.

@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { Activity, ChevronRight, Medal, Trophy } from 'lucide-react';
 import { SectionTitle, StatusBadge } from './AppShell';
-import { listCategories, listMatches, listTeams } from '../lib/edition-catalog';
-import { isOfficialResult } from '../lib/status';
-import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
+import { listCategories, listMatches, listTeams, isOfficialResult, calculateStandings, TournamentMatch } from '@atletica-incinera/intereng-contract/rules';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
 export function TeamPerformance({ teamId, teamName, publicView = false }: { teamId: string; teamName: string; publicView?: boolean }) {

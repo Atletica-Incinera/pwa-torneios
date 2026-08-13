@@ -6,12 +6,7 @@ import { getActiveEdition, MatchCorrectionState, useFrontendState } from '../lib
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { useUi } from './UiProvider';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
-import { canCorrectResult, matchTransitions, statusRequirements, walkoverScores, type MatchStatus } from '../lib/match-lifecycle';
-import { isTerminalMatch } from '../lib/status';
-import { resolveRegulation } from '../lib/regulation';
-import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
-import { analyzeCorrectionImpact } from '../lib/tournament-progression';
-import { createId } from '../lib/create-id';
+import { canCorrectResult, matchTransitions, statusRequirements, walkoverScores, type MatchStatus, isTerminalMatch, resolveRegulation, collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration, analyzeCorrectionImpact, createId } from '@atletica-incinera/intereng-contract/rules';
 
 type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string };
 

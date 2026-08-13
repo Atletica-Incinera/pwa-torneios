@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { listAllTeams } from '../lib/edition-catalog';
-import { randomSuffix } from '../lib/create-id';
+import { listAllTeams, randomSuffix } from '@atletica-incinera/intereng-contract/rules';
 
 function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 export function TeamCreationForm() {

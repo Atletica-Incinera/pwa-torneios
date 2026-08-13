@@ -7,9 +7,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
-import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines, createId } from '@atletica-incinera/intereng-contract/rules';
+import { disciplineHref } from '../lib/discipline-href';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { createId } from '../lib/create-id';
 
 export function CategoryCreationForm() {
   const router = useRouter();

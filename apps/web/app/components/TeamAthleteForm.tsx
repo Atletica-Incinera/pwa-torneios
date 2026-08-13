@@ -6,9 +6,8 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findTeam, listDisciplines } from '../lib/edition-catalog';
+import { findTeam, listDisciplines, createId } from '@atletica-incinera/intereng-contract/rules';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { createId } from '../lib/create-id';
 
 export function TeamAthleteForm({ teamId }: { teamId: string }) {
   const router = useRouter(); const { state, dispatch } = useFrontendState();

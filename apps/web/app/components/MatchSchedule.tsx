@@ -5,9 +5,7 @@ import { useState } from 'react';
 import { MatchCard } from './MatchCard';
 import { EmptyState } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '../lib/date-utils';
-import { isPublicMatch } from '../lib/publication';
-import { listMatches } from '../lib/edition-catalog';
+import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey, isPublicMatch, listMatches } from '@atletica-incinera/intereng-contract/rules';
 
 
 export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatuses, publicView = false, tournamentId }: { discipline: string; hrefBase?: string; allowedStatuses?: readonly string[]; publicView?: boolean; tournamentId?: string }) {

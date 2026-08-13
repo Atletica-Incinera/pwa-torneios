@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { CalendarDays } from 'lucide-react';
 import { StatusBadge, TeamMark } from './AppShell';
-import { getMatchStatusLabel } from '../lib/status';
+import { getMatchStatusLabel } from '@atletica-incinera/intereng-contract/rules';
 
 type MatchScoreCardProps = {
   href: string;

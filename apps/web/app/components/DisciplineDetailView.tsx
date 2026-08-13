@@ -6,7 +6,7 @@ import { AppShell, EmptyState, SectionTitle, StatusBadge } from './AppShell';
 import { DisciplineManager } from './DisciplineManager';
 import { TournamentCard } from './TournamentCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findDiscipline, listDisciplines } from '../lib/edition-catalog';
+import { findDiscipline, listDisciplines } from '@atletica-incinera/intereng-contract/rules';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
 
 export function DisciplineDetailView({ id }: { id: string }) {
