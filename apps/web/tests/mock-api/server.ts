@@ -21,6 +21,32 @@ const users = [
 
 let snapshot: FrontendState = seededFrontendState;
 const sessions = new Map<string, { email: string; name: string }>();
+/** Credencial de renovação, que sobrevive ao vencimento do acesso. */
+const refreshTokens = new Map<string, { email: string; name: string }>();
+let renewals = 0;
+
+/**
+ * Tempo real do contrato.
+ *
+ * O canal é público e carrega só o número da revisão: quem tem sessão usa o
+ * evento como gatilho e rebusca o snapshot privado com o token. O snapshot
+ * público viaja junto para o espectador não pagar uma segunda viagem.
+ */
+const streamClients = new Set<ServerResponse>();
+let revision = 0;
+
+function frame(id: number, event: string, data: unknown) {
+  return `id: ${id}\nevent: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+function broadcast() {
+  revision += 1;
+  const at = new Date().toISOString();
+  for (const client of streamClients) {
+    client.write(frame(revision, 'edition-changed', { revision, at }));
+    client.write(frame(revision, 'edition-snapshot', publicSnapshot(snapshot)));
+  }
+}
 
 /** O payload do espectador: sem staff, sem auditoria, sem rascunho. */
 function publicSnapshot(state: FrontendState) {
@@ -52,15 +78,47 @@ createServer(async (request, response) => {
   if (request.method === 'OPTIONS') return send(response, 204);
 
   // Gancho de teste: cada cenário começa da mesma edição.
-  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); return send(response, 204); }
+  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); refreshTokens.clear(); revision = 0; return send(response, 204); }
+
+  // Vence o acesso sem derrubar a renovação: é o que o app precisa atravessar
+  // sozinho, sem devolver ao login.
+  if (url.pathname === '/test/expire-access') { sessions.clear(); return send(response, 204); }
+
+  if (url.pathname.endsWith('/stream')) {
+    // Falha proposital: é o que mantém de pé o cenário "sem tempo real, a barra avisa".
+    if (url.searchParams.get('fail') === '1') return send(response, 500, { message: 'Tempo real indisponível.' });
+    response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'Access-Control-Allow-Origin': '*' });
+    response.write('retry: 1000\n\n');
+    const seen = Number(request.headers['last-event-id'] ?? url.searchParams.get('lastEventId') ?? 0);
+    // Quem volta atrasado recebe a revisão atual de uma vez: o snapshot é a
+    // verdade, então não há diff para reproduzir evento a evento.
+    if (seen < revision) response.write(frame(revision, 'edition-changed', { revision, at: new Date().toISOString() }));
+    streamClients.add(response);
+    const ping = setInterval(() => response.write(': ping\n\n'), 2_000);
+    request.on('close', () => { clearInterval(ping); streamClients.delete(response); });
+    return;
+  }
 
   if (url.pathname === '/auth/login' && request.method === 'POST') {
     const { email, password } = await readBody(request) as { email?: string; password?: string };
     const user = users.find((item) => item.email === email && item.password === password);
     if (!user) return send(response, 401, { message: 'E-mail ou senha inválidos.' });
     const token = `token-${user.email}`;
+    const refreshToken = `refresh-${user.email}`;
     sessions.set(token, { email: user.email, name: user.name });
-    return send(response, 200, { token, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: { email: user.email, name: user.name, role: user.role, scope: 'scope' in user ? user.scope : undefined } });
+    refreshTokens.set(refreshToken, { email: user.email, name: user.name });
+    return send(response, 200, { token, refreshToken, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: { email: user.email, name: user.name, role: user.role, scope: 'scope' in user ? user.scope : undefined } });
+  }
+
+  if (url.pathname === '/auth/refresh' && request.method === 'POST') {
+    const { refreshToken } = await readBody(request) as { refreshToken?: string };
+    const owner = refreshTokens.get(refreshToken ?? '');
+    if (!owner) return send(response, 401, { message: 'Renovação inválida.' });
+    // Acesso novo, renovação preservada. O papel o cliente já tem guardado.
+    renewals += 1;
+    const token = `token-${owner.email}-${renewals}`;
+    sessions.set(token, owner);
+    return send(response, 200, { token, refreshToken, expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
   }
 
   if (url.pathname === '/auth/logout') { if (session) sessions.delete((request.headers.authorization ?? '').replace('Bearer ', '')); return send(response, 204); }
@@ -77,6 +135,7 @@ createServer(async (request, response) => {
     const action = await readBody(request) as Action;
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
+    broadcast();
     return send(response, 200, snapshot);
   }
 

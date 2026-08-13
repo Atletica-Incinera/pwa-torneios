@@ -1,3 +1,15 @@
+# Ambiente local do InterEng.
+#
+# Este arquivo sobe a infraestrutura e o app. A API é outro repositório
+# (Atletica-Incinera/intereng-api) e entra por um override, nunca por um
+# checkout dentro desta árvore:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.api.yml up   # API do fonte
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up  # API da imagem
+#   docker compose -f docker-compose.yml -f docker-compose.host-api.yml up  # API fora do Docker
+#
+# O app fala com a API pelo mesmo host (`/api`), roteado pelo Traefik. Isso
+# evita preflight de CORS e o cookie cross-site que `SameSite=Strict` recusa.
 services:
   traefik:
     image: traefik:v3.1
@@ -8,6 +20,10 @@ services:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
       - --entrypoints.web.address=:80
+      # SSE morre calado atrás de proxy que fecha escrita ociosa: o stream da
+      # edição fica aberto por horas sem trafegar nada além do heartbeat.
+      - --entrypoints.web.transport.respondingTimeouts.writeTimeout=0
+      - --entrypoints.web.transport.respondingTimeouts.idleTimeout=600s
     ports:
       - "80:80"
       - "8080:8080"
@@ -28,6 +44,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-pwa_torneios} -d $${POSTGRES_DB:-pwa_torneios}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
     networks:
       - pwa-torneios
 
@@ -39,25 +61,11 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - pwa-torneios
-
-  api:
-    container_name: pwa-torneios-api
-    build:
-      context: ./apps/api
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-      - redis
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.pwa-torneios-api.rule=Host(`${API_HOST:-api.localhost}`)
-      - traefik.http.routers.pwa-torneios-api.entrypoints=web
-      - traefik.http.services.pwa-torneios-api.loadbalancer.server.port=3000
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - pwa-torneios
 
@@ -66,9 +74,19 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      # `NEXT_PUBLIC_*` é embutido na compilação: cada origem de dados é uma
+      # imagem distinta. Trocar a variável num container de pé não faz nada.
+      args:
+        NEXT_PUBLIC_DATA_SOURCE: ${NEXT_PUBLIC_DATA_SOURCE:-local}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
+        NEXT_PUBLIC_REALTIME: ${NEXT_PUBLIC_REALTIME:-sse}
     restart: unless-stopped
-    depends_on:
-      - api
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/public"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     labels:
       - traefik.enable=true
       - traefik.http.routers.pwa-torneios-web.rule=Host(`${WEB_HOST:-app.localhost}`)

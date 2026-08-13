@@ -1,0 +1,14 @@
+# A API rodando fora do Docker, na máquina de quem desenvolve.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.host-api.yml up
+#
+# Útil para depurar a API com recarga a quente enquanto o resto sobe em
+# container. Aqui as origens são realmente diferentes, então **CORS na API é
+# obrigatório** — não há proxy no mesmo host para disfarçar.
+services:
+  web:
+    build:
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://host.docker.internal:3000/api/v1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -90,16 +90,34 @@ Antes de abrir PR:
 ## Organização local sugerida
 
 ```txt
-.
-├── apps/
-│   └── api/
-├── docs/
-├── infra/
-│   └── traefik/
-├── docker-compose.yml
-├── .env.example
-└── README.md
+pwa_torneios/
+├── pwa-torneios/          # este repositório
+│   ├── apps/web/
+│   ├── docs/
+│   ├── docker-compose.yml
+│   ├── .env.example
+│   └── README.md
+└── intereng-api/          # Atletica-Incinera/intereng-api, clonado AO LADO
 ```
+
+## Os dois repositórios não moram um dentro do outro
+
+A API é um repositório separado — `Atletica-Incinera/intereng-api` — e o
+checkout dela fica **ao lado** deste, nunca dentro. O compose a alcança por
+`API_REPO_PATH`, que aponta para `../intereng-api` por padrão.
+
+Não é preferência de organização, é segurança:
+
+- **O repositório da API é conduzido por um loop de agentes que faz `git add -A`
+  na árvore inteira e commita.** Está em `ralph-loop.sh`. Qualquer arquivo
+  deixado lá — por você, por um editor, por uma ferramenta — vira commit
+  assinado como iteração do agente. Em rejeição do QA ele faz
+  `git reset --soft HEAD~1`, e a iteração seguinte herda a árvore suja.
+- Por isso: **nunca deixe arquivo não commitado na árvore da API**, e nunca
+  escreva nela a partir daqui. O que a API precisa construir é entregue como
+  texto de task, colado no `tasks.md` dela por uma pessoa.
+- Na direção contrária, `intereng-api/` está no `.gitignore` deste repositório,
+  para o caso de alguém clonar por engano aqui dentro.
 
 ## Serviços locais planejados
 

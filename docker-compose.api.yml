@@ -1,0 +1,75 @@
+# A API construída a partir do código-fonte, para desenvolvimento.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.api.yml up
+#
+# O checkout da API vive FORA desta árvore (`API_REPO_PATH`, por padrão
+# `../intereng-api`). O Dockerfile é declarado aqui dentro, em vez de escrito
+# lá: aquele repositório é conduzido por um loop de agentes que faz `git add -A`
+# e commitaria qualquer arquivo deixado na árvore dele.
+services:
+  api:
+    container_name: pwa-torneios-api
+    build:
+      context: ${API_REPO_PATH:-../intereng-api}
+      dockerfile_inline: |
+        FROM node:22-alpine AS deps
+        WORKDIR /app
+        COPY package*.json ./
+        RUN npm ci
+
+        FROM node:22-alpine AS builder
+        WORKDIR /app
+        COPY --from=deps /app/node_modules ./node_modules
+        COPY . .
+        RUN npx prisma generate --schema ./schema.prisma && npm run build
+
+        FROM node:22-alpine AS runner
+        WORKDIR /app
+        ENV NODE_ENV=production
+        COPY --from=builder /app/node_modules ./node_modules
+        COPY --from=builder /app/dist ./dist
+        COPY --from=builder /app/schema.prisma ./schema.prisma
+        COPY --from=builder /app/package.json ./package.json
+        EXPOSE 3000
+        # `db push` enquanto as migrations não são versionadas no repositório da
+        # API. Quando existirem, isto vira `prisma migrate deploy`.
+        CMD ["sh", "-c", "npx prisma db push --schema ./schema.prisma --accept-data-loss && node dist/main"]
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://pwa_torneios:pwa_torneios_dev@postgres:5432/pwa_torneios}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-too}
+      PII_PEPPER: ${PII_PEPPER:-change-me-pepper}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-change-me-key}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://app.localhost}
+      ENABLE_TEST_ENDPOINTS: ${ENABLE_TEST_ENDPOINTS:-false}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    labels:
+      - traefik.enable=true
+      # Mesmo host do app, prefixo `/api`: regra mais longa ganha prioridade
+      # automaticamente sobre a do web, então a ordem aqui não importa.
+      - traefik.http.routers.pwa-torneios-api.rule=Host(`${WEB_HOST:-app.localhost}`) && PathPrefix(`/api`)
+      - traefik.http.routers.pwa-torneios-api.entrypoints=web
+      - traefik.http.services.pwa-torneios-api.loadbalancer.server.port=3000
+      # Proxy que bufferiza engole o SSE: o evento só chega quando o buffer enche.
+      - traefik.http.middlewares.pwa-torneios-sse.headers.customresponseheaders.X-Accel-Buffering=no
+      - traefik.http.routers.pwa-torneios-api.middlewares=pwa-torneios-sse
+    networks:
+      - pwa-torneios
+
+  web:
+    depends_on:
+      api:
+        condition: service_healthy

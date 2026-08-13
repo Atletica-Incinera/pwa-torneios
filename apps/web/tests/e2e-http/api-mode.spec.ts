@@ -88,8 +88,42 @@ test('token recusado pela API devolve ao login com aviso', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText(/sessão expirou/i);
 });
 
-test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {
+test('o que outro operador muda chega na tela sem recarregar', async ({ page, request }) => {
   await login(page);
-  // A API de mentira não tem socket: a ligação de tempo real não sobe.
+  await page.goto('/teams');
+  await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
+
+  // Outro cliente opera na API. O stream avisa e a tela rebusca sozinha —
+  // sem recarregar, sem clicar, sem esperar o próximo despacho daqui.
+  const renamed = await request.post(`${api}/editions/active/actions`, {
+    headers: { Authorization: 'Bearer token-ana@ufpe.br' },
+    data: { type: 'team/update', payload: { id: 'alcateia', patch: { name: 'Alcateia Renomeada' } } },
+  });
+  expect(renamed.status()).toBe(200);
+
+  await expect(page.getByRole('link', { name: /alcateia renomeada/i })).toBeVisible();
+});
+
+test('stream fora do ar: a barra avisa em vez de congelar', async ({ page }) => {
+  // Conexão é obrigatória para ver em tempo real: a queda não pode ser silenciosa.
+  await page.route('**/editions/*/stream*', (route) => route.fulfill({ status: 500, body: 'indisponível' }));
+  await login(page);
+
   await expect(page.locator('.sync-state.sync-offline')).toContainText('Sem conexão');
+});
+
+test('acesso vencido é renovado sozinho, sem devolver ao login', async ({ page, request }) => {
+  await page.goto('/');
+  await login(page);
+  const before = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}').token);
+
+  // O acesso vence, a renovação continua válida — é o caso do dia a dia com
+  // token curto, e o app precisa atravessar sem interromper quem trabalha.
+  await request.post(`${api}/test/expire-access`);
+  await page.goto('/teams');
+
+  await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
+  await expect(page).not.toHaveURL(/access=expired/);
+  const after = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}').token);
+  expect(after).not.toBe(before);
 });

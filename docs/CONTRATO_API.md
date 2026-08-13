@@ -32,7 +32,9 @@ O formato do snapshot é o tipo `FrontendState`
 | `GET` | `/editions/:id/public-snapshot` | nenhuma | `FrontendState` reduzido |
 | `POST` | `/editions/:id/actions` | obrigatória | `FrontendState` já com a operação aplicada |
 | `POST` | `/auth/login` | nenhuma | `{ token, expiresAt, user: { email, name, role, scope? } }` |
+| `POST` | `/auth/refresh` | nenhuma | o mesmo formato do login |
 | `POST` | `/auth/logout` | obrigatória | `204` |
+| `GET` | `/editions/:id/stream` | nenhuma | `text/event-stream` |
 
 `:id` aceita `active`, e aí é o servidor que resolve qual é a edição vigente.
 Coleções vazias podem ser omitidas: o cliente completa (`normalizeSnapshot`).
@@ -51,8 +53,19 @@ Filtrar só na tela não resolve: o dado sairia do servidor de qualquer forma. O
 front-end já sabe qual dos dois pedir — a decisão é a presença do token.
 
 Toda requisição autenticada leva `Authorization: Bearer <token>`. **`401` em
-qualquer rota encerra a sessão** e devolve o usuário ao login com aviso
-(`/?access=expired`) — é o mesmo caminho do prazo vencido.
+qualquer rota tenta renovar uma vez** com o `refreshToken` guardado, em voo
+único — várias requisições que caem juntas compartilham a mesma renovação, em
+vez de disputarem um token já rotacionado. Falhando a renovação, a sessão é
+encerrada e o usuário volta ao login com aviso (`/?access=expired`), pelo mesmo
+caminho do prazo vencido.
+
+O `refreshToken` viaja **no corpo**, não em cookie: `SameSite=Strict` não
+atravessa origem, e afrouxar isso exigiria TLS no ambiente local.
+
+Sobre prazos: o app guarda `expiresAt` como o horizonte da **sessão** (o da
+renovação), não o do token de acesso. Guardar o prazo curto ali expulsaria quem
+está trabalhando a cada renovação. O campo `accessExpiresAt` existe para o prazo
+do acesso, quando o servidor o informa.
 
 ## Operações
 
@@ -116,22 +129,39 @@ Os 87 testes unitários do front-end são a suíte de contrato dessas regras.
 
 ## Tempo real
 
-Namespace Socket.IO `live-matches` (o gateway já existe em
-`apps/api/src/live/live-matches.gateway.ts`). O cliente conecta com
-`auth: { token }` e escuta um evento:
+`GET /editions/:id/stream`, **sem autenticação**, `text/event-stream`. Dois
+eventos nomeados, com a revisão da edição no campo `id:` de cada quadro:
 
-| Evento | Payload |
+| Evento | `data` |
 | --- | --- |
-| `edition-snapshot` | `FrontendState` — o estado novo da edição |
+| `edition-changed` | `{ revision, at }` — só o gatilho |
+| `edition-snapshot` | o snapshot **público** da edição |
+
+O canal é público de propósito e **não carrega estado privado**. Quem tem sessão
+usa `edition-changed` como gatilho e rebusca `/editions/:id/snapshot` com o
+Bearer; quem não tem consome o payload de `edition-snapshot` e não paga uma
+segunda viagem.
+
+Não é preferência: `EventSource` não envia `Authorization`, token na query vaza
+em log de proxy, histórico e `Referer`, e cookie não atravessa
+`app.localhost` × `api.localhost` com `SameSite=Strict`. Um canal sem segredo
+resolve os três de uma vez.
 
 O servidor emite depois de cada operação aceita. Como o snapshot é pequeno, não
 há patch para reconciliar nem ordem de eventos para acertar: quem recebe,
 substitui. É o que faz o placar do ginásio e o celular da arquibancada mostrarem
 o mesmo número.
 
-Queda de conexão não é silenciosa: o cliente escuta `connect`, `disconnect` e
-`connect_error` e troca o selo da barra de contexto para **Sem conexão**. Quando
-a rede volta, ele recarrega o snapshot sozinho.
+Requisitos do lado do servidor: `retry:` no início do fluxo, heartbeat (`: ping`)
+a cada ~25 s, e replay aceito por **`Last-Event-ID` (header) e `?lastEventId=`
+(query)** — o navegador só reenvia o header nas reconexões que ele mesmo faz;
+quando o cliente reabre depois de uma falha terminal, o id volta pela query.
+
+Queda de conexão não é silenciosa: o cliente distingue `CONNECTING` (o navegador
+reconecta sozinho) de `CLOSED` (ele desistiu — resposta não-2xx, content-type
+errado), agenda a própria reconexão com recuo exponencial e troca o selo da
+barra de contexto para **Sem conexão**. Quando a rede volta, recarrega o
+snapshot sozinho.
 
 ## Como verificar sem o backend pronto
 

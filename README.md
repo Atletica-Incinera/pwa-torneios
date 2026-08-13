@@ -46,7 +46,7 @@ Fora do MVP inicial:
 A stack técnica definida para o backend e infraestrutura é:
 
 - **Traefik** — proxy reverso, TLS, roteamento e suporte a múltiplas réplicas.
-- **NestJS** — API REST e WebSocket Gateway com Socket.IO.
+- **NestJS** — API REST e stream SSE, em repositório próprio (`Atletica-Incinera/intereng-api`).
 - **PostgreSQL** — banco relacional principal e fonte de verdade.
 - **Redis** — pub/sub, cache de estado ao vivo e fila leve com BullMQ.
 - **Pino** — logs estruturados em JSON.
@@ -59,19 +59,27 @@ Detalhes completos da arquitetura:
 ## Estrutura planejada do repositório
 
 ```txt
-.
-├── apps/
-│   └── api/                 # Backend NestJS
-├── docs/
-│   ├── BACKLOG.md           # Backlog do MVP
-│   ├── STACK.md             # Stack e decisões técnicas
-│   └── DEVELOPMENT.md       # Fluxo de desenvolvimento
-├── infra/
-│   └── traefik/             # Configuração do Traefik
-├── docker-compose.yml       # Serviços locais
-├── .env.example             # Variáveis de ambiente de exemplo
-└── README.md
+pwa_torneios/
+├── pwa-torneios/                    # este repositório
+│   ├── apps/
+│   │   └── web/                     # PWA em Next.js
+│   ├── docs/
+│   │   ├── BACKLOG.md               # Backlog do MVP
+│   │   ├── STACK.md                 # Stack e decisões técnicas
+│   │   ├── CONTRATO_API.md          # O que a API precisa oferecer
+│   │   ├── INTEGRACAO_API.md        # Estado da API e custo dos caminhos
+│   │   └── DEVELOPMENT.md           # Fluxo de desenvolvimento
+│   ├── docker-compose.yml           # Infra + app
+│   ├── docker-compose.api.yml       # API a partir do código-fonte
+│   ├── docker-compose.ghcr.yml      # API a partir da imagem publicada
+│   ├── docker-compose.host-api.yml  # API rodando fora do Docker
+│   ├── .env.example
+│   └── README.md
+└── intereng-api/                    # Atletica-Incinera/intereng-api, AO LADO
 ```
+
+A API é um repositório separado e o checkout dela fica **ao lado** deste, nunca
+dentro — o porquê está em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## Fluxo de desenvolvimento
 

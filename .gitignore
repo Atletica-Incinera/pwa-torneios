@@ -8,6 +8,7 @@ build
 coverage
 .next/
 .next-http/
+.next-api/
 /package-lock.json
 playwright-report/
 test-results/
@@ -38,3 +39,10 @@ Thumbs.db
 # Database / local data
 postgres_data
 redis_data
+
+# Árvores que não são deste repositório
+# A API vive em Atletica-Incinera/intereng-api e é conduzida por um loop de
+# agentes que faz `git add -A`. Um clone dela aqui dentro faria os dois
+# repositórios se engolirem. Mantenha o checkout fora desta árvore.
+intereng-api/
+tmp/

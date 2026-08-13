@@ -35,6 +35,8 @@ export function readStoredSession(): FrontendSession | null {
       scope: parsed.scope,
       remembered: parsed.remembered ?? Boolean(local),
       token: parsed.token ?? '',
+      accessExpiresAt: parsed.accessExpiresAt,
+      refreshToken: parsed.refreshToken,
       // Sessão gravada antes de existir prazo vale até o próximo login.
       expiresAt: parsed.expiresAt ?? new Date(Date.now() + sessionDurationMs).toISOString(),
     };

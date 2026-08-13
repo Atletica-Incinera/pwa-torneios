@@ -1,13 +1,6 @@
 import { apiRequest } from './api-client.ts';
-import { AuthError, UnauthorizedError, type AuthAdapter, type FrontendRole, type FrontendSession } from './auth-adapter.ts';
+import { AuthError, UnauthorizedError, sessionFromLogin, type AuthAdapter, type LoginPayload } from './auth-adapter.ts';
 import { clearStoredSession, readStoredSession, writeStoredSession } from './session-storage.ts';
-
-/** O que `POST /auth/login` devolve. O prazo e o papel são decididos lá. */
-type LoginResponse = {
-  token: string;
-  expiresAt: string;
-  user: { email: string; name: string; role: FrontendRole; scope?: string };
-};
 
 /**
  * Autenticação pela API.
@@ -19,12 +12,14 @@ type LoginResponse = {
 export function createHttpAuthAdapter(fetchImpl?: typeof fetch): AuthAdapter {
   return {
     async signIn(email, password, remembered) {
-      let payload: LoginResponse;
+      let payload: LoginPayload;
       try {
-        payload = await apiRequest<LoginResponse>({
+        payload = await apiRequest<LoginPayload>({
           path: '/auth/login',
           method: 'POST',
           body: { email: email.trim().toLowerCase(), password },
+          // Credencial errada não é sessão vencida: não tenta renovar.
+          retryOnUnauthorized: false,
           fetchImpl,
         });
       } catch (caught) {
@@ -32,7 +27,7 @@ export function createHttpAuthAdapter(fetchImpl?: typeof fetch): AuthAdapter {
         if (caught instanceof UnauthorizedError) throw new AuthError('E-mail ou senha inválidos.');
         throw new AuthError(caught instanceof Error ? caught.message : 'Não foi possível entrar.');
       }
-      const session: FrontendSession = { ...payload.user, remembered, token: payload.token, expiresAt: payload.expiresAt };
+      const session = sessionFromLogin(payload, remembered);
       writeStoredSession(session);
       return session;
     },

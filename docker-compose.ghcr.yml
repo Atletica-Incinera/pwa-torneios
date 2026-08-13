@@ -1,0 +1,46 @@
+# A API a partir da imagem publicada — o destino, quando ela existir.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up
+#
+# Quem sobe o ambiente não deveria precisar de um checkout do código da API.
+# Depende da TASK-21 do repositório dela (Dockerfile + publicação no GHCR).
+services:
+  api:
+    container_name: pwa-torneios-api
+    image: ${API_IMAGE:-ghcr.io/atletica-incinera/intereng-api:main}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://pwa_torneios:pwa_torneios_dev@postgres:5432/pwa_torneios}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-local-env}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-me-too}
+      PII_PEPPER: ${PII_PEPPER:-change-me-pepper}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-change-me-key}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://app.localhost}
+      ENABLE_TEST_ENDPOINTS: ${ENABLE_TEST_ENDPOINTS:-false}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pwa-torneios-api.rule=Host(`${WEB_HOST:-app.localhost}`) && PathPrefix(`/api`)
+      - traefik.http.routers.pwa-torneios-api.entrypoints=web
+      - traefik.http.services.pwa-torneios-api.loadbalancer.server.port=3000
+      - traefik.http.middlewares.pwa-torneios-sse.headers.customresponseheaders.X-Accel-Buffering=no
+      - traefik.http.routers.pwa-torneios-api.middlewares=pwa-torneios-sse
+    networks:
+      - pwa-torneios
+
+  web:
+    depends_on:
+      api:
+        condition: service_healthy
