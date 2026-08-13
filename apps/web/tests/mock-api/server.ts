@@ -1,8 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { seededFrontendState, type FrontendState } from '../../app/lib/frontend-state.ts';
-import { applyAction } from '../../app/lib/repositories/reducer.ts';
-import type { Action } from '../../app/lib/repositories/actions.ts';
-import { privateTournamentStatuses } from '../../app/lib/status.ts';
+import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
+import { privateTournamentStatuses } from '@atletica-incinera/intereng-contract/rules';
 
 /**
  * A API de mentira do contrato.

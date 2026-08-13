@@ -214,7 +214,3 @@ export function findDiscipline(state: Pick<FrontendState, 'tournaments' | 'disci
 export function findCategory(state: Pick<FrontendState, 'tournaments' | 'matches'>, id: string, editionId?: string) {
   return listCategories(state, editionId).find((item) => item.id === id);
 }
-
-export function disciplineHref(name: string) {
-  return `/disciplines/${encodeURIComponent(name.toLocaleLowerCase('pt-BR'))}`;
-}

@@ -5,7 +5,7 @@ import { Search, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
-import { findTeam, listAthletes } from '../lib/edition-catalog';
+import { findTeam, listAthletes } from '@atletica-incinera/intereng-contract/rules';
 
 export default function AthletesPage() {
   const [query, setQuery] = useState('');

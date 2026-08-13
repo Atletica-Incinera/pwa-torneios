@@ -4,7 +4,7 @@ import { KeyRound, Mail, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
-import { listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
 import { useUi } from '../components/UiProvider';
 import { canGrantRole, isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
 

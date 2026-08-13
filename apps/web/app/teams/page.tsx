@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { TeamCard } from '../components/TeamCard';
 import { useFrontendState } from '../lib/repositories/browser-repository';
-import { listAllTeams } from '../lib/edition-catalog';
+import { listAllTeams } from '@atletica-incinera/intereng-contract/rules';
 
 export default function TeamsPage() {
   const [query, setQuery] = useState('');

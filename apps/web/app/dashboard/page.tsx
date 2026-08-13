@@ -5,8 +5,7 @@ import { Radio, Shield, Trophy, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
 import { MatchCard } from '../components/MatchCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { listCategories, listDisciplines, listMatches, listTeams } from '../lib/edition-catalog';
-import { isLive, matchStatus, tournamentStatus } from '../lib/status';
+import { listCategories, listDisciplines, listMatches, listTeams, isLive, matchStatus, tournamentStatus } from '@atletica-incinera/intereng-contract/rules';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 
 export default function DashboardPage() {

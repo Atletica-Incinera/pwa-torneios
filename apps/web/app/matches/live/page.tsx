@@ -10,15 +10,9 @@ import { AdminRouteGuard } from '../../components/AdminRouteGuard';
 import { useUi } from '../../components/UiProvider';
 import { MatchEventState, MatchScoreSnapshot, MatchTiebreakState, useFrontendState } from '../../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../../lib/frontend-session';
-import { findMatch, listMatches, type MatchView } from '../../lib/edition-catalog';
-import { formatClock } from '../../lib/tournament-engine';
-import { matchClockLabel } from '../../lib/discipline-rules';
-import { describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod } from '../../lib/regulation';
-import { evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, operatorLockMs, setWinner } from '../../lib/match-lifecycle';
-import { isLive, matchStatus } from '../../lib/status';
+import { findMatch, listMatches, type MatchView, formatClock, matchClockLabel, describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod, evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, operatorLockMs, setWinner, isLive, matchStatus, createId } from '@atletica-incinera/intereng-contract/rules';
 import { impactSoundForEvent, ImpactSound, playImpactSound, soundForLifecycle, warmSportsSounds } from '../../lib/sound-effects';
 import { LoadingScreen } from '../../components/LoadingScreen';
-import { createId } from '../../lib/create-id';
 
 type EventTone = 'blue' | 'pink' | 'orange';
 

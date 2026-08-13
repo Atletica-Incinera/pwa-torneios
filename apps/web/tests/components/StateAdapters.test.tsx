@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { seededFrontendState, storageKey, type FrontendState } from '../../app/lib/frontend-state';
-import { applyAction } from '../../app/lib/repositories/reducer';
+import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import { storageKey } from '../../app/lib/browser-state';
+import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import { createLocalStateAdapter } from '../../app/lib/repositories/local-adapter';
 import { createHttpStateAdapter } from '../../app/lib/repositories/http-adapter';
-import type { Action } from '../../app/lib/repositories/actions';
 import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
 
 /**

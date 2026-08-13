@@ -6,8 +6,7 @@ import { PublicAppShell } from '../../components/PublicAppShell';
 import { TournamentCard } from '../../components/TournamentCard';
 import { EmptyState } from '../../components/AppShell';
 import { getActiveEdition, useFrontendState } from '../../lib/repositories/browser-repository';
-import { listCategories } from '../../lib/edition-catalog';
-import { isPublicTournamentStatus } from '../../lib/publication';
+import { listCategories, isPublicTournamentStatus } from '@atletica-incinera/intereng-contract/rules';
 
 export default function PublicCategoriesPage() {
   const { state } = useFrontendState();

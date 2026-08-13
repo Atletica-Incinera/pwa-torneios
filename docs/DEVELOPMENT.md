@@ -116,13 +116,17 @@ só-ESM produziria TS1479 na compilação dele. Depois de mexer em
 `packages/intereng-contract/src`, rode `npm run build:contract` — o front
 consome o `dist`, não a fonte.
 
-Enquanto a migração não termina, os caminhos antigos em `apps/web/app/lib`
-continuam existindo como reexports de uma linha. Em código novo, importe do
+As regras não moram mais em `apps/web/app/lib` — quem precisa delas importa do
 pacote:
 
 ```ts
 import { checkMatchEligibility } from '@atletica-incinera/intereng-contract/rules';
 ```
+
+O que ficou no front é o que só faz sentido aqui: `browser-state.ts` (o
+`localStorage` e o evento de sincronia entre abas), `discipline-href.ts` (rota
+do Next) e a camada de `repositories`, que escolhe entre a origem local e a
+API.
 
 ## Os dois repositórios não moram um dentro do outro
 

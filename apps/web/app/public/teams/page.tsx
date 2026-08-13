@@ -3,7 +3,7 @@
 import { PublicAppShell } from '../../components/PublicAppShell';
 import { PublicTeamList } from '../../components/PublicTeamList';
 import { useFrontendState } from '../../lib/repositories/browser-repository';
-import { listTeams } from '../../lib/edition-catalog';
+import { listTeams } from '@atletica-incinera/intereng-contract/rules';
 
 export default function PublicTeamsPage() {
   const { state } = useFrontendState();

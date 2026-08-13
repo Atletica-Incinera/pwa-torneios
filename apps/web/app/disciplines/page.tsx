@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ChevronRight, ListOrdered, Users } from 'lucide-react';
 import { AppShell, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
+import { disciplineHref } from '../lib/discipline-href';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 
 export default function DisciplinesPage() {

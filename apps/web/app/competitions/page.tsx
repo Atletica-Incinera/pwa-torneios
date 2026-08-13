@@ -5,10 +5,9 @@ import { CalendarRange, Check, ChevronRight, Pencil, Plus, Save, Trophy } from '
 import { FormEvent, useState } from 'react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from '../components/AppShell';
 import { EditionState, useFrontendState } from '../lib/repositories/browser-repository';
-import { listDisciplines } from '../lib/edition-catalog';
+import { listDisciplines, createId } from '@atletica-incinera/intereng-contract/rules';
 import { useUi } from '../components/UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { createId } from '../lib/create-id';
 
 export default function CompetitionsPage() {
   const { state, dispatch } = useFrontendState();
