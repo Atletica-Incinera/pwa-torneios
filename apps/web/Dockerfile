@@ -14,7 +14,7 @@ COPY apps/web/package.json ./apps/web/package.json
 COPY packages/intereng-contract/package.json ./packages/intereng-contract/package.json
 # `npm ci` instala exatamente o que o lockfile diz e falha se ele estiver
 # dessincronizado — que é o comportamento que se quer numa imagem.
-RUN npm ci
+RUN npm ci --ignore-scripts
 
 FROM node:24-alpine AS builder
 WORKDIR /app
@@ -33,7 +33,7 @@ ARG NEXT_PUBLIC_REALTIME=sse
 ENV NEXT_PUBLIC_DATA_SOURCE=$NEXT_PUBLIC_DATA_SOURCE
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_REALTIME=$NEXT_PUBLIC_REALTIME
-RUN npm run build
+RUN npm run build:contract && npm run build
 
 FROM node:24-alpine AS runner
 WORKDIR /app

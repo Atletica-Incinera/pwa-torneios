@@ -1,2 +1,2 @@
-/** Reservado para o passo que move o código. Ver `src/index.ts`. */
-export { contractVersion } from './internal/version.js';
+/** A edição de exemplo. A ordem das chaves importa: governa o tom de cada card. */
+export * from './modules/edition-seed.js';

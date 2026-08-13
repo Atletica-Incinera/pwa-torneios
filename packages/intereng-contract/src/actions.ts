@@ -1,2 +1,3 @@
-/** Reservado para o passo que move o código. Ver `src/index.ts`. */
-export { contractVersion } from './internal/version.js';
+/** As 32 ações nomeadas — o contrato de escrita — e o redutor que as aplica. */
+export * from './modules/actions.js';
+export * from './modules/reducer.js';

@@ -91,13 +91,37 @@ Antes de abrir PR:
 
 ```txt
 pwa_torneios/
-├── pwa-torneios/          # este repositório
-│   ├── apps/web/
+├── pwa-torneios/          # este repositório, um workspace npm
+│   ├── apps/web/          # a PWA
+│   ├── packages/
+│   │   └── intereng-contract/   # o contrato publicado, consumido pelos dois lados
 │   ├── docs/
+│   ├── package.json       # workspaces e lockfile único
 │   ├── docker-compose.yml
 │   ├── .env.example
 │   └── README.md
 └── intereng-api/          # Atletica-Incinera/intereng-api, clonado AO LADO
+```
+
+## O contrato é um pacote, não um arquivo copiado
+
+`@atletica-incinera/intereng-contract` guarda o formato da edição, as 32 ações
+nomeadas e as regras puras. Existe para que o front e a API não escrevam a
+mesma regra duas vezes e divirjam em silêncio — a API **porta** o que está
+aqui, não reescreve.
+
+`npm install` na raiz já o constrói: o `prepare` do pacote roda o `tsc` duas
+vezes, porque o consumidor NestJS é CommonJS com TypeScript 5.7 e um pacote
+só-ESM produziria TS1479 na compilação dele. Depois de mexer em
+`packages/intereng-contract/src`, rode `npm run build:contract` — o front
+consome o `dist`, não a fonte.
+
+Enquanto a migração não termina, os caminhos antigos em `apps/web/app/lib`
+continuam existindo como reexports de uma linha. Em código novo, importe do
+pacote:
+
+```ts
+import { checkMatchEligibility } from '@atletica-incinera/intereng-contract/rules';
 ```
 
 ## Os dois repositórios não moram um dentro do outro

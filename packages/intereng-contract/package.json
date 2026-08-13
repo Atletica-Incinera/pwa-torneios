@@ -86,6 +86,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
+    "prepare": "node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test tests/cjs-smoke.test.cjs tests/esm-smoke.test.mjs",
     "attw": "attw --pack .",

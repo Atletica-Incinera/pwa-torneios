@@ -1,2 +1,2 @@
-/** Reservado para o passo que move o código. Ver `src/index.ts`. */
-export { contractVersion } from './internal/version.js';
+/** O formato da edição: os tipos, o estado inicial e a leitura tolerante. */
+export * from './modules/frontend-state.js';

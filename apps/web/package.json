@@ -16,6 +16,7 @@
     "test:e2e:api": "node scripts/run-e2e-api.mjs"
   },
   "dependencies": {
+    "@atletica-incinera/intereng-contract": "0.1.0",
     "@fontsource-variable/host-grotesk": "5.2.8",
     "@fontsource/boldonse": "5.2.4",
     "lucide-react": "1.24.0",
