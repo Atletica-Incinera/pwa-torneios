@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { findScheduleConflicts, isBlocking, scheduledDuration, type ScheduledMatch } from '../../app/lib/scheduling-rules.ts';
-import { resolveRegulation } from '../../app/lib/regulation.ts';
+import { findScheduleConflicts, isBlocking, scheduledDuration, type ScheduledMatch, resolveRegulation } from '@atletica-incinera/intereng-contract/rules';
 
 const futsal = scheduledDuration(resolveRegulation('Futsal'));
 const window = { start: '2026-10-12', end: '2026-10-19' };

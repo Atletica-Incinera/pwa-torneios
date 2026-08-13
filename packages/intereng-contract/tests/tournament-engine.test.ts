@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateStandings, distributeGroups, formatClock, generateRoundRobin, qualifiedTeams } from '../../app/lib/tournament-engine.ts';
-import { resolveRegulation, type StandingsRule } from '../../app/lib/regulation.ts';
+import { calculateStandings, distributeGroups, formatClock, generateRoundRobin, qualifiedTeams, resolveRegulation, type StandingsRule } from '@atletica-incinera/intereng-contract/rules';
 
 test('calcula J, V, E, D e pontos com desempate', () => {
   const table = calculateStandings(['A', 'B', 'C'], [

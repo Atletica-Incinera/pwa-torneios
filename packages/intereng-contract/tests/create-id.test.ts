@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createId } from '../../app/lib/create-id.ts';
+import { createId } from '@atletica-incinera/intereng-contract/rules';
 
 test('ids criados no mesmo milissegundo não colidem', () => {
   const ids = Array.from({ length: 500 }, () => createId('audit'));

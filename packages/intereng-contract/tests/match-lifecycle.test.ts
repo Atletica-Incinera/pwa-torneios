@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canTransition, evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, officialWinner, operatorLockMs, operatorRenewMs, setWinner, statusRequirements, walkoverScores } from '../../app/lib/match-lifecycle.ts';
-import { resolveRegulation } from '../../app/lib/regulation.ts';
+import { canTransition, evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, officialWinner, operatorLockMs, operatorRenewMs, setWinner, statusRequirements, walkoverScores, resolveRegulation } from '@atletica-incinera/intereng-contract/rules';
 
 test('o fluxo de status só aceita caminhos previstos', () => {
   assert.equal(canTransition('Agendada', 'Ao vivo'), true);

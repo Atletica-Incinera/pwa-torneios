@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatDisciplineRule, matchClockLabel, resolveDisciplineRule } from '../../app/lib/discipline-rules.ts';
+import { formatDisciplineRule, matchClockLabel, resolveDisciplineRule } from '@atletica-incinera/intereng-contract/rules';
 
 test('carrega a regra padrão da modalidade antes da partida', () => {
   const rule = resolveDisciplineRule('Basquete');

@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { seededFrontendState } from '../../app/lib/frontend-state.ts';
-import { listCategories, listDisciplines, listMatches, listTeams } from '../../app/lib/edition-catalog.ts';
-import { getMatchStatusLabel } from '../../app/lib/status.ts';
+import { seededFrontendState } from '@atletica-incinera/intereng-contract/state';
+import { listCategories, listDisciplines, listMatches, listTeams, getMatchStatusLabel } from '@atletica-incinera/intereng-contract/rules';
 
 const editionId = 'intereng-2026';
 

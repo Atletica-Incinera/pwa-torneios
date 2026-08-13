@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '../../app/lib/date-utils.ts';
+import { formatAgendaDate, moveDateKey, resolveMatchDate, toDateKey } from '@atletica-incinera/intereng-contract/rules';
 
 test('converte datas sem depender de UTC', () => {
   assert.equal(toDateKey(new Date(2026, 7, 8, 23, 30)), '2026-08-08');

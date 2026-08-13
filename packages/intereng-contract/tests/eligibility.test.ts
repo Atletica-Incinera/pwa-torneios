@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seededFrontendState, type FrontendState } from '../../app/lib/frontend-state.ts';
-import { athletesOfTeam, checkMatchEligibility, checkRoster, checkRosterLock, eligibleAthletes, findTeamByName, isTeamRegistered, teamDirectory } from '../../app/lib/eligibility.ts';
-import { resolveRegulation } from '../../app/lib/regulation.ts';
+import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import { athletesOfTeam, checkMatchEligibility, checkRoster, checkRosterLock, eligibleAthletes, findTeamByName, isTeamRegistered, teamDirectory, resolveRegulation } from '@atletica-incinera/intereng-contract/rules';
 
 const futsal = resolveRegulation('Futsal');
 const xadrez = resolveRegulation('Xadrez');

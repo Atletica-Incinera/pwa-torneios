@@ -1,8 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seededFrontendState, type FrontendState, type OverallAwardState } from '../../app/lib/frontend-state.ts';
-import { activeAwards, computeOverallRanking, hasAward, isRankingClosed, suggestAutomaticAwards } from '../../app/lib/overall-ranking.ts';
-import { isOfficialResult, isPublicTournamentStatus } from '../../app/lib/publication.ts';
+import { seededFrontendState, type FrontendState, type OverallAwardState } from '@atletica-incinera/intereng-contract/state';
+import { activeAwards, computeOverallRanking, hasAward, isRankingClosed, suggestAutomaticAwards, isOfficialResult, isPublicTournamentStatus } from '@atletica-incinera/intereng-contract/rules';
 
 const editionId = 'intereng-2026';
 

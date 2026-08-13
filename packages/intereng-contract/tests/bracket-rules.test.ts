@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { byes, collectQualifiers, describeAdvancement, roundName, seedPairs, type GroupStanding } from '../../app/lib/bracket-rules.ts';
-import { calculateStandings } from '../../app/lib/tournament-engine.ts';
+import { byes, collectQualifiers, describeAdvancement, roundName, seedPairs, type GroupStanding, calculateStandings } from '@atletica-incinera/intereng-contract/rules';
 
 function group(name: string, participants: string[], matches: Parameters<typeof calculateStandings>[1]): GroupStanding {
   return { group: name, rows: calculateStandings(participants, matches) };

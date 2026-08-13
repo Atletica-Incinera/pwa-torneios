@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seededFrontendState } from '../../app/lib/frontend-state.ts';
-import { progressTournament } from '../../app/lib/tournament-progression.ts';
+import { seededFrontendState } from '@atletica-incinera/intereng-contract/state';
+import { progressTournament } from '@atletica-incinera/intereng-contract/rules';
 
 test('gera semifinais automaticamente após a conclusão dos grupos', () => {
   const tournamentId = 'cup';

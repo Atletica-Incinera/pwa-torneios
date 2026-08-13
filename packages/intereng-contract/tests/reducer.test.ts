@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { initialFrontendState } from '../../app/lib/frontend-state.ts';
-import { applyAction } from '../../app/lib/repositories/reducer.ts';
+import { initialFrontendState } from '@atletica-incinera/intereng-contract/state';
+import { applyAction } from '@atletica-incinera/intereng-contract/actions';
 
 const context = { actor: 'Ana Coordenadora' };
 

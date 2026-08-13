@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultRegulationRule, describeCompletion, estimatedMatchMinutes, regulationFromRule, resolveRegulation, setTarget } from '../../app/lib/regulation.ts';
+import { defaultRegulationRule, describeCompletion, estimatedMatchMinutes, regulationFromRule, resolveRegulation, setTarget } from '@atletica-incinera/intereng-contract/rules';
 
 test('basquete pontua 1, 2 e 3 por ação e não admite empate', () => {
   const regulation = resolveRegulation('Basquete');
