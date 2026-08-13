@@ -12,7 +12,10 @@ const nextConfig: NextConfig = {
   // esta lista, retornando 403 para os chunks e para o HMR.
   allowedDevOrigins: ['localhost', '127.0.0.1', '192.168.*.*'],
   turbopack: {
-    root: path.resolve(__dirname),
+    // A raiz do workspace, não a do app: com o lockfile na raiz, o Turbopack
+    // inferiria um diretório diferente do que o npm usa e avisaria a cada
+    // compilação.
+    root: path.resolve(__dirname, '..', '..'),
   },
   experimental: {
     // A persistência do Turbopack pode ficar extremamente lenta no Windows

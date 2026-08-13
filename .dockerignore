@@ -1,0 +1,42 @@
+# O contexto de build é a raiz do workspace, porque um pacote em `packages/`
+# não existe dentro de `apps/web`. Sem esta lista o contexto passaria a
+# carregar a árvore inteira — inclusive o clone da API, que não é deste repo.
+
+# Dependências: reinstaladas dentro da imagem a partir do lockfile.
+node_modules
+**/node_modules
+
+# Compilações: cada origem de dados tem a sua, e nenhuma entra na imagem.
+**/.next
+**/.next-http
+**/.next-api
+dist
+build
+coverage
+*.tsbuildinfo
+
+# Resultado de teste
+test-results
+playwright-report
+**/test-results
+**/playwright-report
+
+# Árvores que não são deste repositório
+intereng-api/
+tmp/
+
+# Não interessa à compilação
+.git
+.github
+.gitignore
+docs
+*.md
+.env
+.env.*
+!.env.example
+docker-compose*.yml
+Dockerfile*
+.vscode
+.idea
+.DS_Store
+Thumbs.db

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "npm run dev -w apps/web",
     "build": "npm run build -w apps/web",
+    "start": "npm run start -w apps/web",
     "typecheck": "npm run typecheck -w apps/web",
     "test": "npm run test -w apps/web",
     "test:unit": "npm run test:unit -w apps/web",

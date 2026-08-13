@@ -1,7 +1,0 @@
-node_modules
-.next
-.next-http
-.next-api
-test-results
-playwright-report
-*.tsbuildinfo

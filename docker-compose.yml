@@ -72,8 +72,10 @@ services:
   web:
     container_name: pwa-torneios-web
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      # O contexto é a raiz do workspace: o lockfile e os pacotes de
+      # `packages/` ficam de fora se ele for `./apps/web`.
+      context: .
+      dockerfile: apps/web/Dockerfile
       # `NEXT_PUBLIC_*` é embutido na compilação: cada origem de dados é uma
       # imagem distinta. Trocar a variável num container de pé não faz nada.
       args:
