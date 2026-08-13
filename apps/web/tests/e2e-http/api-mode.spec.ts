@@ -1,17 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
+import { apiUrl as api, authHeaders, credentials, isMock, reset } from './api';
 
 /**
  * O app compilado com `NEXT_PUBLIC_DATA_SOURCE=http`, falando com a API.
  *
  * Aqui nada vem do navegador: o snapshot, o token e o resultado de cada
  * operação são do servidor. É o que a suíte local não consegue provar.
+ *
+ * A mesma suíte roda contra o mock (`npm run test:e2e:http`, padrão, sem
+ * servidor) e contra a API real (`npm run test:e2e:api`).
  */
-const api = 'http://127.0.0.1:3201';
 const stateKey = 'intereng:app-state:v1';
 
-test.beforeEach(async ({ request }) => { await request.get(`${api}/test/reset`); });
+test.beforeEach(async ({ request }) => { await reset(request); });
 
-async function login(page: Page, email = 'ana@ufpe.br', password = 'intereng2026') {
+async function login(page: Page, email = credentials.email, password = credentials.password) {
   await page.goto('/');
   await page.getByLabel('E-mail').fill(email);
   await page.locator('input[aria-label="Senha"]').fill(password);
@@ -25,7 +28,9 @@ test('a sessão é emitida pela API e o snapshot vem de lá', async ({ page }) =
   expect((await snapshot).status()).toBe(200);
 
   const session = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}'));
-  expect(session.token).toBe('token-ana@ufpe.br');
+  // O formato do token é do servidor; o que o app garante é que ele existe e
+  // que a sessão tem prazo no futuro.
+  expect(session.token).toBeTruthy();
   expect(Date.parse(session.expiresAt)).toBeGreaterThan(Date.now());
 
   await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
@@ -60,9 +65,11 @@ test('a operação vai à API e a resposta é o que a tela mostra', async ({ pag
   await expect(page.getByRole('heading', { name: 'AURORA HTTP', exact: true })).toBeVisible();
 
   // O registro está no servidor, e o autor da auditoria é quem o token diz.
-  const snapshot = await (await request.get(`${api}/editions/active/snapshot`, { headers: { Authorization: 'Bearer token-ana@ufpe.br' } })).json();
+  const response = await request.get(`${api}/editions/active/snapshot`, { headers: await authHeaders(request) });
+  const payload = await response.json() as { data?: Record<string, never> };
+  const snapshot = (payload.data ?? payload) as { teams: Record<string, { name: string }>; audit: Array<Record<string, unknown>> };
   expect(snapshot.teams['aurora-http'].name).toBe('Aurora HTTP');
-  expect(snapshot.audit[0]).toMatchObject({ action: 'Equipe cadastrada', actor: 'Ana Coordenadora' });
+  expect(snapshot.audit[0]).toMatchObject({ action: 'Equipe cadastrada', actor: credentials.name });
 });
 
 test('o espectador usa o snapshot público, sem staff nem auditoria', async ({ page }) => {
@@ -96,7 +103,7 @@ test('o que outro operador muda chega na tela sem recarregar', async ({ page, re
   // Outro cliente opera na API. O stream avisa e a tela rebusca sozinha —
   // sem recarregar, sem clicar, sem esperar o próximo despacho daqui.
   const renamed = await request.post(`${api}/editions/active/actions`, {
-    headers: { Authorization: 'Bearer token-ana@ufpe.br' },
+    headers: await authHeaders(request),
     data: { type: 'team/update', payload: { id: 'alcateia', patch: { name: 'Alcateia Renomeada' } } },
   });
   expect(renamed.status()).toBe(200);
@@ -113,6 +120,9 @@ test('stream fora do ar: a barra avisa em vez de congelar', async ({ page }) => 
 });
 
 test('acesso vencido é renovado sozinho, sem devolver ao login', async ({ page, request }) => {
+  // O gancho que vence o acesso sem derrubar a renovação é do mock: na API real
+  // o mesmo caminho é exercitado esperando o token curto expirar.
+  test.skip(!isMock, 'depende do gancho /test/expire-access');
   await page.goto('/');
   await login(page);
   const before = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}').token);
