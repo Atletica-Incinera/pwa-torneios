@@ -45,3 +45,6 @@ redis_data
 # repositórios se engolirem. Mantenha o checkout fora desta árvore.
 intereng-api/
 tmp/
+
+# Empacotamento
+*.tgz

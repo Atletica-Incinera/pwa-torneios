@@ -1,0 +1,98 @@
+{
+  "name": "@atletica-incinera/intereng-contract",
+  "version": "0.1.0",
+  "description": "O contrato do InterEng: tipos da edição, as ações nomeadas e as regras puras que os dois lados precisam concordar",
+  "license": "UNLICENSED",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Atletica-Incinera/pwa-torneios.git",
+    "directory": "packages/intereng-contract"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.ts",
+        "default": "./dist/cjs/index.js"
+      }
+    },
+    "./state": {
+      "import": {
+        "types": "./dist/esm/state.d.ts",
+        "default": "./dist/esm/state.js"
+      },
+      "require": {
+        "types": "./dist/cjs/state.d.ts",
+        "default": "./dist/cjs/state.js"
+      }
+    },
+    "./rules": {
+      "import": {
+        "types": "./dist/esm/rules.d.ts",
+        "default": "./dist/esm/rules.js"
+      },
+      "require": {
+        "types": "./dist/cjs/rules.d.ts",
+        "default": "./dist/cjs/rules.js"
+      }
+    },
+    "./actions": {
+      "import": {
+        "types": "./dist/esm/actions.d.ts",
+        "default": "./dist/esm/actions.js"
+      },
+      "require": {
+        "types": "./dist/cjs/actions.d.ts",
+        "default": "./dist/cjs/actions.js"
+      }
+    },
+    "./seed": {
+      "import": {
+        "types": "./dist/esm/seed.d.ts",
+        "default": "./dist/esm/seed.js"
+      },
+      "require": {
+        "types": "./dist/cjs/seed.d.ts",
+        "default": "./dist/cjs/seed.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "typesVersions": {
+    "*": {
+      "state": ["./dist/cjs/state.d.ts"],
+      "rules": ["./dist/cjs/rules.d.ts"],
+      "actions": ["./dist/cjs/actions.d.ts"],
+      "seed": ["./dist/cjs/seed.d.ts"]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test tests/cjs-smoke.test.cjs tests/esm-smoke.test.mjs",
+    "attw": "attw --pack .",
+    "prepublishOnly": "npm run test && npm run attw"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "typescript": "5.9.3"
+  }
+}

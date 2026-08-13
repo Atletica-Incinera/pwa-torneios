@@ -11,6 +11,7 @@ WORKDIR /app
 # a instalação não roda de novo a cada alteração de código.
 COPY package.json package-lock.json ./
 COPY apps/web/package.json ./apps/web/package.json
+COPY packages/intereng-contract/package.json ./packages/intereng-contract/package.json
 # `npm ci` instala exatamente o que o lockfile diz e falha se ele estiver
 # dessincronizado — que é o comportamento que se quer numa imagem.
 RUN npm ci

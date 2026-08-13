@@ -10,6 +10,8 @@
     "dev": "npm run dev -w apps/web",
     "build": "npm run build -w apps/web",
     "start": "npm run start -w apps/web",
+    "build:contract": "npm run build -w @atletica-incinera/intereng-contract",
+    "test:contract": "npm run test -w @atletica-incinera/intereng-contract",
     "typecheck": "npm run typecheck -w apps/web",
     "test": "npm run test -w apps/web",
     "test:unit": "npm run test:unit -w apps/web",
