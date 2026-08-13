@@ -16,18 +16,23 @@ Público  Ao vivo · Modalidades · Equipes
                         └ Agenda │ Tabela │ Resultados │ Fases
 ```
 
-Fonte da verdade em código:
+Fonte da verdade em código: o pacote `@atletica-incinera/intereng-contract`,
+publicado a partir de `packages/intereng-contract/` e consumido pelos dois
+lados. **A API importa estas regras, não as reescreve** — foi para isso que
+elas saíram do front.
 
 | Assunto | Módulo |
 | --- | --- |
-| Regulamento esportivo por modalidade | `apps/web/app/lib/regulation.ts` |
-| Conflito de agenda | `apps/web/app/lib/scheduling-rules.ts` |
-| Ciclo de vida da partida | `apps/web/app/lib/match-lifecycle.ts` |
-| Classificação e desempate | `apps/web/app/lib/tournament-engine.ts` |
-| Chaveamento, byes e 3º lugar | `apps/web/app/lib/bracket-rules.ts` |
-| Elegibilidade de equipe e atleta | `apps/web/app/lib/eligibility.ts` |
-| Ranking geral | `apps/web/app/lib/overall-ranking.ts` |
-| Publicação | `apps/web/app/lib/publication.ts` |
+| Regulamento esportivo por modalidade | `src/modules/regulation.ts` |
+| Conflito de agenda | `src/modules/scheduling-rules.ts` |
+| Ciclo de vida da partida | `src/modules/match-lifecycle.ts` |
+| Classificação e desempate | `src/modules/tournament-engine.ts` |
+| Chaveamento, byes e 3º lugar | `src/modules/bracket-rules.ts` |
+| Elegibilidade de equipe e atleta | `src/modules/eligibility.ts` |
+| Ranking geral | `src/modules/overall-ranking.ts` |
+| Publicação | `src/modules/publication.ts` |
+
+Todos saem por `@atletica-incinera/intereng-contract/rules`.
 
 ---
 

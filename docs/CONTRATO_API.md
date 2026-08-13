@@ -21,8 +21,10 @@ novo. Não há atualização otimista — **a resposta do servidor é a verdade*
 o id de quem nasce vem do cliente, para a navegação e o reenvio funcionarem
 (veja *Quem escolhe o id*).
 
-O formato do snapshot é o tipo `FrontendState`
-(`apps/web/app/lib/frontend-state.ts`), que é praticamente o schema do banco.
+O formato do snapshot é o tipo `FrontendState`, exportado por
+`@atletica-incinera/intereng-contract/state` — praticamente o schema do banco.
+O pacote é publicado deste repositório e a API o instala, para as duas metades
+não descreverem o mesmo formato de dois jeitos.
 
 ## Rotas
 
@@ -69,8 +71,8 @@ do acesso, quando o servidor o informa.
 
 ## Operações
 
-O corpo de `POST /editions/:id/actions` é uma ação da união em
-`apps/web/app/lib/repositories/actions.ts`:
+O corpo de `POST /editions/:id/actions` é uma ação da união exportada por
+`@atletica-incinera/intereng-contract/actions`:
 
 ```jsonc
 {
@@ -111,8 +113,9 @@ Em troca, o servidor precisa garantir a unicidade:
 
 ### Consequências que o servidor precisa reproduzir
 
-O cliente aplica a ação com `applyAction` (`repositories/reducer.ts`), que usa os
-mesmos módulos puros de regra. O servidor deve rodar o equivalente:
+O cliente aplica a ação com `applyAction`, do mesmo subcaminho `/actions`, que
+por sua vez usa as regras puras. O servidor roda **o mesmo código**, não um
+equivalente:
 
 - `match/finish` e `match/correctResult` disparam a **cascata do chaveamento**
   (`progressTournament`); a retificação ainda limpa o que veio depois
