@@ -59,9 +59,12 @@ seguintes simplesmente não são geradas. O `cuid` continua sendo a chave
 primária no banco; ele só não aparece no snapshot.
 
 **Tipo de ação sem domínio responde `501 NOT_IMPLEMENTED`, nunca 500.** O
-despachante vai nascer cobrindo parte das 32 ações. O front trata 501 como
-"esta operação ainda não existe no servidor" e mostra isso ao operador; um 500
-vira "algo deu errado" e manda o operador tentar de novo, para sempre.
+despachante vai nascer cobrindo parte das 32 ações. O front mostra ao operador
+a mensagem que o servidor mandar, então **a mensagem é a interface**: um 501
+dizendo "esta operação ainda não existe no servidor" faz o operador parar de
+tentar; um 500 genérico o faz repetir a mesma ação para sempre, achando que é
+a rede. O código também importa para quem lê log: 501 é lacuna conhecida, 500 é
+defeito.
 
 ---
 
