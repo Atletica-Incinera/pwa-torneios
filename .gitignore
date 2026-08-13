@@ -9,7 +9,6 @@ coverage
 .next/
 .next-http/
 .next-api/
-/package-lock.json
 playwright-report/
 test-results/
 *.tsbuildinfo

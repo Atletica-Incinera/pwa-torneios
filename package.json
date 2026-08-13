@@ -1,0 +1,20 @@
+{
+  "name": "pwa-torneios",
+  "private": true,
+  "description": "InterEng — PWA de gestão e acompanhamento de torneios universitários",
+  "workspaces": [
+    "apps/web",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/web",
+    "build": "npm run build -w apps/web",
+    "typecheck": "npm run typecheck -w apps/web",
+    "test": "npm run test -w apps/web",
+    "test:unit": "npm run test:unit -w apps/web",
+    "test:components": "npm run test:components -w apps/web",
+    "test:e2e": "npm run test:e2e -w apps/web",
+    "test:e2e:http": "npm run test:e2e:http -w apps/web",
+    "test:e2e:api": "npm run test:e2e:api -w apps/web"
+  }
+}
