@@ -1,4 +1,4 @@
-import type { FrontendState } from '../frontend-state.ts';
+import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
 import { apiRequest } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
 import { normalizeSnapshot, type RealtimeConnect } from './http-adapter.ts';

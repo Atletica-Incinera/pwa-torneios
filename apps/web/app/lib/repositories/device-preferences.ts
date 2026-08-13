@@ -1,4 +1,4 @@
-import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 
 export type DevicePreferences = FrontendState['preferences'];
 

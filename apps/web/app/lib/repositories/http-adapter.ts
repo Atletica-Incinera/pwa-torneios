@@ -1,7 +1,7 @@
-import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import type { Action } from '@atletica-incinera/intereng-contract/actions';
 import { apiRequest } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
-import type { Action } from './actions.ts';
 import type { ConnectionState, StateAdapter } from './state-adapter.ts';
 
 /**

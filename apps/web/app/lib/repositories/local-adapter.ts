@@ -1,7 +1,7 @@
-import { readActor, readFrontendState, stateChangeEvent, writeFrontendState, type FrontendState } from '../frontend-state.ts';
-import { applyAction } from './reducer.ts';
+import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
+import { readActor, readFrontendState, stateChangeEvent, writeFrontendState } from '../browser-state.ts';
+import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import type { StateAdapter } from './state-adapter.ts';
-import type { Action } from './actions.ts';
 
 /**
  * Estado no `localStorage` do próprio navegador — o comportamento que o app tem

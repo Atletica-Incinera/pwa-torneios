@@ -1,4 +1,4 @@
-import { parseFrontendState, seededFrontendState, type FrontendState } from './frontend-state.ts';
+import { parseFrontendState, seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 
 /**
  * A metade de `frontend-state` que só existe no navegador.

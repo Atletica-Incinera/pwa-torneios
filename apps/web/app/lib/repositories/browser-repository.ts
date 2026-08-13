@@ -4,10 +4,11 @@
  * Fachada do repositório persistido no navegador. Componentes dependem desta
  * interface, enquanto localStorage e sua migração permanecem encapsulados.
  */
-export { getActiveCompetition, getActiveEdition, initialFrontendState, readFrontendState } from '../frontend-state';
+export { getActiveCompetition, getActiveEdition, initialFrontendState } from '@atletica-incinera/intereng-contract/state';
+export { readFrontendState } from '../browser-state.ts';
 export { useFrontendState } from './use-frontend-state';
 export type { DispatchResult, StateStatus } from './use-frontend-state';
-export type { Action } from './actions';
+export type { Action } from '@atletica-incinera/intereng-contract/actions';
 export type {
   AthleteState,
   AuditState,
@@ -31,4 +32,4 @@ export type {
   TournamentAdvancement,
   TournamentPhase,
   TournamentState,
-} from '../frontend-state';
+} from '@atletica-incinera/intereng-contract/state';

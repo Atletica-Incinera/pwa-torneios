@@ -1,5 +1,5 @@
-import { readFrontendState } from '../frontend-state.ts';
-import { createId } from '../create-id.ts';
+import { readFrontendState } from '../browser-state.ts';
+import { createId } from '@atletica-incinera/intereng-contract/rules';
 import { AuthError, sessionDurationMs, type AuthAdapter, type FrontendSession } from './auth-adapter.ts';
 import { clearStoredSession, readStoredSession, writeStoredSession } from './session-storage.ts';
 

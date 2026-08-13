@@ -1,9 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import type { Action } from '@atletica-incinera/intereng-contract/actions';
 import { preferencesChangeEvent, withDevicePreferences, writeDevicePreferences, type DevicePreferences } from './device-preferences.ts';
-import type { Action } from './actions.ts';
 import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
 import { createRealtimeChannel } from './realtime-channel.ts';

@@ -1,5 +1,5 @@
-import type { FrontendState } from '../frontend-state.ts';
-import type { Action } from './actions.ts';
+import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
+import type { Action } from '@atletica-incinera/intereng-contract/actions';
 
 /**
  * A fronteira entre as telas e a origem dos dados.
