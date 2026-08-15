@@ -1,0 +1,36 @@
+name: CD Deploy Frontend Torneios
+
+on:
+  push:
+    branches:
+      - front-end
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy PWA Torneios to CIn VM
+    runs-on: self-hosted
+
+    steps:
+      - name: Deploy Frontend
+        run: |
+          PROJECT_DIR="$HOME/pwa-torneios"
+
+          if [ ! -d "$PROJECT_DIR" ]; then
+            git clone https://github.com/Atletica-Incinera/pwa-torneios.git "$PROJECT_DIR"
+          fi
+
+          cd "$PROJECT_DIR"
+          git fetch --all
+          git checkout front-end
+          git reset --hard origin/front-end
+
+          # Garante que a rede existe
+          docker network inspect incinera-network >/dev/null 2>&1 || docker network create incinera-network
+
+          # Sobe o container web de produção
+          docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+          docker image prune -f
+
+          echo "Deploy do Frontend PWA Torneios finalizado com sucesso!"

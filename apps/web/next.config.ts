@@ -1,8 +1,11 @@
 import type { NextConfig } from 'next';
 import path from 'node:path';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '/intereng';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  basePath: basePath === '/' ? '' : basePath,
   // `NEXT_PUBLIC_DATA_SOURCE` é embutido na compilação, então cada origem de
   // dados precisa da sua build. Separar a pasta deixa as duas conviverem: a
   // suíte local não derruba a do HTTP nem o contrário.
