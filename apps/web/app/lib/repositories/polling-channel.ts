@@ -25,7 +25,11 @@ const defaultIntervalMs = 5_000;
 export function createPollingChannel(options: ChannelOptions = {}): RealtimeConnect {
   const edition = options.edition ?? 'active';
   const token = () => (options.getToken ?? readSessionToken)();
-  const interval = Number(process.env.NEXT_PUBLIC_REALTIME_INTERVAL ?? defaultIntervalMs);
+  // `??` não cobre a variável definida e vazia, que é o caso comum de um `.env`
+  // escrito à mão — e `Number('')` é zero, o que viraria um laço de busca sem
+  // pausa contra o servidor.
+  const configured = Number(process.env.NEXT_PUBLIC_REALTIME_INTERVAL);
+  const interval = Number.isFinite(configured) && configured > 0 ? configured : defaultIntervalMs;
 
   return (onSnapshot, onConnection) => {
     let stopped = false;

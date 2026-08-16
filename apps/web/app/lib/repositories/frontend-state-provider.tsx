@@ -77,11 +77,26 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
   const source = useMemo(resolveDataSource, []);
   const mounted = useRef(true);
   const lastSnapshot = useRef<FrontendState | null>(null);
+  /**
+   * Ordem das absorções, no mesmo padrão que o canal de tempo real já usa para
+   * os seus próprios refetches.
+   *
+   * Sem isto, um snapshot pedido antes e entregue depois sobrescreve um mais
+   * novo. O caso que dói é o placar ao vivo: cada toque despacha uma ação e
+   * absorve a resposta do servidor, enquanto uma busca disparada segundos antes
+   * ainda está no ar — e ao chegar, desfaz o gol na tela.
+   */
+  const issued = useRef(0);
+  const applied = useRef(0);
 
-  const absorb = useCallback((next: FrontendState) => {
+  /** Devolve se absorveu: quem chegou tarde não deve nem notificar. */
+  const absorb = useCallback((next: FrontendState, ticket: number) => {
+    if (ticket < applied.current) return false;
+    applied.current = ticket;
     // O que a tela lê é o estado da edição com as preferências deste aparelho.
     lastSnapshot.current = next;
     if (mounted.current) setState(withDevicePreferences(next));
+    return true;
   }, []);
 
   /**
@@ -92,7 +107,8 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
    */
   const absorbRemote = useCallback((next: FrontendState) => {
     const before = lastSnapshot.current;
-    absorb(next);
+    // Chegou agora: é o mais recente que existe, e leva o bilhete mais alto.
+    if (!absorb(next, ++issued.current)) return;
     if (!before) return;
     const { notifications, selectedDiscipline } = withDevicePreferences(next).preferences;
     if (!notifications) return;
@@ -100,10 +116,11 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
   }, [absorb]);
 
   const refresh = useCallback(async () => {
+    const ticket = ++issued.current;
     try {
       const loaded = await adapter.load();
       if (!mounted.current) return;
-      absorb(loaded);
+      absorb(loaded, ticket);
       setError(null);
       setStatus('ready');
     } catch (caught) {
@@ -166,9 +183,10 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
 
   /** Executa uma operação nomeada. É o único caminho de escrita do app. */
   const dispatch = useCallback(async (action: Action): Promise<DispatchResult> => {
+    const ticket = ++issued.current;
     try {
       const next = await adapter.apply(action);
-      absorb(next);
+      absorb(next, ticket);
       if (action.audit) toast(action.audit.action, 'success');
       return { ok: true };
     } catch (caught) {
