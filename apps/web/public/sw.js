@@ -22,6 +22,39 @@ self.addEventListener('install', (event) => event.waitUntil(Promise.all([
 self.addEventListener('activate', (event) => event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => !key.startsWith(VERSION)).map((key) => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('message', (event) => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 
+// Aviso enviado pelo servidor. Hoje ninguém envia — a API ainda não tem rota de
+// inscrição — mas o handler existe para o dia em que tiver, e porque sem ele o
+// navegador mostra a notificação genérica dele em vez da nossa.
+self.addEventListener('push', (event) => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data ? event.data.text() : '' }; }
+  const title = payload.title || 'InterEng';
+  event.waitUntil(self.registration.showNotification(title, {
+    body: payload.body || '',
+    tag: payload.tag || 'intereng',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    data: { url: payload.url || '/public' },
+  }));
+});
+
+// Clicar no aviso deve trazer a janela que já existe para a frente, não abrir
+// uma segunda cópia do app.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || '/public';
+  event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clients) {
+      if (new URL(client.url).origin !== self.location.origin) continue;
+      await client.focus();
+      if ('navigate' in client) await client.navigate(target);
+      return;
+    }
+    await self.clients.openWindow(target);
+  })());
+});
+
 async function networkFirst(request) {
   try {
     const response = await fetch(request);

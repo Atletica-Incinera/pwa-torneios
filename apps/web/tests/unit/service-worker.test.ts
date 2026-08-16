@@ -39,3 +39,105 @@ test('a versão do cache sobe quando o pré-cache muda', () => {
   // no fim, que é o que o `activate` usa para apagar o cache anterior.
   assert.match(source, /const VERSION = 'intereng-v\d+';/);
 });
+
+/**
+ * Executa o service worker num escopo de mentira e devolve os ouvintes que ele
+ * registrou, com o que foi chamado.
+ *
+ * Chromium sem cabeça recusa a permissão de notificação — `Notification.permission`
+ * é sempre `denied` —, então não há como provar este caminho num cenário de
+ * navegador. Aqui as ramificações ficam testáveis sem depender disso.
+ */
+type FakeClient = { url: string; focus: () => Promise<void>; navigate: (url: string) => Promise<void> };
+
+function runWorker() {
+  const listeners: Record<string, (event: never) => void> = {};
+  const shown: Array<{ title: string; options: Record<string, unknown> }> = [];
+  const opened: string[] = [];
+  const clients: FakeClient[] = [];
+
+  const self = {
+    addEventListener: (name: string, handler: (event: never) => void) => { listeners[name] = handler; },
+    skipWaiting: () => undefined,
+    location: { origin: 'https://intereng.test' },
+    clients: {
+      claim: async () => undefined,
+      matchAll: async () => clients,
+      openWindow: async (url: string) => { opened.push(url); },
+    },
+    registration: {
+      showNotification: async (title: string, options: Record<string, unknown>) => { shown.push({ title, options }); },
+    },
+  };
+  const caches = {
+    open: async () => ({ addAll: async () => undefined, match: async () => undefined, put: async () => undefined, keys: async () => [] }),
+    keys: async () => [], delete: async () => true, match: async () => undefined,
+  };
+
+  // `new Function` em vez de import: o arquivo é servido como está, sem módulo
+  // nem exportação, e é exatamente essa forma que o navegador vai executar.
+  new Function('self', 'caches', 'fetch', 'URL', source)(self, caches, async () => ({ ok: false }), URL);
+  return { listeners, shown, opened, clients };
+}
+
+/** Recolhe o que o ouvinte pendurou em `waitUntil`, para o teste poder esperar. */
+function waited(event: Record<string, unknown>) {
+  const pending: Array<Promise<unknown>> = [];
+  event.waitUntil = (promise: Promise<unknown>) => { pending.push(promise); };
+  return pending;
+}
+
+test('o aviso enviado pelo servidor vira notificação com título, corpo e destino', async () => {
+  const worker = runWorker();
+  const event = { data: { json: () => ({ title: 'Futsal · começou', body: 'Alcateia × Cangaceiros', tag: 'partida:semi-1', url: '/matches/live?partida=semi-1' }) } } as Record<string, unknown>;
+  const pending = waited(event);
+  worker.listeners.push(event as never);
+  await Promise.all(pending);
+
+  assert.equal(worker.shown.length, 1);
+  assert.equal(worker.shown[0].title, 'Futsal · começou');
+  assert.equal(worker.shown[0].options.body, 'Alcateia × Cangaceiros');
+  assert.equal(worker.shown[0].options.tag, 'partida:semi-1');
+  assert.deepEqual(worker.shown[0].options.data, { url: '/matches/live?partida=semi-1' });
+});
+
+test('corpo que não é JSON não derruba o aviso', async () => {
+  const worker = runWorker();
+  const event = { data: { json: () => { throw new SyntaxError('não é JSON'); }, text: () => 'texto solto' } } as Record<string, unknown>;
+  const pending = waited(event);
+  worker.listeners.push(event as never);
+  await Promise.all(pending);
+
+  // Sem este ramo o navegador mostra a notificação genérica dele no lugar.
+  assert.equal(worker.shown[0].title, 'InterEng');
+  assert.equal(worker.shown[0].options.body, 'texto solto');
+});
+
+test('clicar no aviso traz a janela aberta para a frente, sem abrir uma segunda', async () => {
+  const worker = runWorker();
+  const navigated: string[] = [];
+  let focused = 0;
+  worker.clients.push({
+    url: 'https://intereng.test/public',
+    focus: async () => { focused += 1; },
+    navigate: async (url: string) => { navigated.push(url); },
+  });
+
+  const event = { notification: { close: () => undefined, data: { url: '/matches/live?partida=semi-1' } } } as Record<string, unknown>;
+  const pending = waited(event);
+  worker.listeners.notificationclick(event as never);
+  await Promise.all(pending);
+
+  assert.equal(focused, 1);
+  assert.deepEqual(navigated, ['/matches/live?partida=semi-1']);
+  assert.deepEqual(worker.opened, []);
+});
+
+test('sem janela aberta, o clique abre uma', async () => {
+  const worker = runWorker();
+  const event = { notification: { close: () => undefined, data: { url: '/public' } } } as Record<string, unknown>;
+  const pending = waited(event);
+  worker.listeners.notificationclick(event as never);
+  await Promise.all(pending);
+  assert.deepEqual(worker.opened, ['/public']);
+});

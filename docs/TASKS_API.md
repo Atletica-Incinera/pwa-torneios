@@ -85,6 +85,7 @@ Cole no fim do arquivo, mantendo a convenção `- [ ]` / `- [x]`:
 - [ ] TASK-24 — Ranking geral da edição
 - [ ] TASK-25 — Estado de operação da partida
 - [ ] TASK-26 — Regulamento versionado e congelado na partida
+- [ ] TASK-27 — Inscrição de push (Web Push / VAPID)
 ```
 
 ---
@@ -392,6 +393,34 @@ em andamento deve ser bloqueado ou apenas avisado.
 **Critério de aceite verificável**: encerrar uma partida, alterar a pontuação da
 modalidade e reabrir a partida encerrada mostra o placar calculado pela regra
 **antiga**; a partida seguinte já usa a nova.
+
+---
+
+### TASK-27-EXEC — Inscrição de push (Web Push / VAPID)
+
+**Como implementar**: o front já tem a metade dele. O service worker trata
+`push` e `notificationclick`, e o app já avisa localmente quando uma partida da
+modalidade escolhida começa ou termina — mas só com a aba aberta em segundo
+plano. Aviso com o app fechado depende do servidor.
+* Par de chaves VAPID em variável de ambiente, com a pública exposta numa rota
+  de configuração para o front usar em `pushManager.subscribe`.
+* `POST /me/push-subscriptions` guarda `endpoint`, `p256dh` e `auth` por membro
+  do staff; `DELETE` remove. Endpoint é único: reinscrição substitui.
+* Ao aplicar `match/start` e `match/finish`, enviar para quem tem inscrição no
+  escopo daquela modalidade. O corpo é `{ title, body, tag, url }` — é o que o
+  service worker do front já espera.
+* Endpoint que responder 404 ou 410 é apagado na hora: navegador desinstalado
+  não pode virar fila de erro permanente.
+
+**Autonomia de pesquisa**: `web-push` no Node e o formato de payload
+criptografado; envio em lote sem bloquear a resposta da ação.
+
+**Decisões que exigem validação humana**: se espectador sem sessão também pode
+se inscrever — hoje a inscrição pressupõe staff autenticado.
+
+**Critério de aceite verificável**: com o navegador fechado, encerrar uma
+partida entrega a notificação no aparelho inscrito; e um endpoint que devolve
+410 desaparece da tabela sem intervenção.
 
 ---
 

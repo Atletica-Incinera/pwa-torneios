@@ -8,7 +8,7 @@
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:components",
-    "test:unit": "node --no-warnings --test tests/unit/service-worker.test.ts tests/unit/sound-effects.test.ts",
+    "test:unit": "node --no-warnings --test tests/unit/match-notifications.test.ts tests/unit/service-worker.test.ts tests/unit/sound-effects.test.ts",
     "test:components": "vitest run",
     "test:e2e": "npm run build && node scripts/run-e2e.mjs",
     "test:visual:update": "npm run build && node scripts/run-e2e.mjs --grep \"regressão visual\" --update-snapshots",

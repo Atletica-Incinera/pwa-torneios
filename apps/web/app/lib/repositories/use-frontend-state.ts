@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 import type { Action } from '@atletica-incinera/intereng-contract/actions';
+import { collectMatchNotifications, showMatchNotifications } from '../match-notifications.ts';
 import { preferencesChangeEvent, withDevicePreferences, writeDevicePreferences, type DevicePreferences } from './device-preferences.ts';
 import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
@@ -41,10 +42,28 @@ export function useFrontendState() {
   const source = useMemo(resolveDataSource, []);
   const mounted = useRef(true);
 
+  const lastSnapshot = useRef<FrontendState | null>(null);
+
   const absorb = useCallback((next: FrontendState) => {
     // O que a tela lê é o estado da edição com as preferências deste aparelho.
+    lastSnapshot.current = next;
     if (mounted.current) setState(withDevicePreferences(next));
   }, []);
+
+  /**
+   * Mudança vinda de fora: além de absorver, pode valer um aviso.
+   *
+   * Só aqui, e não em `absorb`: a carga inicial não tem o que comparar, e a
+   * própria escrita não deve notificar quem acabou de fazê-la.
+   */
+  const absorbRemote = useCallback((next: FrontendState) => {
+    const before = lastSnapshot.current;
+    absorb(next);
+    if (!before) return;
+    const { notifications, selectedDiscipline } = withDevicePreferences(next).preferences;
+    if (!notifications) return;
+    void showMatchNotifications(collectMatchNotifications(before, next, { discipline: selectedDiscipline }));
+  }, [absorb]);
 
   const refresh = useCallback(async () => {
     try {
@@ -64,9 +83,9 @@ export function useFrontendState() {
   useEffect(() => {
     mounted.current = true;
     void refresh();
-    const unsubscribe = adapter.subscribe(absorb, (next) => { if (mounted.current) setConnection(next); });
+    const unsubscribe = adapter.subscribe(absorbRemote, (next) => { if (mounted.current) setConnection(next); });
     return () => { mounted.current = false; unsubscribe(); };
-  }, [absorb, adapter, refresh]);
+  }, [absorbRemote, adapter, refresh]);
 
   useEffect(() => {
     // Preferência muda em outra tela do mesmo aparelho: todas acompanham.
