@@ -11,6 +11,15 @@ test('manifesto publica ícones instaláveis e maskable', async ({ request }) =>
   ]));
 });
 
+test('o documento declara a cor da barra e libera as áreas seguras', async ({ page }) => {
+  await page.goto('/public');
+  // Duas metas que só existem se o `viewport` for exportado do layout. Sem a
+  // primeira a barra do navegador ignora o manifesto; sem `viewport-fit` os
+  // `env(safe-area-inset-*)` do CSS voltam zero no iOS.
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#022734');
+  await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /viewport-fit=cover/);
+});
+
 test('service worker instala cache e entrega a tela offline', async ({ context, page }) => {
   await page.goto('/public');
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });

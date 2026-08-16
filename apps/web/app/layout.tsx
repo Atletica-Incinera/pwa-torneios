@@ -1,3 +1,4 @@
+import type { Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import './motion.css';
@@ -33,6 +34,23 @@ const ttTravelsNext = localFont({
   variable: '--font-tt-travels-next-loaded',
   display: 'swap',
 });
+
+/**
+ * Separada de `metadata` porque o Next as dividiu na 14 — enquanto isso não
+ * existia, o documento saía sem `theme-color` e a barra do navegador ficava
+ * cinza, contradizendo o manifesto.
+ *
+ * `viewportFit: 'cover'` é o que faz `env(safe-area-inset-*)` devolver valor no
+ * iOS. O `globals.css` já conta com esses valores na barra inferior, na região
+ * de toast e no banner do PWA, e o app se declara `black-translucent`: sem esta
+ * linha, todo esse CSS é inerte e o conteúdo fica embaixo do entalhe.
+ */
+export const viewport: Viewport = {
+  themeColor: '#022734',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata = {
   title: 'InterEng Pernambuco 2026',
