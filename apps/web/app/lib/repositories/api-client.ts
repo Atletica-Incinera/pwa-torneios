@@ -56,27 +56,37 @@ async function readError(response: Response) {
 let renewal: Promise<string | null> | null = null;
 
 function renewSession(fetchImpl?: typeof fetch): Promise<string | null> {
-  renewal ??= (async () => {
-    const session = readStoredSession();
-    if (!session?.refreshToken) return null;
-    try {
-      const payload = await apiRequest<LoginPayload>({
-        path: '/auth/refresh',
-        method: 'POST',
-        body: { refreshToken: session.refreshToken },
-        retryOnUnauthorized: false,
-        fetchImpl,
-      });
-      const next = sessionFromLogin({ ...payload, user: payload.user ?? session }, session.remembered);
-      writeStoredSession(next);
-      return next.token;
-    } catch {
-      return null;
-    } finally {
-      renewal = null;
-    }
-  })();
+  if (!renewal) {
+    renewal = runRenewal(fetchImpl);
+    // A trava é solta por fora, e não num `finally` dentro do corpo: quando o
+    // corpo retorna antes do primeiro `await` — sessão sem credencial de
+    // renovação —, o `finally` rodaria *antes* da atribuição acima e deixaria
+    // `renewal` preso num `null` já resolvido. A partir daí nenhuma renovação
+    // voltaria a acontecer nesta página, e o próximo 401 devolveria ao login
+    // quem tinha sessão boa. `.finally` de promessa é sempre assíncrono, então
+    // roda depois da atribuição.
+    renewal.then(() => { renewal = null; }, () => { renewal = null; });
+  }
   return renewal;
+}
+
+async function runRenewal(fetchImpl?: typeof fetch): Promise<string | null> {
+  const session = readStoredSession();
+  if (!session?.refreshToken) return null;
+  try {
+    const payload = await apiRequest<LoginPayload>({
+      path: '/auth/refresh',
+      method: 'POST',
+      body: { refreshToken: session.refreshToken },
+      retryOnUnauthorized: false,
+      fetchImpl,
+    });
+    const next = sessionFromLogin({ ...payload, user: payload.user ?? session }, session.remembered);
+    writeStoredSession(next);
+    return next.token;
+  } catch {
+    return null;
+  }
 }
 
 export async function apiRequest<T>({ path, method = 'GET', body, token, fetchImpl, signal, retryOnUnauthorized = true }: ApiRequest): Promise<T> {
