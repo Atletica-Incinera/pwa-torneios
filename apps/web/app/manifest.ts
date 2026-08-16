@@ -21,7 +21,11 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: 'Jogos ao vivo', short_name: 'Ao vivo', url: '/public', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
-      { name: 'Agenda', short_name: 'Agenda', url: '/public/matches', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
+      // Os atalhos apontam para rotas finais. `/public/matches` ainda existe e
+      // ainda redireciona, para endereço antigo compartilhado por aí continuar
+      // funcionando — mas um atalho da tela inicial não deve gastar uma
+      // navegação inteira para chegar onde já poderia abrir.
+      { name: 'Modalidades', short_name: 'Modalidades', url: '/public/tournaments', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
       { name: 'Equipes', short_name: 'Equipes', url: '/public/teams', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
     ],
   };

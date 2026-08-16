@@ -11,6 +11,17 @@ test('manifesto publica ícones instaláveis e maskable', async ({ request }) =>
   ]));
 });
 
+test('todo atalho do manifesto abre uma rota final', async ({ request }) => {
+  const manifest = await (await request.get('/manifest.webmanifest')).json() as { shortcuts: Array<{ name: string; url: string }> };
+  expect(manifest.shortcuts.length).toBeGreaterThan(0);
+  for (const shortcut of manifest.shortcuts) {
+    // Sem seguir o salto: um atalho que cai em redirect custa uma navegação
+    // inteira toda vez que alguém abre o app pela tela inicial.
+    const response = await request.get(shortcut.url, { maxRedirects: 0 });
+    expect(response.status(), `${shortcut.name} → ${shortcut.url}`).toBe(200);
+  }
+});
+
 test('o documento declara a cor da barra e libera as áreas seguras', async ({ page }) => {
   await page.goto('/public');
   // Duas metas que só existem se o `viewport` for exportado do layout. Sem a
