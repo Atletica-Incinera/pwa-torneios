@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthError, type AuthAdapter, type FrontendRole, type FrontendSession } from './repositories/auth-adapter';
 import { createLocalAuthAdapter, demoUsers } from './repositories/local-auth-adapter';
 import { createHttpAuthAdapter } from './repositories/http-auth-adapter';
-import { clearStoredSession, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
+import { clearStoredSession, handleSessionStorageEvent, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
 import { resolveDataSource } from './repositories/state-adapter';
 
 export type { FrontendRole, FrontendSession };
@@ -60,10 +60,11 @@ export function useFrontendSession() {
         setHydrated(true);
       });
     };
+    const syncStorage = (event: StorageEvent) => { handleSessionStorageEvent(event); sync(); };
     sync();
     window.addEventListener(sessionChangeEvent, sync);
-    window.addEventListener('storage', sync);
-    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+    window.addEventListener('storage', syncStorage);
+    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', syncStorage); };
   }, []);
   const logout = useCallback(() => { void adapter.signOut(); }, []);
   return { session, hydrated, expired, logout };

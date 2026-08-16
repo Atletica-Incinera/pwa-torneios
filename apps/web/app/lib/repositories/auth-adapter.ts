@@ -1,14 +1,24 @@
 export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
 
-/**
- * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador
- * local são emitidos aqui mesmo; no HTTP virão do servidor, sem mudar as telas.
- */
-export type FrontendSession = {
+export type FrontendSessionUser = {
+  id: string;
   email: string;
   name: string;
   role: FrontendRole;
   scope?: string;
+};
+
+export type AuthSessionResponse = {
+  token: string;
+  expiresAt: string;
+  user: FrontendSessionUser;
+};
+
+/**
+ * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador
+ * local são emitidos aqui mesmo; no HTTP virão do servidor, sem mudar as telas.
+ */
+export type FrontendSession = FrontendSessionUser & {
   remembered: boolean;
   token: string;
   expiresAt: string;

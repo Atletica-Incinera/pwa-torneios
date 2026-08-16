@@ -9,6 +9,7 @@ import { sessionDurationMs, type FrontendSession } from './auth-adapter.ts';
  */
 export const sessionKey = 'intereng:frontend-session';
 export const sessionChangeEvent = 'intereng:session-change';
+export const sessionLogoutKey = 'intereng:session-logout';
 
 // Fallback para ambientes de teste ou modo privado que bloqueiam storage.
 let volatileSession: FrontendSession | null = null;
@@ -24,11 +25,15 @@ export function readStoredSession(): FrontendSession | null {
   } catch {
     return volatileSession;
   }
-  if (!raw) return volatileSession;
+  if (!raw) {
+    volatileSession = null;
+    return null;
+  }
   try {
     const parsed = JSON.parse(raw) as Partial<FrontendSession>;
     if (!parsed.email || !parsed.role) return null;
     return {
+      id: parsed.id ?? `legacy:${parsed.email}`,
       email: parsed.email,
       name: parsed.name ?? parsed.email.split('@')[0],
       role: parsed.role,
@@ -59,7 +64,20 @@ export function clearStoredSession() {
   volatileSession = null;
   try { window.localStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
   try { window.sessionStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
+  try { window.localStorage.setItem(sessionLogoutKey, `${Date.now()}:${Math.random()}`); } catch { /* storage indisponível */ }
   window.dispatchEvent(new Event(sessionChangeEvent));
+}
+
+/** Aplica nesta aba o logout publicado por outra aba, inclusive para sessionStorage. */
+export function handleSessionStorageEvent(event: StorageEvent) {
+  if (event.key !== sessionLogoutKey) return;
+  volatileSession = null;
+  try { window.sessionStorage.removeItem(sessionKey); } catch { /* storage indisponível */ }
+}
+
+export function readSessionLogoutMarker(): string | null {
+  if (typeof window === 'undefined') return null;
+  try { return window.localStorage.getItem(sessionLogoutKey); } catch { return null; }
 }
 
 /**
@@ -72,7 +90,8 @@ export function clearStoredSession() {
 export function expireStoredSession() {
   const session = readStoredSession();
   if (!session) return;
-  writeStoredSession({ ...session, expiresAt: new Date().toISOString() });
+  if (!session.token && Date.parse(session.expiresAt) <= Date.now()) return;
+  writeStoredSession({ ...session, token: '', expiresAt: new Date().toISOString() });
 }
 
 /** O token em vigor, para as requisições do adaptador HTTP. */

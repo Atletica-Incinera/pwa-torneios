@@ -1,13 +1,7 @@
-import { apiRequest } from './api-client.ts';
-import { AuthError, UnauthorizedError, type AuthAdapter, type FrontendRole, type FrontendSession } from './auth-adapter.ts';
+import type { AxiosAdapter } from 'axios';
+import { apiRequest, cancelPendingSessionRefresh, refreshApiSession } from './api-client.ts';
+import { AuthError, UnauthorizedError, type AuthAdapter, type AuthSessionResponse, type FrontendSession } from './auth-adapter.ts';
 import { clearStoredSession, readStoredSession, writeStoredSession } from './session-storage.ts';
-
-/** O que `POST /auth/login` devolve. O prazo e o papel são decididos lá. */
-type LoginResponse = {
-  token: string;
-  expiresAt: string;
-  user: { email: string; name: string; role: FrontendRole; scope?: string };
-};
 
 /**
  * Autenticação pela API.
@@ -16,16 +10,17 @@ type LoginResponse = {
  * valendo como guarda de navegação, mas quem decide de verdade é o servidor:
  * aqui elas só evitam mostrar um caminho que terminaria em 403.
  */
-export function createHttpAuthAdapter(fetchImpl?: typeof fetch): AuthAdapter {
+export function createHttpAuthAdapter(adapter?: AxiosAdapter): AuthAdapter {
   return {
     async signIn(email, password, remembered) {
-      let payload: LoginResponse;
+      let payload: AuthSessionResponse;
       try {
-        payload = await apiRequest<LoginResponse>({
+        payload = await apiRequest<AuthSessionResponse>({
           path: '/auth/login',
           method: 'POST',
           body: { email: email.trim().toLowerCase(), password },
-          fetchImpl,
+          adapter,
+          skipAuthRefresh: true,
         });
       } catch (caught) {
         // Credencial recusada chega como 401: é mensagem de login, não sessão vencida.
@@ -40,17 +35,18 @@ export function createHttpAuthAdapter(fetchImpl?: typeof fetch): AuthAdapter {
     async signOut() {
       const token = readStoredSession()?.token;
       // A sessão local sai de qualquer forma: o servidor pode estar inacessível.
+      cancelPendingSessionRefresh();
       clearStoredSession();
-      if (!token) return;
-      try { await apiRequest({ path: '/auth/logout', method: 'POST', token, fetchImpl }); } catch { /* já saiu daqui */ }
+      try {
+        await apiRequest({ path: '/auth/logout', method: 'POST', token, adapter, skipAuthRefresh: true });
+      } catch { /* já saiu daqui */ }
     },
 
     async restore() {
       const session = readStoredSession();
       if (!session?.token) return null;
-      // Vencida continua gravada, para todas as telas abertas concordarem que
-      // expirou. Sair de verdade é o `signOut`, e o login novo sobrescreve.
-      return Date.parse(session.expiresAt) > Date.now() ? session : null;
+      if (Date.parse(session.expiresAt) > Date.now()) return session;
+      try { return await refreshApiSession(adapter); } catch { return null; }
     },
   };
 }

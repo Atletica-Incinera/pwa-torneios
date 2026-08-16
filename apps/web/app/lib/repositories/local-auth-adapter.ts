@@ -28,6 +28,7 @@ export function createLocalAuthAdapter(): AuthAdapter {
       const user = demo ?? invited;
       if (!user) throw new AuthError('E-mail ou senha inválidos.');
       const session: FrontendSession = {
+        id: `local:${user.email}`,
         email: user.email,
         name: user.name,
         role: user.role,

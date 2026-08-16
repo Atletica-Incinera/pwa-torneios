@@ -1,4 +1,5 @@
 import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import type { AxiosAdapter } from 'axios';
 import { apiRequest } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
 import type { Action } from './actions.ts';
@@ -35,7 +36,7 @@ export type HttpAdapterOptions = {
   /** Edição a carregar. `active` deixa o servidor resolver qual é a vigente. */
   edition?: string;
   getToken?: () => string | null;
-  fetchImpl?: typeof fetch;
+  adapter?: AxiosAdapter;
   connect?: RealtimeConnect;
 };
 
@@ -52,7 +53,7 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
   const edition = options.edition ?? 'active';
   const token = () => (options.getToken ?? readSessionToken)();
   const request = <T>(path: string, method: 'GET' | 'POST', body?: unknown) =>
-    apiRequest<T>({ path, method, body, token: token(), fetchImpl: options.fetchImpl });
+    apiRequest<T>({ path, method, body, token: token(), adapter: options.adapter });
 
   return {
     async load() {
