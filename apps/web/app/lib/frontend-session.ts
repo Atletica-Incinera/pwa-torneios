@@ -50,11 +50,26 @@ export function useFrontendSession() {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     let active = true;
+    /**
+     * Bilhete de última-vence, o mesmo do canal de tempo real.
+     *
+     * Cada instância que grava sessão emite um evento, então os `sync` vêm em
+     * rajada e as leituras do storage se intercalam com as restaurações. Só
+     * `active` não bastava: ele protege contra a desmontagem, não contra a
+     * ordem — quem lia primeiro e resolvia por último ditava o resultado, e
+     * escrevia na tela um retrato mais velho que o que já estava lá. Era o que
+     * deixava `expired` falso num incidente que devia expulsar, ou verdadeiro
+     * logo depois de um login que deu certo.
+     */
+    let issued = 0;
+    let applied = 0;
     const sync = () => {
+      const ticket = ++issued;
       // O prazo é lido antes de restaurar: restaurar já descarta a sessão vencida.
       const wasExpired = isSessionExpired();
       void adapter.restore().then((restored) => {
-        if (!active) return;
+        if (!active || ticket < applied) return;
+        applied = ticket;
         setSession(restored);
         setExpired(!restored && wasExpired);
         setHydrated(true);

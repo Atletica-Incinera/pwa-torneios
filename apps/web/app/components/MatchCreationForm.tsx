@@ -96,7 +96,9 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
         reason: advisoryConflicts.length ? advisoryConflicts.map((item) => item.message).join(' ') : undefined,
       },
     });
-    if (saved.ok) { router.push(`/matches?modalidade=${encodeURIComponent(discipline)}&created=1`); router.refresh(); } else setSubmitting(false);
+    if (saved.ok) { router.push(`/matches?modalidade=${encodeURIComponent(discipline)}&created=1`); router.refresh(); return; }
+    setError(saved.error ?? 'Não foi possível agendar o jogo.');
+    setSubmitting(false);
   }
 
   const contractNote = tournament

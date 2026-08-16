@@ -25,15 +25,32 @@ export type ApiRequest = {
 };
 
 /**
- * A API embrulha a resposta em `{ data, meta }`; o mock do contrato devolve o
- * payload cru. Nenhum corpo do contrato tem `data` na raiz, então reconhecer o
- * envelope pela chave serve aos dois sem configuração.
+ * O que pode viajar ao lado de `data` num envelope.
+ *
+ * É esta lista que define a forma: `{ data, meta }` do contrato, os `links` de
+ * paginação e o `{ data, statusCode, timestamp, path }` que alguns
+ * interceptors do Nest devolvem. Contar chaves não distingue nada — um
+ * `{ data, meta, links }` tem três e é envelope.
+ */
+const envelopeCompanions = new Set(['meta', 'links', 'statusCode', 'timestamp', 'path', 'success']);
+
+/**
+ * A API embrulha a resposta; o mock do contrato devolve o payload cru. Nenhum
+ * corpo do contrato tem `data` na raiz, então reconhecer o envelope pela forma
+ * serve aos dois sem configuração.
+ *
+ * O que não dá para decidir é recusado aqui, alto. Passar adiante um corpo
+ * embrulhado que não foi reconhecido termina em `normalizeSnapshot`, que
+ * completa cada coleção com vazio: a tela fica pronta, plausível e sem nada
+ * dentro — a pior falha possível, porque não parece falha.
  */
 function unwrap<T>(payload: unknown): T {
-  if (payload && typeof payload === 'object' && 'data' in payload && Object.keys(payload).length <= 2) {
-    return (payload as { data: T }).data;
-  }
-  return payload as T;
+  if (!payload || typeof payload !== 'object') return payload as T;
+  const keys = Object.keys(payload);
+  if (!keys.includes('data')) return payload as T;
+  const strangers = keys.filter((key) => key !== 'data' && !envelopeCompanions.has(key));
+  if (strangers.length) throw new Error(`O servidor respondeu num formato que o app não reconhece (campos: ${keys.join(', ')}).`);
+  return (payload as { data: T }).data;
 }
 
 async function readError(response: Response) {

@@ -79,9 +79,19 @@ do acesso, quando o servidor o informa.
 
 Toda resposta com corpo pode vir embrulhada em `{ data, meta }` ou crua, e o
 cliente aceita as duas. `unwrap`, em `api-client.ts`, reconhece o envelope pela
-chave `data` na raiz de um objeto com no máximo duas chaves — nenhum corpo deste
-contrato tem `data` na raiz, então a heurística não tem como confundir um
-snapshot com um envelope, e nenhuma configuração precisa dizer qual é qual.
+**forma**: `data` na raiz, acompanhada apenas de campos de envelope —
+`meta`, `links`, `statusCode`, `timestamp`, `path`, `success`. Nenhum corpo deste
+contrato tem `data` na raiz, então não há como confundir um snapshot com um
+envelope, e nenhuma configuração precisa dizer qual é qual.
+
+`data` na raiz com companhia fora dessa lista é **recusado em voz alta**, com
+erro na tela. É de propósito: desembrulhar o corpo errado — ou deixar passar
+inteiro um envelope não reconhecido — termina em `normalizeSnapshot`, que
+completa cada coleção com vazio. O app diria `pronto`, mostraria telas vazias e
+não registraria erro nenhum. Se a API precisar de um campo novo ao lado de
+`data`, ele entra nessa lista antes de entrar no ar. Pela mesma razão, uma
+resposta de snapshot que não traga nenhum campo do estado da edição é recusada
+em vez de virar uma edição vazia.
 
 A tolerância existe porque as duas metades já nasceram diferentes: a API
 embrulha, o mock do contrato responde cru. Não é convite a alternar — escolha
@@ -162,7 +172,8 @@ Em troca, o servidor precisa garantir a unicidade:
 - id repetido numa criação → `409`, e a mesma operação byte a byte é tratada
   como repetição inofensiva (devolve o estado, não duplica);
 - equipe usa slug legível (`aurora`), então **nome duplicado também é `409`** —
-  o formulário já mostra "Já existe uma equipe com este nome".
+  o formulário mostra a mensagem que vier no 409, presa ao campo, e não só o
+  aviso da checagem local (que enxerga apenas o que já está nesta tela).
 
 ### Consequências que o servidor precisa reproduzir
 

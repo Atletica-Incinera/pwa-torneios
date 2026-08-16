@@ -275,7 +275,7 @@ function LiveMatchContent() {
       confirmLabel: 'Iniciar partida',
     }))) return;
     operationLock.current = true;
-    await dispatch({
+    const saved = await dispatch({
       type: 'match/start',
       payload: {
         id: match.id,
@@ -302,9 +302,13 @@ function LiveMatchContent() {
       },
       audit: { action: 'Partida iniciada', entity: `${match.entryA} × ${match.entryB}`, after: `Ao vivo · ${describeCompletion(regulation)}`, reason: note },
     });
+    operationLock.current = false;
+    // O anúncio e o apito são a confirmação que o operador ouve. Emiti-los sem
+    // saber se o servidor aceitou diz que a partida começou quando ela não
+    // começou — e o erro fica só no toast, que ele pode não estar olhando.
+    if (!saved.ok) return;
     announce('Partida iniciada.');
     playSound(soundForLifecycle('match-start', match.discipline));
-    operationLock.current = false;
   }
 
   async function takeOperation() {
@@ -338,7 +342,7 @@ function LiveMatchContent() {
     if (check.requiresEarlyClose && !(await confirm({ title: `Encerrar ${periodLabel.toLocaleLowerCase('pt-BR')} antecipadamente?`, message: check.message, confirmLabel: 'Encerrar e avançar', danger: true }))) return;
     operationLock.current = true;
     const nextPeriod = currentPeriod + 1;
-    void dispatch({
+    const saved = await dispatch({
       type: 'match/updateClock',
       payload: {
         id: match.id,
@@ -355,21 +359,23 @@ function LiveMatchContent() {
       },
       audit: { action: `${periodLabel} avançado`, entity: `${match.entryA} × ${match.entryB}`, before: String(currentPeriod), after: String(nextPeriod), reason: note },
     });
+    window.setTimeout(() => { operationLock.current = false; }, 350);
+    if (!saved.ok) return;
     setClock(0);
     announce(`${periodLabel} ${nextPeriod} pronto para começar.`);
     if (!hasClock) playSound(soundForLifecycle('period-start', match.discipline));
-    window.setTimeout(() => { operationLock.current = false; }, 350);
   }
 
   async function startOvertime() {
     if (!allowed || !live || finished || operationLock.current) return;
     if (!(await confirm({ title: 'Iniciar prorrogação?', message: `${overtimePeriods} período de ${completion.mode === 'periods' ? completion.overtimeDurationMinutes : 0} min previsto no regulamento para desempatar.`, confirmLabel: 'Iniciar prorrogação' }))) return;
     operationLock.current = true;
-    await dispatch({ type: 'match/updateClock', payload: { id: match.id, patch: { currentPeriod: currentPeriod + 1, clockSeconds: 0, paused: false, runningSince: new Date().toISOString(), periodScoreA: 0, periodScoreB: 0 } }, audit: { action: 'Prorrogação iniciada', entity: `${match.entryA} × ${match.entryB}`, after: `${homeScore} × ${awayScore}` } });
+    const saved = await dispatch({ type: 'match/updateClock', payload: { id: match.id, patch: { currentPeriod: currentPeriod + 1, clockSeconds: 0, paused: false, runningSince: new Date().toISOString(), periodScoreA: 0, periodScoreB: 0 } }, audit: { action: 'Prorrogação iniciada', entity: `${match.entryA} × ${match.entryB}`, after: `${homeScore} × ${awayScore}` } });
+    operationLock.current = false;
+    if (!saved.ok) return;
     setClock(0);
     announce('Prorrogação iniciada.');
     playSound(soundForLifecycle('period-start', match.discipline));
-    operationLock.current = false;
   }
 
   async function undoLastAction() {
@@ -378,18 +384,20 @@ function LiveMatchContent() {
     if (!(await confirm({ title: 'Desfazer último evento?', message: `${last.type}: ${last.detail}. O placar também será restaurado.`, confirmLabel: 'Desfazer' }))) return;
     operationLock.current = true;
     const restore = last.previous ?? { scoreA: last.previousScoreA ?? homeScore, scoreB: last.previousScoreB ?? awayScore, periodScoreA, periodScoreB, currentPeriod };
-    await dispatch({
+    const saved = await dispatch({
       type: 'match/undoEvent',
       payload: { id: match.id, eventId: last.id, restore },
       audit: { action: 'Último evento desfeito', entity: `${match.entryA} × ${match.entryB}`, before: `${last.scoreA} × ${last.scoreB}`, after: `${restore.scoreA} × ${restore.scoreB}` },
     });
+    window.setTimeout(() => { operationLock.current = false; }, 350);
+    if (!saved.ok) return;
     announce(`Evento desfeito. Placar restaurado: ${match.entryA}, ${restore.scoreA}; ${match.entryB}, ${restore.scoreB}.`);
     showImpact('orange');
-    window.setTimeout(() => { operationLock.current = false; }, 350);
   }
 
-  function persistFinish(tiebreak?: MatchTiebreakState, reason?: string) {
-    void dispatch({
+  /** Devolve se o servidor aceitou: encerrar é o resultado oficial da partida. */
+  async function persistFinish(tiebreak?: MatchTiebreakState, reason?: string) {
+    const saved = await dispatch({
       type: 'match/finish',
       payload: {
         id: match.id,
@@ -402,8 +410,10 @@ function LiveMatchContent() {
         reason,
       },
     });
+    if (!saved.ok) return false;
     announce(`Partida encerrada. Placar final: ${match.entryA}, ${homeScore}; ${match.entryB}, ${awayScore}.`);
     playSound(soundForLifecycle('match-end', match.discipline));
+    return true;
   }
 
   async function finishMatch() {
@@ -423,7 +433,7 @@ function LiveMatchContent() {
       danger: true,
     }))) return;
     operationLock.current = true;
-    persistFinish(undefined, reason);
+    await persistFinish(undefined, reason);
     operationLock.current = false;
   }
 
@@ -442,8 +452,9 @@ function LiveMatchContent() {
       decidedBy: session?.name ?? 'Operador',
       at: new Date().toISOString(),
     };
-    setTiebreakOpen(false);
-    persistFinish(tiebreak, tiebreak.reason);
+    // O painel só fecha quando o encerramento é aceito: recusado, o critério e
+    // o motivo digitados continuam na tela para o operador tentar de novo.
+    void persistFinish(tiebreak, tiebreak.reason).then((finished) => { if (finished) setTiebreakOpen(false); });
   }
 
   if (invalidMatch) return <main className="app-screen live-screen theme-matches"><div className="empty-state"><strong>PARTIDA NÃO ENCONTRADA</strong><p>O identificador informado não pertence à edição atual.</p><Link href={`/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`} className="wide-action">VOLTAR PARA JOGOS</Link></div><BottomNav active="matches" /></main>;

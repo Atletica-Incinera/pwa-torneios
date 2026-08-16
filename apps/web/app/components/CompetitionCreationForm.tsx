@@ -36,7 +36,9 @@ export function CompetitionCreationForm() {
       },
       audit: { action: 'Torneio criado', entity: form.name.trim(), after: `Edição ${form.year}` },
     });
-    if (saved.ok) router.push('/competitions'); else setSubmitting(false);
+    if (saved.ok) { router.push('/competitions'); return; }
+    setError(saved.error ?? 'Não foi possível criar o torneio.');
+    setSubmitting(false);
   }
 
   return <AppShell active="profile" eyebrow="ORGANIZAÇÃO" title="NOVO TORNEIO" subtitle="Crie o torneio e defina o ano da primeira edição"><form className="entity-form" onSubmit={(event) => void submit(event)} noValidate><label><span>Nome do torneio</span><input value={form.name} onChange={(event) => { update('name', event.target.value); if (!form.slug) update('slug', slugify(event.target.value)); }} placeholder="Ex.: InterEng" autoFocus required /></label><label><span>Identificador público</span><input value={form.slug} onChange={(event) => update('slug', slugify(event.target.value))} placeholder="intereng" required /></label><label><span>Ano da primeira edição</span><input type="number" min={new Date().getFullYear() - 1} max={new Date().getFullYear() + 10} value={form.year} onChange={(event) => update('year', event.target.value)} required /></label><label><span>Início</span><input type="date" value={form.start} onChange={(event) => update('start', event.target.value)} required /></label><label><span>Encerramento</span><input type="date" min={form.start} value={form.end} onChange={(event) => update('end', event.target.value)} required /></label>{error ? <p className="form-feedback form-feedback-error" role="alert">{error}</p> : null}<div className="form-actions"><Link href="/competitions" className="secondary-button">Cancelar</Link><button type="submit" className="primary-button" disabled={submitting}>{submitting ? 'Criando…' : 'Criar torneio'}</button></div></form></AppShell>;

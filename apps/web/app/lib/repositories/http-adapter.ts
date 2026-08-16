@@ -5,10 +5,25 @@ import { readSessionToken } from './session-storage.ts';
 import type { ConnectionState, StateAdapter } from './state-adapter.ts';
 
 /**
+ * Os campos que identificam um snapshot. Nenhum outro corpo do contrato os tem.
+ * O `satisfies` é o que faz um campo renomeado no contrato quebrar o typecheck
+ * em vez de enfraquecer a checagem em silêncio.
+ */
+const snapshotFields = ['competitions', 'editions', 'teams', 'athletes', 'disciplines', 'tournaments', 'matches', 'overallRanking', 'staff', 'audit', 'preferences'] as const satisfies readonly (keyof FrontendState)[];
+
+/**
  * O snapshot que o servidor devolve tem o mesmo formato do estado local, mas
  * pode omitir coleções vazias. Completar aqui evita `undefined` em 45 telas.
+ *
+ * Completar o que falta é tolerância; completar **tudo** é inventar uma edição.
+ * Um corpo que não traz nenhum campo do estado — porque veio embrulhado, ou
+ * porque a rota mudou — sairia daqui como um snapshot vazio e plausível, e a
+ * tela diria `pronto` sem ter carregado nada. Por isso recusa em voz alta.
  */
 export function normalizeSnapshot(payload: Partial<FrontendState>): FrontendState {
+  if (!payload || typeof payload !== 'object' || !snapshotFields.some((field) => field in payload)) {
+    throw new Error('O servidor respondeu sem o estado da edição.');
+  }
   return {
     ...initialFrontendState,
     ...payload,

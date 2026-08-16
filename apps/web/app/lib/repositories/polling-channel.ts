@@ -6,12 +6,15 @@ import { normalizeSnapshot, type RealtimeConnect } from './http-adapter.ts';
 /**
  * Tempo real pobre: relê o snapshot de tempos em tempos.
  *
- * Existe como ponte enquanto a API não expõe o stream por edição. Não é o
- * destino — é o que evita a tela congelar em silêncio, que era exatamente a
- * promessa quebrada quando se decidiu que conexão é obrigatória.
+ * Não é o transporte padrão — quem manda é o stream por edição, e este canal
+ * entra quando `NEXT_PUBLIC_REALTIME=poll` escolhe a ponte, seja porque o
+ * ambiente não tem o stream de pé, seja porque um proxy no caminho não deixa o
+ * `EventSource` viver. O que ele garante é a tela não congelar em silêncio, que
+ * era a promessa quebrada quando se decidiu que conexão é obrigatória.
  *
  * Em aba de segundo plano não gasta rede: quem não está olhando não precisa do
- * placar atualizado, e o navegador estrangula o timer de qualquer forma.
+ * placar atualizado, e o navegador estrangula o timer de qualquer forma. Mas a
+ * volta para a aba busca na hora, sem esperar o ciclo.
  */
 export type ChannelOptions = {
   /** Edição a acompanhar. `active` deixa o servidor resolver qual é a vigente. */
@@ -35,6 +38,8 @@ export function createPollingChannel(options: ChannelOptions = {}): RealtimeConn
     let stopped = false;
     let failures = 0;
     let timer: number | undefined;
+    /** Um ciclo foi pulado por a aba estar escondida: a tela está atrasada. */
+    let skipped = false;
 
     const schedule = () => {
       if (stopped) return;
@@ -43,7 +48,8 @@ export function createPollingChannel(options: ChannelOptions = {}): RealtimeConn
 
     const tick = async () => {
       if (stopped) return;
-      if (typeof document !== 'undefined' && document.hidden) return schedule();
+      if (typeof document !== 'undefined' && document.hidden) { skipped = true; return schedule(); }
+      skipped = false;
       try {
         // Sem sessão, o app é o do espectador: pede a versão pública.
         const path = token() ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
@@ -60,7 +66,25 @@ export function createPollingChannel(options: ChannelOptions = {}): RealtimeConn
       schedule();
     };
 
+    /**
+     * Voltar para a aba não pode custar um ciclo inteiro de atraso: quem
+     * reabre o app vê o placar de até cinco segundos atrás sem nenhum sinal de
+     * que a tela está velha. Só busca se algum ciclo foi mesmo pulado — trocar
+     * de aba sem perder nada não vira requisição.
+     */
+    const wake = () => {
+      if (stopped || document.hidden || !skipped) return;
+      window.clearTimeout(timer);
+      void tick();
+    };
+
+    const observable = typeof document !== 'undefined';
+    if (observable) document.addEventListener('visibilitychange', wake);
     schedule();
-    return () => { stopped = true; window.clearTimeout(timer); };
+    return () => {
+      stopped = true;
+      if (observable) document.removeEventListener('visibilitychange', wake);
+      window.clearTimeout(timer);
+    };
   };
 }

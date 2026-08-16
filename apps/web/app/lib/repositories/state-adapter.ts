@@ -4,9 +4,8 @@ import type { Action } from '@atletica-incinera/intereng-contract/actions';
 /**
  * A fronteira entre as telas e a origem dos dados.
  *
- * Hoje existe uma implementação (`localStorage`). Quando o backend entrar, a
- * implementação HTTP satisfaz esta mesma interface e a escolha passa a ser de
- * ambiente — nenhuma tela precisa saber de onde o dado veio.
+ * Duas implementações satisfazem esta interface: `localStorage` e HTTP. A
+ * escolha é de ambiente, e nenhuma tela precisa saber de onde o dado veio.
  */
 export type StateAdapter = {
   /** Snapshot completo da edição. */
@@ -28,7 +27,10 @@ export type ConnectionState = 'online' | 'offline';
 
 export type DataSource = 'local' | 'http';
 
-/** Origem dos dados escolhida por ambiente. Só `local` existe até a Fase 5. */
+/**
+ * Origem dos dados escolhida por ambiente. `http` é o alvo do build de e2e
+ * contra a API; `local` é o padrão e o que os e2e de navegador usam.
+ */
 export function resolveDataSource(): DataSource {
   return process.env.NEXT_PUBLIC_DATA_SOURCE === 'http' ? 'http' : 'local';
 }

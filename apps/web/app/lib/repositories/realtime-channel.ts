@@ -57,6 +57,16 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
     let source: EventSource | undefined;
     let closed = false;
     let attempt = 0;
+    /**
+     * Houve queda desde a última abertura.
+     *
+     * Separado de `attempt` porque a espera acumulada é reciclada quando a rede
+     * volta, e a janela cega não: reaproveitar o contador para as duas coisas
+     * fazia a reabertura logo após um apagão de rede não rebuscar o snapshot.
+     */
+    let missedWindow = false;
+    /** Espera pela volta da rede em curso, para o desligamento poder desfazê-la. */
+    let waitingForNetwork = false;
     let lastEventId = '';
     /** Última busca disparada: resposta que chega fora de ordem é descartada. */
     let requested = 0;
@@ -80,12 +90,43 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
       }
     }
 
+    function offline() {
+      return typeof navigator !== 'undefined' && navigator.onLine === false;
+    }
+
+    /**
+     * Sem rede o gatilho é a volta dela, não o relógio.
+     *
+     * Insistir por timer enquanto o aparelho está offline só consome tentativas:
+     * o contador ia a cada volta ao teto e nunca voltava, então um apagão de
+     * poucos minutos deixava o app reconectando de 30 em 30 s **depois** de a
+     * rede já ter voltado. A espera acumulada não descreve mais nada quando a
+     * causa da queda desaparece, e por isso ela zera aqui.
+     */
+    function waitForNetwork() {
+      if (waitingForNetwork) return;
+      waitingForNetwork = true;
+      window.addEventListener('online', resumeFromNetwork, { once: true });
+    }
+
+    function resumeFromNetwork() {
+      waitingForNetwork = false;
+      if (closed) return;
+      attempt = 0;
+      open();
+    }
+
     function scheduleReconnect() {
+      if (closed) return;
+      // Quem reabre daqui em diante somos nós: o que passar até lá é janela cega.
+      missedWindow = true;
+      if (offline()) return waitForNetwork();
       attempt += 1;
       const delay = Math.min(maxBackoffMs, 1_000 * 2 ** (attempt - 1));
       retry = window.setTimeout(() => {
-        // Sem rede não adianta insistir; espera a próxima janela.
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) return scheduleReconnect();
+        if (closed) return;
+        // A rede pode ter caído durante a espera: aí quem manda é o evento.
+        if (offline()) return scheduleReconnect();
         open();
       }, delay + delay * 0.25 * Math.random());
     }
@@ -98,7 +139,8 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
       source = new EventSourceImpl(`${apiBaseUrl()}/editions/${edition}/stream${query}`);
 
       source.addEventListener('open', () => {
-        const reconnected = attempt > 0;
+        const reconnected = missedWindow;
+        missedWindow = false;
         attempt = 0;
         onConnection?.('online');
         // Reconexão pode ter tido janela cega: puxa o estado atual.
@@ -127,8 +169,10 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
       });
 
       source.addEventListener('error', () => {
-        onConnection?.('offline');
+        // O desligamento vem primeiro: um evento que chegue depois do
+        // unsubscribe não pode mais falar com a tela que já foi embora.
         if (closed) return;
+        onConnection?.('offline');
         // `CONNECTING` é o navegador reconectando sozinho; `CLOSED` é ele
         // desistindo — respostas não-2xx e content-type errado caem aqui.
         if (source?.readyState === EventSourceImpl.CONNECTING) return;
@@ -140,6 +184,8 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
     open();
     return () => {
       closed = true;
+      window.removeEventListener('online', resumeFromNetwork);
+      waitingForNetwork = false;
       window.clearTimeout(coalesce);
       window.clearTimeout(retry);
       source?.close();

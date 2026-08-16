@@ -4,6 +4,7 @@ import { seededFrontendState, type FrontendState } from '@atletica-incinera/inte
 import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import { FrontendStateProvider } from '../../app/lib/repositories/frontend-state-provider';
 import { useFrontendState } from '../../app/lib/repositories/browser-repository';
+import { UiProvider } from '../../app/components/UiProvider';
 import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
 
 /**
@@ -60,6 +61,25 @@ describe('provider de estado', () => {
     // O gol não pode sumir da tela porque uma busca velha chegou atrasada.
     expect(screen.getByText(`equipes: ${antes + 1}`)).toBeTruthy();
     expect(api!.state.teams.aurora?.name).toBe('Aurora');
+  });
+
+  it('a recusa do servidor chega ao operador com o texto que o servidor mandou', async () => {
+    // O despachante da API responde 501 para a ação que ainda não existe lá, e
+    // é esse texto — não um literal do app — que faz o operador parar de tentar.
+    const recusa = 'Esta operação ainda não existe no servidor.';
+    const adapter: StateAdapter = {
+      load: async () => seededFrontendState,
+      apply: async () => { throw new Error(recusa); },
+      subscribe: () => () => {},
+    };
+    let api: ReturnType<typeof useFrontendState> | null = null;
+
+    render(<UiProvider><FrontendStateProvider adapter={adapter}><Sonda onReady={(value) => { api = value; }} /></FrontendStateProvider></UiProvider>);
+    await waitFor(() => expect(api).not.toBeNull());
+
+    const saved = await api!.dispatch(criarAurora);
+    expect(saved).toEqual({ ok: false, error: recusa });
+    expect(await screen.findByText(recusa)).toBeTruthy();
   });
 
   it('o hook recusa montar fora do provider', () => {

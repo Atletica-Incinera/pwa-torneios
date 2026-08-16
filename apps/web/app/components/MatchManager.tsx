@@ -27,12 +27,38 @@ export function MatchManager({ match }: { match: MatchBase }) {
     walkoverWinner: override.walkoverWinner ?? '',
   }), [currentStatus, match.date, match.time, match.venue, override.date, override.reason, override.time, override.venue, override.walkoverWinner]);
   const [draft, setDraft] = useState(initial);
+  /**
+   * O retrato do qual este rascunho nasceu.
+   *
+   * Antes o rascunho era comparado com a verdade corrente, e a verdade muda
+   * sozinha: outro operador remarca a mesma partida, o snapshot chega pelo
+   * tempo real e o formulário passa a divergir sem ninguém ter digitado nada —
+   * diálogo de descartar alterações a cada clique em link, e a mudança remota
+   * sumindo da tela sem aviso. Contra o retrato de origem, divergir só pode
+   * ser obra de quem está no teclado.
+   */
+  const [seed, setSeed] = useState(initial);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [correction, setCorrection] = useState({ scoreA: String(override.scoreA ?? 0), scoreB: String(override.scoreB ?? 0), reason: '' });
 
+  const truth = JSON.stringify(initial);
+  /** Há edição em andamento: o rascunho não é mais o retrato de onde nasceu. */
+  const pending = JSON.stringify(draft) !== JSON.stringify(seed);
+  /** A partida mudou por fora desde que este rascunho começou. */
+  const remote = JSON.stringify(seed) !== truth;
+  /**
+   * Ajuste durante o render, que o React reexecuta antes de pintar.
+   *
+   * Sem edição em andamento o rascunho acompanha a mudança remota em silêncio:
+   * é o dado novo que a tela deve mostrar, e não há nada a perder. Com edição
+   * em andamento ele fica de pé e a divergência vira aviso — jogar fora o que
+   * a pessoa escreveu é pior que avisá-la de que o chão se mexeu.
+   */
+  if (remote && !pending) { setSeed(initial); setDraft(initial); }
+
   const requirement = statusRequirements[draft.status];
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+  const dirty = pending && JSON.stringify(draft) !== truth;
   const allowed = canManageDiscipline(session, match.discipline);
   const locked = isTerminalMatch(currentStatus);
   const options = matchTransitions[currentStatus] ?? [currentStatus];
@@ -96,7 +122,10 @@ export function MatchManager({ match }: { match: MatchBase }) {
       },
     });
     setSubmitting(false);
-    if (!saved.ok) setError('Não foi possível salvar as alterações.');
+    if (!saved.ok) { setError(saved.error ?? 'Não foi possível salvar as alterações.'); return; }
+    // O que acabou de ser gravado passa a ser a origem do rascunho: sem isto, o
+    // retorno do próprio salvamento chegaria à tela como "mudou por fora".
+    setSeed(draft);
   }
 
   async function applyCorrection(event: FormEvent) {
@@ -135,6 +164,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
   return <>
     <form className="entity-form" onSubmit={save} noValidate>
       <div className="form-contract-note"><p>{locked ? `Esta partida está em estado final (${currentStatus}). Use a retificação de resultado para corrigir o placar.` : requirement.consequence}</p></div>
+      {remote && !submitting ? <div className="info-banner" role="alert"><TriangleAlert size={18} /><div><strong>Esta partida mudou enquanto você editava</strong><p>Agora está {initial.status} · {initial.date} {initial.time} · {initial.venue}. O formulário manteve o que você escreveu; salvar substitui esses dados.</p><button type="button" className="secondary-button" onClick={() => { setDraft(initial); setSeed(initial); setError(''); }}>Usar os dados atuais</button></div></div> : null}
       <label><span>Data</span><input type="date" value={draft.date} onChange={(event) => update('date', event.target.value)} required disabled={locked} /></label>
       <label><span>Horário</span><input type="time" value={draft.time} onChange={(event) => update('time', event.target.value)} required disabled={locked} /></label>
       <label><span>Local</span><input value={draft.venue} onChange={(event) => update('venue', event.target.value)} required disabled={locked} /></label>

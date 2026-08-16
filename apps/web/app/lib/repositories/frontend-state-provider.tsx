@@ -191,8 +191,12 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
       return { ok: true };
     } catch (caught) {
       handleUnauthorized(caught);
+      // A mensagem do servidor é a interface: o despachante da API responde 501
+      // para a operação que ainda não existe lá, e é esse texto que faz o
+      // operador parar de tentar. Um literal fixo no lugar dele o faria repetir
+      // a mesma ação para sempre, achando que é a rede.
       const message = caught instanceof Error ? caught.message : 'Não foi possível salvar. Tente novamente.';
-      toast('Não foi possível salvar. Tente novamente.', 'error');
+      toast(message, 'error');
       return { ok: false, error: message };
     }
   }, [absorb, adapter]);

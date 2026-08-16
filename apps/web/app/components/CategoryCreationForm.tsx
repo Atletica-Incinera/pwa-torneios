@@ -54,7 +54,9 @@ export function CategoryCreationForm() {
       },
       audit: { action: 'Categoria criada', entity: label, after: discipline },
     });
-    if (saved.ok) { router.push(`/tournaments/${id}?aba=regras`); router.refresh(); } else setSubmitting(false);
+    if (saved.ok) { router.push(`/tournaments/${id}?aba=regras`); router.refresh(); return; }
+    setError(saved.error ?? 'Não foi possível criar a categoria.');
+    setSubmitting(false);
   }
 
   if (hydrated && !disciplines.length) {

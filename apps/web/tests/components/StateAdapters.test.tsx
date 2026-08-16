@@ -73,3 +73,31 @@ describe('contrato entre as origens de dados', () => {
     expect(window.localStorage.getItem(storageKey)).toBeNull();
   });
 });
+
+describe('envelope da resposta', () => {
+  /** Um servidor de uma resposta só: o que interessa aqui é a forma do corpo. */
+  function adapterReading(body: unknown) {
+    const fetchImpl: typeof fetch = async () => Response.json(body);
+    return createHttpStateAdapter({ fetchImpl, getToken: () => 'token-de-teste' });
+  }
+
+  it('desembrulha o envelope da API mesmo quando ele traz mais de duas chaves', async () => {
+    const state = await adapterReading({ data: seededFrontendState, meta: { revision: 4 }, links: { self: '/editions/active/snapshot' } }).load();
+    expect(Object.keys(state.teams)).toEqual(Object.keys(seededFrontendState.teams));
+  });
+
+  it('o payload cru do mock do contrato continua chegando inteiro', async () => {
+    const state = await adapterReading(seededFrontendState).load();
+    expect(Object.keys(state.teams)).toEqual(Object.keys(seededFrontendState.teams));
+  });
+
+  it('recusa em voz alta o corpo com `data` e companhia que não é de envelope', async () => {
+    await expect(adapterReading({ data: seededFrontendState, page: 1, total: 3 }).load()).rejects.toThrow(/não reconhece/i);
+  });
+
+  it('recusa a resposta sem o estado da edição em vez de devolver uma edição vazia', async () => {
+    // Sem isto, `normalizeSnapshot` completaria cada coleção com vazio: a tela
+    // ficaria `pronta`, plausível e sem nada dentro, sem nenhum erro.
+    await expect(adapterReading({ ok: true }).load()).rejects.toThrow(/estado da edição/i);
+  });
+});
