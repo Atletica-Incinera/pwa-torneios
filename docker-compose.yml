@@ -107,6 +107,7 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-local-access-secret-change-in-production}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-refresh-secret-change-in-production}
+      STAFF_INVITE_PASSWORD: ${STAFF_INVITE_PASSWORD:?Defina STAFF_INVITE_PASSWORD}
       CORS_ORIGINS: http://${WEB_HOST:-app.localhost},http://localhost:3001
       COOKIE_SECURE: "false"
       COOKIE_SAME_SITE: lax
