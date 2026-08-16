@@ -92,7 +92,11 @@ telas do front falam nome de equipe.
 Login e logout existem e batem. Divergem: a API usa access de 15 min + refresh
 de 7 dias; o contrato usa um token com `expiresAt`. O tempo real da API é **SSE
 por partida** (`GET /matches/:matchId/stream`, com replay por `Last-Event-ID`);
-o front assina **a edição** e espera `edition-snapshot` por Socket.IO.
+o front assina **a edição**.
+
+> Na foto acima o front ainda esperava Socket.IO. Não espera mais: a decisão
+> registrada na seção 5 foi tomada e o canal do front é SSE desde então. O que
+> continua divergindo é a granularidade — partida contra edição.
 
 ## 3. O que falta no banco — vale para os dois caminhos
 
@@ -123,11 +127,12 @@ As 5 rotas do contrato viram uma camada fina sobre os services que já existem: 
 montador de snapshot compõe o que hoje são 15 GETs, e o despachante de ações
 traduz os 32 tipos para os services. O REST continua vivo para quem quiser.
 
-- Front: **nenhuma mudança**, exceto trocar o canal de tempo real de Socket.IO
-  para SSE — um arquivo, ~30 linhas, se a API preferir manter o SSE dela.
+- Front: **nenhuma mudança**. A troca do canal de tempo real para SSE, orçada
+  aqui em um arquivo e ~30 linhas, já foi feita — ver a seção 5.
 - API: as 8 lacunas de schema + 3 controllers + o despachante.
-- Os 190 testes do front seguem valendo, e `npm run test:e2e:http` passa a
-  apontar para a API real em vez do mock.
+- Os testes seguem valendo — 90 de regra no pacote, 31 de app no front — e
+  `npm run test:e2e:http` passa a apontar para a API real em vez do mock, que é
+  o que `npm run test:e2e:api` já faz.
 
 ### B — o front se adapta ao REST + SSE
 
@@ -150,10 +155,30 @@ front sem remover nenhuma delas — paga duas vezes.
 
 O que precisa de decisão humana, e não minha:
 
-1. Se a TASK-15 passa a ser a borda de snapshot, e quem escreve isso.
-2. Se o tempo real fica em SSE (o front cede, custo baixo) ou vira Socket.IO com
-   snapshot de edição (a API cede).
-3. Onde moram os módulos de regra. Se a API reimplementar a cascata do
-   chaveamento e a trava do operador, as duas metades divergem e os 87 unitários
-   do front deixam de valer como contrato. O caminho barato é extraí-los para um
-   pacote consumido pelos dois.
+1. Se a TASK-15 passa a ser a borda de snapshot, e quem escreve isso. **Em
+   aberto.**
+
+### Decididas em 2026-08-13, e já implementadas
+
+As duas questões abaixo estavam nesta lista. Não estão mais — ficam registradas
+com o que se decidiu e o que foi feito, para ninguém reabrir a discussão lendo a
+versão antiga deste documento.
+
+**O tempo real fica em SSE.** Era "o front cede ou a API cede"; o front cedeu,
+porque o custo estava do lado barato e a API já tinha SSE sobre Redis Streams
+funcionando por partida. O canal vive em
+`apps/web/app/lib/repositories/realtime-channel.ts`, escuta `edition-changed` e
+`edition-snapshot`, e trata reconexão com recuo exponencial, `Last-Event-ID` e
+queda visível na barra de contexto. Socket.IO saiu do front inteiro; o que
+restou de polling é `polling-channel.ts`, atrás de `NEXT_PUBLIC_REALTIME=poll`,
+como plano B para quando o stream não sobe. O que a API precisa entregar está na
+TASK-22.
+
+**Os módulos de regra moram num pacote consumido pelos dois.** Era a opção
+barata e virou a opção tomada: as regras saíram de `apps/web/app/lib` para
+`packages/intereng-contract`, publicado deste repositório e instalado pela API.
+O pacote compila em ESM e CJS — o consumidor NestJS é CommonJS —, e os testes de
+regra passaram a rodar contra o `dist`, que é exatamente o artefato que a API
+importa. Deixaram de ser "os unitários do front" e viraram a suíte de contrato
+das duas metades. A regra que sustenta isso está em
+[ESTADO_DO_PROJETO.md](ESTADO_DO_PROJETO.md): a API importa, não reescreve.

@@ -51,27 +51,29 @@ A stack técnica definida para o backend e infraestrutura é:
 - **Redis** — pub/sub, cache de estado ao vivo e fila leve com BullMQ.
 - **Pino** — logs estruturados em JSON.
 
-Detalhes completos da arquitetura:
-
-- [`docs/STACK.md`](docs/STACK.md)
-- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
-
 Onde o projeto está agora, o que falta e de quem depende cada pendência:
-[`docs/ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md).
+[`docs/ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md). O resto da
+documentação está na tabela mais abaixo.
 
-## Estrutura planejada do repositório
+## Estrutura do repositório
+
+Este repositório é um **workspace npm**: um `package.json` e um lockfile na
+raiz, dois membros declarados em `workspaces`, e `npm install` na raiz
+resolvendo os dois de uma vez. O `packages/` não é uma pasta de conveniência —
+é onde vive o artefato que a API instala, e essa é a razão de o repositório ser
+um workspace em vez de só uma aplicação.
 
 ```txt
 pwa_torneios/
-├── pwa-torneios/                    # este repositório
+├── pwa-torneios/                    # este repositório, o workspace
 │   ├── apps/
-│   │   └── web/                     # PWA em Next.js
-│   ├── docs/
-│   │   ├── BACKLOG.md               # Backlog do MVP
-│   │   ├── STACK.md                 # Stack e decisões técnicas
-│   │   ├── CONTRATO_API.md          # O que a API precisa oferecer
-│   │   ├── INTEGRACAO_API.md        # Estado da API e custo dos caminhos
-│   │   └── DEVELOPMENT.md           # Fluxo de desenvolvimento
+│   │   └── web/                     # a PWA em Next.js
+│   ├── packages/
+│   │   └── intereng-contract/       # @atletica-incinera/intereng-contract:
+│   │                                # tipos da edição, as 32 ações e as regras
+│   │                                # puras. Publicado daqui, instalado pela API
+│   ├── docs/                        # ver a tabela abaixo
+│   ├── package.json                 # workspaces e lockfile único
 │   ├── docker-compose.yml           # Infra + app
 │   ├── docker-compose.api.yml       # API a partir do código-fonte
 │   ├── docker-compose.ghcr.yml      # API a partir da imagem publicada
@@ -83,6 +85,21 @@ pwa_torneios/
 
 A API é um repositório separado e o checkout dela fica **ao lado** deste, nunca
 dentro — o porquê está em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+
+## Os documentos
+
+| Documento | O que responde |
+| --- | --- |
+| [`ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md) | Onde o projeto está, o que falta e de quem depende cada pendência |
+| [`BACKLOG.md`](docs/BACKLOG.md) | O backlog do MVP e os critérios de aceite |
+| [`STACK.md`](docs/STACK.md) | A stack e as decisões técnicas |
+| [`DEVELOPMENT.md`](docs/DEVELOPMENT.md) | Fluxo de trabalho, o pacote de contrato e por que os dois repositórios não se aninham |
+| [`REGRAS_DE_NEGOCIO.md`](docs/REGRAS_DE_NEGOCIO.md) | As regras do torneio e, principalmente, os padrões escolhidos |
+| [`PAPEIS_E_FLUXOS.md`](docs/PAPEIS_E_FLUXOS.md) | Os quatro papéis, o que cada um alcança e os fluxos de tela |
+| [`VISUAL_IMPLEMENTATION_SPEC.md`](docs/VISUAL_IMPLEMENTATION_SPEC.md) | A especificação visual da interface |
+| [`CONTRATO_API.md`](docs/CONTRATO_API.md) | O que a API precisa oferecer para o modo `http` funcionar |
+| [`TASKS_API.md`](docs/TASKS_API.md) | As 12 tasks escritas para colar no repositório da API |
+| [`INTEGRACAO_API.md`](docs/INTEGRACAO_API.md) | O levantamento do estado da API e o custo de cada caminho |
 
 ## Fluxo de desenvolvimento
 

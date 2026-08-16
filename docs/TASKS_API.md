@@ -9,6 +9,12 @@ dois lugares:
 2. as seções `-EXEC` no fim da *Seção 3* de `plano-execucao-api-competicoes.md`,
    depois de `TASK-15-EXEC`.
 
+**Os dois arquivos são de `Atletica-Incinera/intereng-api`, não deste
+repositório.** Procurar `tasks.md` ou `plano-execucao-api-competicoes.md` aqui
+não acha nada, e não é link quebrado: são o destino do texto, e ficam no
+checkout da API — que mora ao lado deste, nunca dentro
+([DEVELOPMENT.md](DEVELOPMENT.md)).
+
 > Levantado sobre `origin/main` em `d527c49`. Estado naquela foto: 23 de 25
 > tasks concluídas, faltando TASK-14 (audit logs) e TASK-15 (rotas públicas).
 > A numeração abaixo continua de onde a delas para. Se o loop tiver avançado,
@@ -90,7 +96,7 @@ Cole no fim do arquivo, mantendo a convenção `- [ ]` / `- [x]`:
 
 ---
 
-## Seções para o `plano-execucao-api-competicoes.md`
+## Seções para o `plano-execucao-api-competicoes.md` (no repositório da API)
 
 ### TASK-16-EXEC — Migrations versionadas e baseline do banco
 
@@ -155,13 +161,26 @@ pelo front.
   (`CORS_ORIGINS`, lista separada por vírgula), `credentials: true` e os
   cabeçalhos `Authorization` e `Content-Type` liberados. Hoje `main.ts` não
   chama `enableCors` de forma alguma.
+* **`http://app.localhost` não é a origem que os testes usam.** É a do ambiente
+  de composição, e é o padrão que os arquivos de compose do front trazem. Mas a
+  suíte que aponta para a API real (`npm run test:e2e:api`) serve o app
+  compilado em **`http://127.0.0.1:3103`** — está em
+  `apps/web/scripts/e2e-target.mjs`, que passa a porta adiante para o
+  Playwright. Origem ausente da lista significa preflight recusado, e preflight
+  recusado significa **todos** os cenários morrendo antes do primeiro
+  `assert` — sem log de aplicação, porque a requisição nunca chega ao handler.
+  `CORS_ORIGINS` precisa aceitar as duas.
 * A resposta de `POST /auth/login` hoje devolve `accessToken`, `refreshToken`,
   `expiresIn: 900` e `staff { id, name, email, isSuperAdmin }`. Falta o que o
   front usa para decidir o que mostrar:
   * **`role`** — o papel efetivo do usuário. O front tem três — `SUPER_ADMIN`,
     `EDITION_ADMIN` e `DISCIPLINE_MANAGER` — e o menu inteiro, além dos
     guardas de rota, dependem dele. `isSuperAdmin` sozinho
-    não distingue coordenador de operador.
+    não distingue coordenador de operador. **Não é o mesmo valor que o `role` do
+    staff no snapshot**, que é um rótulo em português para a tela ler; a
+    tradução entre os dois está na TASK-23. O front recusa entrar sem `role` —
+    e a mensagem que ele mostra é "A API não informou o papel do usuário nesta
+    edição", não um erro genérico, para o caso ser diagnosticável de fora.
   * **`scope`** — a que edições e modalidades o papel se aplica. O serviço já
     monta `editionRoles` em `/auth/me`; a mesma estrutura precisa vir no login,
     senão o front faz duas chamadas para montar uma tela.
@@ -177,9 +196,11 @@ usuário acumula papéis diferentes em edições diferentes — o front espera o
 mais alto, com o detalhe ficando em `scope`.
 
 **Critério de aceite verificável**: um `fetch` disparado de
-`http://app.localhost` para `POST /api/v1/auth/login` completa sem erro de CORS
-e o corpo traz `role`, `scope` e `expiresAt`. Um refresh com o token só no corpo,
-sem cookie nenhum, renova a sessão.
+`http://app.localhost` **e outro de `http://127.0.0.1:3103`** para
+`POST /api/v1/auth/login` completam sem erro de CORS, e o corpo traz `role`,
+`scope` e `expiresAt`. O `role` é uma das três constantes em maiúsculas, nunca o
+rótulo em português. Um refresh com o token só no corpo, sem cookie nenhum,
+renova a sessão.
 
 ---
 
@@ -305,15 +326,59 @@ lado.
   chaves importa e é o que mantém os testes visuais do front estáveis.
 * `POST /test/reset`, que devolve a edição ao estado semeado.
 
+> **`seedStaff` não semeia ninguém que consiga entrar** — e as duas peças que
+> faltam também vêm do pacote. Não as invente.
+>
+> **1. As senhas estão em `demoUsers`, não em `seedStaff`.** `StaffState` tem
+> `name`, `email`, `initials`, `role`, `scope` e `revoked`: descreve a pessoa
+> que a tela de staff exibe, não uma credencial. Quem autentica lê a outra
+> lista, no mesmo subcaminho `/seed`:
+>
+> ```ts
+> import { demoUsers } from '@atletica-incinera/intereng-contract/seed';
+> // [{ email, password, name, role, scope? }] — três acessos, com o papel já
+> // no vocabulário da sessão.
+> ```
+>
+> É a mesma lista que o adaptador local e a API de mentira do front conferem, e
+> é por isso que ela subiu para o pacote: enquanto cada ponta mantinha a sua,
+> um acesso podia entrar no modo `local` e ser recusado no modo `http`. São
+> credenciais de desenvolvimento e de teste — valem sob a mesma trava dupla do
+> gancho de reset e não podem existir num banco de produção.
+>
+> **2. O `role` do staff é rótulo; o da sessão é código.** Em `seedStaff` ele
+> vale `'Admin da edição'` ou `'Gestor de modalidade'`, texto em português que a
+> tela escreve sem traduzir. O login devolve outra coisa (TASK-18):
+> `EDITION_ADMIN`, `DISCIPLINE_MANAGER` ou `SUPER_ADMIN`. A tradução também está
+> no pacote, e é ela que o servidor precisa rodar para emitir a mesma sessão a
+> partir do mesmo convite:
+>
+> ```ts
+> import { roleFromStaffLabel } from '@atletica-incinera/intereng-contract/rules';
+> roleFromStaffLabel('Admin da edição'); // 'EDITION_ADMIN'
+> ```
+>
+> Rótulo desconhecido cai em `DISCIPLINE_MANAGER`, de propósito: é o papel mais
+> restrito, e o único palpite que não abre acesso indevido quando o registro
+> chega de um estado antigo. `SUPER_ADMIN` não tem rótulo — o super admin não é
+> convidado para o staff de uma edição, é quem desenvolve o app, e por isso
+> `super@intereng.com` aparece em `demoUsers` e não em `seedStaff`.
+>
+> Guarde o papel efetivo no banco no momento do convite; não o rededuza do
+> rótulo a cada login. Chamar a função uma vez é importar a regra; reimplementar
+> o `if` é como as duas metades voltam a divergir.
+
 > **O gancho de reset precisa de trava dupla.** Ele só pode existir com
 > `ENABLE_TEST_ENDPOINTS=true` **e** `NODE_ENV !== 'production'`. A aplicação
 > deve **recusar subir** na combinação proibida, em vez de apenas ignorar a
 > rota — e a rota não deve ser exposta no proxy reverso.
 
 **Critério de aceite verificável**: `docker compose up` com a imagem publicada
-sobe API, banco e Redis; `POST /test/reset` devolve a edição semeada; e subir o
-container com `NODE_ENV=production ENABLE_TEST_ENDPOINTS=true` falha no boot,
-com a razão no log.
+sobe API, banco e Redis; `POST /test/reset` devolve a edição semeada; logo
+depois do reset, `POST /auth/login` com `ana@ufpe.br` / `intereng2026` devolve
+`200` e `role: "EDITION_ADMIN"`; e subir o container com
+`NODE_ENV=production ENABLE_TEST_ENDPOINTS=true` falha no boot, com a razão no
+log.
 
 ---
 
@@ -437,3 +502,4 @@ partida entrega a notificação no aparelho inscrito; e um endpoint que devolve
 | TASK-22 | a barra avisa "sem tempo real" e o front cai para polling | o selo "Ao vivo" acende |
 | TASK-23 | não há como rodar os dois juntos num gate | `test:e2e:api` verde contra uma tag |
 | TASK-24–26 | os `501` do despachante | as 32 ações respondem 200 |
+| TASK-27 | o aviso só chega com a aba aberta em segundo plano | a notificação chega com o app fechado |

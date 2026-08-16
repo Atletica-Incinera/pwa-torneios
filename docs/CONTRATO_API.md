@@ -33,14 +33,82 @@ não descreverem o mesmo formato de dois jeitos.
 | `GET` | `/editions/:id/snapshot` | obrigatória | `FrontendState` completo |
 | `GET` | `/editions/:id/public-snapshot` | nenhuma | `FrontendState` reduzido |
 | `POST` | `/editions/:id/actions` | obrigatória | `FrontendState` já com a operação aplicada |
-| `POST` | `/auth/login` | nenhuma | `{ token, expiresAt, user: { email, name, role, scope? } }` |
-| `POST` | `/auth/refresh` | nenhuma | o mesmo formato do login |
+| `POST` | `/auth/login` | nenhuma | `{ token, refreshToken, expiresAt, user: { email, name, role, scope? } }` |
+| `POST` | `/auth/refresh` | nenhuma | o mesmo formato do login; `user` pode faltar |
 | `POST` | `/auth/logout` | obrigatória | `204` |
 | `GET` | `/editions/:id/stream` | nenhuma | `text/event-stream` |
 
 `:id` aceita `active`, e aí é o servidor que resolve qual é a edição vigente.
 Coleções vazias podem ser omitidas: o cliente completa (`normalizeSnapshot`).
-`role` é `SUPER_ADMIN`, `EDITION_ADMIN` ou `DISCIPLINE_MANAGER`.
+`role` é `SUPER_ADMIN`, `EDITION_ADMIN` ou `DISCIPLINE_MANAGER`. O staff da
+edição é gravado com outro vocabulário (`Admin da edição`, `Gestor de
+modalidade`): quem converte um no outro é `roleFromStaffLabel`, do subcaminho
+`/rules`, e não uma tradução paralela do servidor.
+
+### A sessão, e o campo que derruba tudo se faltar
+
+Toda requisição autenticada leva `Authorization: Bearer <token>`. **`401` em
+qualquer rota tenta renovar uma vez** com o `refreshToken` guardado, em voo
+único — várias requisições que caem juntas compartilham a mesma renovação, em
+vez de disputarem um token já rotacionado. Falhando a renovação, a sessão é
+encerrada e o usuário volta ao login com aviso (`/?access=expired`), pelo mesmo
+caminho do prazo vencido.
+
+**O `refreshToken` não é opcional.** Um login que devolva só `token` e
+`expiresAt` entra na tela e parece funcionar — até o primeiro `401`. Aí
+`runRenewal` (`apps/web/app/lib/repositories/api-client.ts`) lê a sessão
+guardada, não encontra credencial de renovação, devolve `null`, e quem tratou o
+`401` encerra a sessão e manda o usuário de volta ao login. Não há mensagem de
+erro que diga isso: o sintoma é a sessão caindo sozinha, e a causa é um campo
+ausente na resposta de uma rota que passou nos testes dela. É por isso que ele
+está na tabela acima, e não só nesta prosa.
+
+O `refreshToken` viaja **no corpo**, não em cookie: `SameSite=Strict` não
+atravessa origem, e afrouxar isso exigiria TLS no ambiente local.
+
+Na renovação, `user` pode ser omitido: o cliente reaproveita o papel e o escopo
+da sessão que já tem. O `token`, não — sem ele a renovação é recusada como
+credencial inválida.
+
+Sobre prazos: o app guarda `expiresAt` como o horizonte da **sessão** (o da
+renovação), não o do token de acesso. Guardar o prazo curto ali expulsaria quem
+está trabalhando a cada renovação. O campo `accessExpiresAt` existe para o prazo
+do acesso, quando o servidor o informa.
+
+### O envelope da resposta
+
+Toda resposta com corpo pode vir embrulhada em `{ data, meta }` ou crua, e o
+cliente aceita as duas. `unwrap`, em `api-client.ts`, reconhece o envelope pela
+chave `data` na raiz de um objeto com no máximo duas chaves — nenhum corpo deste
+contrato tem `data` na raiz, então a heurística não tem como confundir um
+snapshot com um envelope, e nenhuma configuração precisa dizer qual é qual.
+
+A tolerância existe porque as duas metades já nasceram diferentes: a API
+embrulha, o mock do contrato responde cru. Não é convite a alternar — escolha
+uma forma e mantenha em todas as rotas, inclusive nas de erro.
+
+### O formato do erro
+
+A mensagem do erro **é interface**: toda resposta fora da faixa 2xx — exceto
+`401`, que é sessão e segue o caminho da renovação — vira o texto que o operador
+lê na tela, sem tradução no meio. O cliente aceita três formas, nesta ordem de
+precedência (`readError`, em `api-client.ts`):
+
+| Corpo | O que o operador vê |
+| --- | --- |
+| `{ "error": { "message": "..." } }` | `error.message` |
+| `{ "message": "..." }` | `message` |
+| `{ "message": ["...", "..."] }` | **apenas o primeiro item** |
+
+A terceira forma está aí porque é o que o `ValidationPipe` do NestJS devolve por
+padrão. Ela tem um custo que vale conhecer: quando a validação recusa três
+campos, o operador lê a queixa de um só. Se o array for o formato escolhido,
+ponha na frente o item que faz a pessoa saber o que corrigir — ou devolva uma
+frase única, que é o que a tela sabe mostrar inteira.
+
+Corpo que não seja JSON, ou mensagem vazia, cai no genérico
+`Falha na requisição (<status>).` — o que o operador lê quando o servidor não
+disse nada aproveitável. Vale como rede de segurança, não como resposta.
 
 ### O snapshot público é outro payload, não o mesmo filtrado
 
@@ -53,21 +121,6 @@ O app do espectador roda sem sessão e chama `public-snapshot`. Esse payload
 
 Filtrar só na tela não resolve: o dado sairia do servidor de qualquer forma. O
 front-end já sabe qual dos dois pedir — a decisão é a presença do token.
-
-Toda requisição autenticada leva `Authorization: Bearer <token>`. **`401` em
-qualquer rota tenta renovar uma vez** com o `refreshToken` guardado, em voo
-único — várias requisições que caem juntas compartilham a mesma renovação, em
-vez de disputarem um token já rotacionado. Falhando a renovação, a sessão é
-encerrada e o usuário volta ao login com aviso (`/?access=expired`), pelo mesmo
-caminho do prazo vencido.
-
-O `refreshToken` viaja **no corpo**, não em cookie: `SameSite=Strict` não
-atravessa origem, e afrouxar isso exigiria TLS no ambiente local.
-
-Sobre prazos: o app guarda `expiresAt` como o horizonte da **sessão** (o da
-renovação), não o do token de acesso. Guardar o prazo curto ali expulsaria quem
-está trabalhando a cada renovação. O campo `accessExpiresAt` existe para o prazo
-do acesso, quando o servidor o informa.
 
 ## Operações
 
@@ -128,7 +181,9 @@ equivalente:
 - `competition/activate` e `edition/activate` são exclusivos: ativar um desativa
   os outros.
 
-Os 87 testes unitários do front-end são a suíte de contrato dessas regras.
+Os 90 testes de regra do pacote (`packages/intereng-contract/tests/`, rodados por
+`npm run test:contract`) são a suíte de contrato disso. Eles não moram mais no
+front: rodam contra o `dist` publicado, que é exatamente o que a API instala.
 
 ## Tempo real
 
@@ -177,10 +232,18 @@ contra ela e prova o caminho inteiro:
 npm run test:e2e:http
 ```
 
-São seis cenários: sessão emitida pela API, credencial recusada, operação que
-vai ao servidor e volta como verdade, snapshot público sem staff nem auditoria,
-`401` devolvendo ao login com aviso, e a barra de contexto avisando quando o
-tempo real não sobe. Quando o NestJS existir, é essa suíte que aponta para ele.
+São dez cenários: sessão emitida pela API, a página inteira compartilhando uma
+conexão e um snapshot, credencial recusada, operação que vai ao servidor e volta
+como verdade, snapshot público sem staff nem auditoria, `401` devolvendo ao
+login com aviso, mudança de outro operador chegando pelo stream sem recarregar,
+a barra de contexto avisando quando o tempo real não sobe, renovação abortada
+que **não** expulsa para o login, e acesso vencido renovado sozinho.
+
+Os dois últimos dependem de `POST /test/expire-access`, um gancho que só o mock
+tem — contra a API real eles são pulados e sobram oito. Se a API quiser os dez,
+é esse gancho que falta; sem ele, o mesmo caminho só é exercitado esperando um
+token curto expirar de verdade. Quando o NestJS existir, é essa suíte que aponta
+para ele.
 
 ## O que o front-end continua fazendo sozinho
 

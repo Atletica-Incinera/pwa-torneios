@@ -45,8 +45,9 @@ acesso — o app é instalável e funciona offline pelo service worker.
 
 **Staff.** Entra em `/` com e-mail e senha.
 
-- Os três acessos de demonstração estão em `demoUsers` e aparecem na própria tela
-  de login.
+- Os três acessos de demonstração estão em `demoUsers`, no subcaminho `/seed` do
+  pacote — é a mesma lista que o adaptador local confere e que a API de mentira
+  serve. A tela de login mostra dois deles.
 - Quem é convidado pelo admin entra com a senha padrão `intereng2026`. O convite
   vive em `state.staff[email]`, criado em *Mais → Staff e permissões → Convidar*.
 - O convite exige **um único papel**. Gestor de modalidade obriga escolher a
@@ -212,7 +213,12 @@ app deduz e registra sozinho.
 
 - **As regras rodam no cliente.** Conflito de agenda, permissão e consistência
   entre dispositivos só ficam garantidos quando o backend assumir as mesmas
-  validações — os módulos em `app/lib/*` foram isolados sem dependência de React
-  justamente para isso.
+  validações. Foi para isso que os módulos de regra saíram do front, sem
+  dependência de React, e viraram
+  `@atletica-incinera/intereng-contract`: assumir, para a API, é importar
+  aquele pacote — não reescrever o que ele já faz. Os predicados de papel
+  citados lá em cima continuam em `app/lib/frontend-session.ts`, e continuam
+  certos onde estão, porque são guarda de navegação e não segurança; quem
+  revalida é o servidor.
 - **Notificações push** dependem de serviço conectado. A preferência já é
   coletada em `/profile`, mas nada dispara envio.

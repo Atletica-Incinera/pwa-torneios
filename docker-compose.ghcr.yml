@@ -3,7 +3,9 @@
 #   docker compose -f docker-compose.yml -f docker-compose.ghcr.yml up
 #
 # Quem sobe o ambiente não deveria precisar de um checkout do código da API.
-# Depende da TASK-21 do repositório dela (Dockerfile + publicação no GHCR).
+# Depende da TASK-23 de docs/TASKS_API.md (Dockerfile, publicação no GHCR, seed
+# e gancho de reset). Já foi TASK-21 aqui; a numeração mudou e a 21 hoje é o
+# despachante de ações.
 services:
   api:
     container_name: pwa-torneios-api
@@ -19,6 +21,11 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://app.localhost}
       ENABLE_TEST_ENDPOINTS: ${ENABLE_TEST_ENDPOINTS:-false}
       PORT: 3000
+    # Mesma porta publicada pelo override do código-fonte: a suíte
+    # `E2E_API=real` mira `127.0.0.1:3000` e não sabe por qual dos dois a API
+    # subiu.
+    ports:
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
