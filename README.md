@@ -56,6 +56,9 @@ Detalhes completos da arquitetura:
 - [`docs/STACK.md`](docs/STACK.md)
 - [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 
+Onde o projeto está agora, o que falta e de quem depende cada pendência:
+[`docs/ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md).
+
 ## Estrutura planejada do repositório
 
 ```txt
