@@ -6,8 +6,8 @@
  */
 export { getActiveCompetition, getActiveEdition, initialFrontendState } from '@atletica-incinera/intereng-contract/state';
 export { readFrontendState } from '../browser-state.ts';
-export { useFrontendState } from './use-frontend-state';
-export type { DispatchResult, StateStatus } from './use-frontend-state';
+export { useFrontendState } from './frontend-state-provider';
+export type { DispatchResult, StateStatus } from './frontend-state-provider';
 export type { Action } from '@atletica-incinera/intereng-contract/actions';
 export type {
   AthleteState,

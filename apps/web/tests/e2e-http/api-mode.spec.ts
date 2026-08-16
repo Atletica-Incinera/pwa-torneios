@@ -40,6 +40,30 @@ test('a sessão é emitida pela API e o snapshot vem de lá', async ({ page }) =
   expect(await page.evaluate((key) => localStorage.getItem(key), stateKey)).toBeNull();
 });
 
+test('a página inteira compartilha uma conexão e um snapshot', async ({ page }) => {
+  const snapshots: string[] = [];
+  const streams: string[] = [];
+  page.on('request', (request) => {
+    const path = new URL(request.url()).pathname;
+    if (path.endsWith('/snapshot') || path.endsWith('/public-snapshot')) snapshots.push(path);
+    if (path.endsWith('/stream')) streams.push(path);
+  });
+
+  await login(page);
+  snapshots.length = 0;
+  streams.length = 0;
+
+  // `/teams/[id]` é a rota mais povoada: a página, a moldura, a guarda, a barra
+  // inferior e três painéis pedem o estado. Antes do provider único eram sete
+  // conexões e sete snapshots — mais que o teto de seis por origem do
+  // navegador, com os últimos presos na fila atrás de streams que não fecham.
+  await page.goto('/teams/alcateia');
+  await expect(page.getByRole('heading', { name: /alcateia/i }).first()).toBeVisible();
+
+  expect(snapshots.length, `snapshots pedidos: ${snapshots.length}`).toBe(1);
+  expect(streams.length, `streams abertos: ${streams.length}`).toBe(1);
+});
+
 test('credencial errada mostra a mensagem da API', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('E-mail').fill('ana@ufpe.br');

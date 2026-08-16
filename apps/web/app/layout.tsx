@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import './globals.css';
 import './motion.css';
 import { appleStartupImages } from './lib/pwa-assets';
+import { FrontendStateProvider } from './lib/repositories/frontend-state-provider';
 import { PwaRegistration } from './components/PwaRegistration';
 import { UiProvider } from './components/UiProvider';
 
@@ -72,7 +73,7 @@ export const metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${kenyanCoffee.variable} ${ttTravelsNext.variable}`}>
-      <body><PwaRegistration /><UiProvider>{children}</UiProvider></body>
+      <body><PwaRegistration /><UiProvider><FrontendStateProvider>{children}</FrontendStateProvider></UiProvider></body>
     </html>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 import type { Action } from '@atletica-incinera/intereng-contract/actions';
 import { collectMatchNotifications, showMatchNotifications } from '../match-notifications.ts';
@@ -9,11 +9,40 @@ import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
 import { createRealtimeChannel } from './realtime-channel.ts';
 import { UnauthorizedError } from './auth-adapter.ts';
-import { expireStoredSession } from './session-storage.ts';
+import { expireStoredSession, readStoredSession, sessionChangeEvent } from './session-storage.ts';
 import { resolveDataSource, type ConnectionState, type StateAdapter } from './state-adapter.ts';
 
+/**
+ * O estado da edição, uma vez só para o app inteiro.
+ *
+ * Antes cada `useFrontendState()` criava o próprio adaptador e a própria
+ * conexão de tempo real. Como a árvore de uma tela administrativa monta o hook
+ * na página, na moldura, na guarda e na barra inferior, uma rota como
+ * `/teams/[id]` abria **sete** conexões e disparava sete vezes a mesma
+ * requisição de snapshot — contra um teto de seis conexões por origem no
+ * navegador. As últimas ficavam na fila atrás de streams que nunca fecham.
+ *
+ * Pior que o desperdício: eram sete cópias independentes do estado, que podiam
+ * divergir, e o botão de nova tentativa da tela de erro recompunha só a cópia
+ * da guarda — as outras continuavam em erro, e a tela aparecia com o estado
+ * inicial, que não é vazio.
+ */
 export type StateStatus = 'loading' | 'ready' | 'error';
 export type DispatchResult = { ok: boolean; error?: string };
+
+type FrontendStateValue = {
+  state: FrontendState;
+  status: StateStatus;
+  error: string | null;
+  hydrated: boolean;
+  source: ReturnType<typeof resolveDataSource>;
+  connection: ConnectionState;
+  dispatch: (action: Action) => Promise<DispatchResult>;
+  setPreference: (patch: Partial<DevicePreferences>) => void;
+  refresh: () => Promise<void>;
+};
+
+const FrontendStateContext = createContext<FrontendStateValue | null>(null);
 
 function createAdapter(): StateAdapter {
   // A origem é escolhida por ambiente: os e2e continuam no adaptador local.
@@ -33,15 +62,20 @@ function handleUnauthorized(caught: unknown) {
   if (caught instanceof UnauthorizedError) expireStoredSession();
 }
 
-export function useFrontendState() {
+/** O token em vigor, usado para perceber que a sessão trocou de dono. */
+function currentToken() {
+  return readStoredSession()?.token ?? null;
+}
+
+export function FrontendStateProvider({ children, adapter: injected }: { children: React.ReactNode; adapter?: StateAdapter }) {
   const [state, setState] = useState<FrontendState>(initialFrontendState);
   const [status, setStatus] = useState<StateStatus>('loading');
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>('online');
-  const adapter = useMemo(createAdapter, []);
+  // O adaptador injetado existe para teste: sem ele, a origem vem do ambiente.
+  const adapter = useMemo(() => injected ?? createAdapter(), [injected]);
   const source = useMemo(resolveDataSource, []);
   const mounted = useRef(true);
-
   const lastSnapshot = useRef<FrontendState | null>(null);
 
   const absorb = useCallback((next: FrontendState) => {
@@ -95,6 +129,32 @@ export function useFrontendState() {
   }, []);
 
   useEffect(() => {
+    /**
+     * Entrar e sair precisam recarregar o estado.
+     *
+     * O provider vive no layout raiz, que não remonta na navegação do App
+     * Router: sem isto, o snapshot público carregado na tela de login
+     * sobreviveria ao login — o operador entraria e veria a visão do
+     * espectador, sem staff, sem auditoria e sem rascunho. E na saída seria o
+     * contrário: rascunho e staff continuariam na tela pública.
+     *
+     * O gatilho é a **troca de token**, não o evento em si. Vencer a sessão
+     * emite o mesmo evento preservando o token; recarregar ali levaria a outro
+     * 401, que venceria de novo, sem fim.
+     */
+    let token = currentToken();
+    const sync = () => {
+      const next = currentToken();
+      if (next === token) return;
+      token = next;
+      void refresh();
+    };
+    window.addEventListener(sessionChangeEvent, sync);
+    window.addEventListener('storage', sync);
+    return () => { window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+  }, [refresh]);
+
+  useEffect(() => {
     // Conexão é obrigatória para ver em tempo real: quando ela volta, recarrega.
     if (source !== 'http') return;
     const offline = () => setConnection('offline');
@@ -104,7 +164,7 @@ export function useFrontendState() {
     return () => { window.removeEventListener('offline', offline); window.removeEventListener('online', online); };
   }, [refresh, source]);
 
-  /** Executa uma operação nomeada. É por aqui que a Fase 1 passa a escrever. */
+  /** Executa uma operação nomeada. É o único caminho de escrita do app. */
   const dispatch = useCallback(async (action: Action): Promise<DispatchResult> => {
     try {
       const next = await adapter.apply(action);
@@ -128,5 +188,24 @@ export function useFrontendState() {
     setState((current) => ({ ...current, preferences: { ...current.preferences, ...patch } }));
   }, []);
 
-  return { state, status, error, hydrated: status === 'ready', source, connection, dispatch, setPreference, refresh };
+  const value = useMemo<FrontendStateValue>(
+    () => ({ state, status, error, hydrated: status === 'ready', source, connection, dispatch, setPreference, refresh }),
+    [connection, dispatch, error, refresh, setPreference, source, state, status],
+  );
+
+  return <FrontendStateContext.Provider value={value}>{children}</FrontendStateContext.Provider>;
+}
+
+/**
+ * O estado da edição.
+ *
+ * Fora do provider isto lança, e é o que se quer: um componente que monte
+ * sozinho leria o estado inicial — que **não** é vazio, traz a competição e as
+ * edições — e renderizaria uma edição plausível e sem dados, sem nenhum aviso.
+ * Falhar alto na montagem é melhor que uma tela que parece carregada.
+ */
+export function useFrontendState() {
+  const value = useContext(FrontendStateContext);
+  if (!value) throw new Error('useFrontendState precisa estar dentro de FrontendStateProvider');
+  return value;
 }
