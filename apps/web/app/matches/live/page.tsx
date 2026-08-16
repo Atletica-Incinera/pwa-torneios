@@ -439,9 +439,16 @@ function LiveMatchContent() {
 
   function submitTiebreak(event: React.FormEvent) {
     event.preventDefault();
-    if (!tiebreakDraft.winner || tiebreakDraft.reason.trim().length < 5) { toast('Informe o vencedor e o motivo do desempate.', 'error'); return; }
+    // O painel deixou de fechar no clique — ele espera a resposta, para não
+    // jogar fora o critério digitado se o encerramento for recusado. Isso abriu
+    // espaço para o segundo clique de quem não vê nada acontecer numa rede
+    // ruim, e dois `match/finish` na mesma partida são dois resultados oficiais
+    // na auditoria e dois apitos.
+    if (operationLock.current) return;
+    operationLock.current = true;
+    if (!tiebreakDraft.winner || tiebreakDraft.reason.trim().length < 5) { operationLock.current = false; toast('Informe o vencedor e o motivo do desempate.', 'error'); return; }
     const requiresScore = ['penaltis', 'prorrogacao', 'set-extra'].includes(tiebreakDraft.method);
-    if (requiresScore && (!tiebreakDraft.scoreA || !tiebreakDraft.scoreB)) { toast('Informe o placar do desempate.', 'error'); return; }
+    if (requiresScore && (!tiebreakDraft.scoreA || !tiebreakDraft.scoreB)) { operationLock.current = false; toast('Informe o placar do desempate.', 'error'); return; }
     const tiebreak: MatchTiebreakState = {
       method: tiebreakDraft.method,
       label: knockoutMethodLabels[tiebreakDraft.method],
@@ -454,7 +461,7 @@ function LiveMatchContent() {
     };
     // O painel só fecha quando o encerramento é aceito: recusado, o critério e
     // o motivo digitados continuam na tela para o operador tentar de novo.
-    void persistFinish(tiebreak, tiebreak.reason).then((finished) => { if (finished) setTiebreakOpen(false); });
+    void persistFinish(tiebreak, tiebreak.reason).then((finished) => { operationLock.current = false; if (finished) setTiebreakOpen(false); });
   }
 
   if (invalidMatch) return <main className="app-screen live-screen theme-matches"><div className="empty-state"><strong>PARTIDA NÃO ENCONTRADA</strong><p>O identificador informado não pertence à edição atual.</p><Link href={`/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`} className="wide-action">VOLTAR PARA JOGOS</Link></div><BottomNav active="matches" /></main>;
@@ -540,7 +547,7 @@ function LiveMatchContent() {
           </div> : null}
           <label><span>Equipe classificada</span><select value={tiebreakDraft.winner} onChange={(event) => setTiebreakDraft({ ...tiebreakDraft, winner: event.target.value })} required><option value="" disabled>Selecione</option><option>{match.entryA}</option><option>{match.entryB}</option></select></label>
           <label><span>Motivo / registro da súmula</span><input value={tiebreakDraft.reason} onChange={(event) => setTiebreakDraft({ ...tiebreakDraft, reason: event.target.value })} placeholder="Ex.: cobranças de pênaltis 4 a 2" required /></label>
-          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setTiebreakOpen(false)}>Cancelar</button><button type="submit" className="primary-button">Registrar desempate e encerrar</button></div>
+          <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setTiebreakOpen(false)}>Cancelar</button><button type="submit" className="primary-button" disabled={!allowed}>Registrar desempate e encerrar</button></div>
         </form>
       ) : null}
 

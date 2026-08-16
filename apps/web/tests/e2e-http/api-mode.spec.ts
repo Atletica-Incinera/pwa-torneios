@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { apiUrl as api, authHeaders, credentials, isMock, reset } from './api';
+import { apiUrl as api, authHeaders, credentials, isMock, reset, sessionKey, unwrap } from './api';
 
 /**
  * O app compilado com `NEXT_PUBLIC_DATA_SOURCE=http`, falando com a API.
@@ -27,7 +27,7 @@ test('a sessão é emitida pela API e o snapshot vem de lá', async ({ page }) =
   await login(page);
   expect((await snapshot).status()).toBe(200);
 
-  const session = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}'));
+  const session = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) ?? '{}'), sessionKey);
   // O formato do token é do servidor; o que o app garante é que ele existe e
   // que a sessão tem prazo no futuro.
   expect(session.token).toBeTruthy();
@@ -90,20 +90,44 @@ test('a operação vai à API e a resposta é o que a tela mostra', async ({ pag
 
   // O registro está no servidor, e o autor da auditoria é quem o token diz.
   const response = await request.get(`${api}/editions/active/snapshot`, { headers: await authHeaders(request) });
-  const payload = await response.json() as { data?: Record<string, never> };
-  const snapshot = (payload.data ?? payload) as { teams: Record<string, { name: string }>; audit: Array<Record<string, unknown>> };
+  const snapshot = unwrap<{ teams: Record<string, { name: string }>; audit: Array<Record<string, unknown>> }>(await response.json());
   expect(snapshot.teams['aurora-http'].name).toBe('Aurora HTTP');
   expect(snapshot.audit[0]).toMatchObject({ action: 'Equipe cadastrada', actor: credentials.name });
+});
+
+test('operação que a API ainda não implementa mostra a mensagem dela, não um aviso genérico', async ({ page, request }) => {
+  // O gancho é do mock — ele implementa todas as ações, porque roda o mesmo
+  // redutor do cliente. Na API real o que responde 501 é a própria ausência da
+  // operação, e não há como pedir uma que ainda não existe sem inventá-la.
+  test.skip(!isMock, 'depende do gancho /test/unimplemented-action');
+  const message = 'Cadastro de equipe entra na próxima versão da API.';
+  await request.post(`${api}/test/unimplemented-action`, { data: { type: 'team/create', message } });
+
+  await login(page);
+  await page.goto('/teams/new');
+  await page.getByLabel('Nome da equipe').fill('Aurora HTTP');
+  await page.getByLabel('Sigla').fill('AUR');
+  await page.getByLabel('Responsável').fill('Pessoa Responsável');
+  await page.getByRole('button', { name: 'Cadastrar equipe' }).click();
+
+  // O aviso some sozinho depois de alguns segundos: é o primeiro a conferir.
+  await expect(page.locator('.app-toast.toast-error')).toContainText(message);
+  await expect(page.locator('.form-feedback-error')).toHaveText(message);
+  // O literal fixo faria o operador repetir a mesma ação para sempre, achando
+  // que é a rede. Nenhum dos dois — o do provider e o do formulário — aparece.
+  await expect(page.getByText(/Não foi possível (salvar|cadastrar)/)).toHaveCount(0);
+  // E a operação não aconteceu: continua no formulário, sem equipe criada.
+  await expect(page).toHaveURL(/\/teams\/new/);
 });
 
 test('o espectador usa o snapshot público, sem staff nem auditoria', async ({ page }) => {
   const publicSnapshot = page.waitForResponse((response) => response.url().includes('/public-snapshot'));
   await page.goto('/public/tournaments');
-  const payload = await (await publicSnapshot).json();
+  const snapshot = unwrap<{ staff: Record<string, unknown>; audit: unknown[]; tournaments: Record<string, unknown> }>(await (await publicSnapshot).json());
 
-  expect(payload.staff).toEqual({});
-  expect(payload.audit).toEqual([]);
-  expect(Object.keys(payload.tournaments)).not.toContain('xadrez');
+  expect(snapshot.staff).toEqual({});
+  expect(snapshot.audit).toEqual([]);
+  expect(Object.keys(snapshot.tournaments)).not.toContain('xadrez');
 
   await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
   await expect(page.getByText('Xadrez Individual')).toHaveCount(0);
@@ -111,8 +135,27 @@ test('o espectador usa o snapshot público, sem staff nem auditoria', async ({ p
 
 test('token recusado pela API devolve ao login com aviso', async ({ page }) => {
   await login(page);
-  // O servidor reinicia e esquece a sessão: o próximo carregamento leva 401.
-  await page.request.get(`${api}/test/reset`);
+  /**
+   * O gatilho é a sessão do navegador, e não o estado do servidor.
+   *
+   * Reiniciar a semente invalidava o token só porque o mock guarda as sessões
+   * num `Map`. A API real assina JWT, que é sem estado: não há sessão guardada
+   * em lugar nenhum para esquecer, e o próximo pedido voltaria 200 — o cenário
+   * passaria aqui e mentiria lá.
+   *
+   * Trocar o token por um que ninguém emitiu vale nos dois, porque a recusa
+   * não depende de memória do servidor. Junto vai a credencial de renovação:
+   * sem ela não há como consertar sozinho, que é o estado de quem deixou a aba
+   * aberta até o refresh ser rotacionado. Se ela ficasse, o 401 viraria uma
+   * renovação bem-sucedida — e o cenário deixaria de ser sobre expulsar.
+   */
+  await page.evaluate((key) => {
+    const store = sessionStorage.getItem(key) ? sessionStorage : localStorage;
+    const session = JSON.parse(store.getItem(key) ?? '{}') as Record<string, unknown>;
+    delete session.refreshToken;
+    session.token = 'token-que-o-servidor-nao-emitiu';
+    store.setItem(key, JSON.stringify(session));
+  }, sessionKey);
   await page.goto('/teams');
 
   await expect(page).toHaveURL(/\?access=expired/);
@@ -170,7 +213,7 @@ test('renovação que não recebe resposta não expulsa para o login', async ({ 
 
   // O que não pode acontecer de jeito nenhum: a sessão ser dada como vencida.
   await expect(page).not.toHaveURL(/access=expired/);
-  const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}'));
+  const stored = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) ?? '{}'), sessionKey);
   expect(Date.parse(stored.expiresAt), 'a sessão não pode ser carimbada como vencida').toBeGreaterThan(Date.now());
 
   // E a sessão continua servindo: recarregar entra direto, sem passar pelo
@@ -188,7 +231,7 @@ test('acesso vencido é renovado sozinho, sem devolver ao login', async ({ page,
   test.skip(!isMock, 'depende do gancho /test/expire-access');
   await page.goto('/');
   await login(page);
-  const before = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}').token);
+  const before = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) ?? '{}').token, sessionKey);
 
   // O acesso vence, a renovação continua válida — é o caso do dia a dia com
   // token curto, e o app precisa atravessar sem interromper quem trabalha.
@@ -197,6 +240,6 @@ test('acesso vencido é renovado sozinho, sem devolver ao login', async ({ page,
 
   await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
   await expect(page).not.toHaveURL(/access=expired/);
-  const after = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}').token);
+  const after = await page.evaluate((key) => JSON.parse(sessionStorage.getItem(key) ?? '{}').token, sessionKey);
   expect(after).not.toBe(before);
 });

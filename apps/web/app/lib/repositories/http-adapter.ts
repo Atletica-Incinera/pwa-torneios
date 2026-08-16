@@ -57,9 +57,11 @@ export type HttpAdapterOptions = {
 /**
  * Estado vindo da API.
  *
- * Duas rotas apenas: o snapshot da edição e o canal de operações. A união em
- * `actions.ts` é o contrato — cada `type` é uma operação que o servidor aceita,
- * valida com os mesmos módulos de regra e responde já com o estado resultante.
+ * Duas leituras e uma escrita: o snapshot da edição — completo para quem tem
+ * sessão, reduzido para o espectador — e o canal de operações. O tempo real não
+ * é rota daqui: chega pelo `connect` injetado. A união em `actions.ts` é o
+ * contrato — cada `type` é uma operação que o servidor aceita, valida com os
+ * mesmos módulos de regra e responde já com o estado resultante.
  * Como conexão é obrigatória, não há atualização otimista: a resposta é a
  * verdade, e o id de tudo que nasce vem de lá.
  */

@@ -19,6 +19,14 @@ const sessions = new Map<string, { email: string; name: string }>();
 /** Credencial de renovação, que sobrevive ao vencimento do acesso. */
 const refreshTokens = new Map<string, { email: string; name: string }>();
 let renewals = 0;
+/**
+ * Operação que o despachante ainda não implementa.
+ *
+ * A API vai nascer com a união de ações incompleta, e o que ela responde para
+ * o que falta é `501` com uma mensagem. Aqui isso é armado por cenário, porque
+ * o mock implementa tudo — roda o mesmo redutor do cliente.
+ */
+let unimplemented: { type: string; message: string } | null = null;
 
 /**
  * Tempo real do contrato.
@@ -73,11 +81,18 @@ createServer(async (request, response) => {
   if (request.method === 'OPTIONS') return send(response, 204);
 
   // Gancho de teste: cada cenário começa da mesma edição.
-  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); refreshTokens.clear(); revision = 0; return send(response, 204); }
+  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); refreshTokens.clear(); unimplemented = null; revision = 0; return send(response, 204); }
 
   // Vence o acesso sem derrubar a renovação: é o que o app precisa atravessar
   // sozinho, sem devolver ao login.
   if (url.pathname === '/test/expire-access') { sessions.clear(); return send(response, 204); }
+
+  // Arma o `501` de uma ação: `{ type, message }` liga, corpo vazio desliga.
+  if (url.pathname === '/test/unimplemented-action') {
+    const { type, message } = await readBody(request) as { type?: string; message?: string };
+    unimplemented = type ? { type, message: message ?? 'Operação ainda não implementada nesta API.' } : null;
+    return send(response, 204);
+  }
 
   if (url.pathname.endsWith('/stream')) {
     // Falha proposital: é o que mantém de pé o cenário "sem tempo real, a barra avisa".
@@ -128,6 +143,9 @@ createServer(async (request, response) => {
   if (url.pathname.endsWith('/actions') && request.method === 'POST') {
     if (!session) return send(response, 401, { message: 'Sessão inválida.' });
     const action = await readBody(request) as Action;
+    // O que a API ainda não sabe fazer não é falha de rede nem dado inválido:
+    // a mensagem do `501` é o que faz o operador parar de tentar.
+    if (unimplemented && action.type === unimplemented.type) return send(response, 501, { message: unimplemented.message });
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
     broadcast();

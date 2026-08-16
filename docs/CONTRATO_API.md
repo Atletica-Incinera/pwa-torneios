@@ -243,18 +243,21 @@ contra ela e prova o caminho inteiro:
 npm run test:e2e:http
 ```
 
-São dez cenários: sessão emitida pela API, a página inteira compartilhando uma
+São onze cenários: sessão emitida pela API, a página inteira compartilhando uma
 conexão e um snapshot, credencial recusada, operação que vai ao servidor e volta
-como verdade, snapshot público sem staff nem auditoria, `401` devolvendo ao
-login com aviso, mudança de outro operador chegando pelo stream sem recarregar,
-a barra de contexto avisando quando o tempo real não sobe, renovação abortada
-que **não** expulsa para o login, e acesso vencido renovado sozinho.
+como verdade, operação que a API ainda não implementa mostrando a mensagem
+dela, snapshot público sem staff nem auditoria, `401` devolvendo ao login com
+aviso, mudança de outro operador chegando pelo stream sem recarregar, a barra de
+contexto avisando quando o tempo real não sobe, renovação abortada que **não**
+expulsa para o login, e acesso vencido renovado sozinho.
 
-Os dois últimos dependem de `POST /test/expire-access`, um gancho que só o mock
-tem — contra a API real eles são pulados e sobram oito. Se a API quiser os dez,
-é esse gancho que falta; sem ele, o mesmo caminho só é exercitado esperando um
-token curto expirar de verdade. Quando o NestJS existir, é essa suíte que aponta
-para ele.
+Três dependem de ganchos que só o mock tem: `POST /test/expire-access` (dois — a
+renovação abortada e o acesso vencido) e `POST /test/unimplemented-action` (um —
+o do 501). Contra a API real eles são pulados e sobram oito. Se a API quiser os
+onze, são esses dois ganchos que faltam; sem eles, a renovação só é exercitada
+esperando um token curto expirar de verdade, e o 501 só aparece quando alguma
+ação de fato ainda não estiver implementada. Quando o NestJS existir, é essa
+suíte que aponta para ele.
 
 ## O que o front-end continua fazendo sozinho
 

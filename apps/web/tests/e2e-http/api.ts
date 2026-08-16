@@ -12,6 +12,23 @@ export const isMock = apiTarget === 'mock';
 
 export const credentials = { email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora' };
 
+/** Onde o navegador guarda a sessão, para os cenários que precisam mexer nela. */
+export const sessionKey = 'intereng:frontend-session';
+
+/**
+ * Tira o corpo do envelope.
+ *
+ * A API embrulha a resposta em `{ data }` e o mock devolve o corpo cru — as
+ * duas formas que `api-client.ts` já reconhece. Desembrulhar mora aqui porque,
+ * feito à mão em cada cenário, o que acontece é o que aconteceu: um lembra e o
+ * outro esquece, os dois passam contra o mock, e só o segundo estoura com
+ * `TypeError` contra a API.
+ */
+export function unwrap<T>(payload: unknown): T {
+  if (payload && typeof payload === 'object' && 'data' in payload) return (payload as { data: T }).data;
+  return payload as T;
+}
+
 /** Devolve a edição ao estado semeado. Na API real depende do gancho de teste. */
 export async function reset(request: APIRequestContext) {
   const response = isMock ? await request.get(`${apiUrl}/test/reset`) : await request.post(`${apiUrl}/test/reset`);
@@ -25,7 +42,6 @@ export async function authHeaders(request: APIRequestContext) {
   // No mock o token é previsível; na API real ele é emitido de verdade.
   if (isMock) return { Authorization: `Bearer token-${credentials.email}` };
   const response = await request.post(`${apiUrl}/auth/login`, { data: { email: credentials.email, password: credentials.password } });
-  const payload = await response.json() as { data?: { token?: string; accessToken?: string }; token?: string; accessToken?: string };
-  const body = payload.data ?? payload;
+  const body = unwrap<{ token?: string; accessToken?: string }>(await response.json());
   return { Authorization: `Bearer ${body.token ?? body.accessToken}` };
 }

@@ -1,10 +1,12 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, render, screen, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import { FrontendStateProvider } from '../../app/lib/repositories/frontend-state-provider';
 import { useFrontendState } from '../../app/lib/repositories/browser-repository';
 import { UiProvider } from '../../app/components/UiProvider';
+import type { FrontendSession } from '../../app/lib/repositories/auth-adapter';
+import { clearStoredSession, expireStoredSession, readStoredSession, writeStoredSession } from '../../app/lib/repositories/session-storage';
 import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
 
 /**
@@ -86,5 +88,117 @@ describe('provider de estado', () => {
     // O estado inicial não é vazio: fora do provider, um componente solto
     // renderizaria uma edição plausível e sem dados, sem nenhum aviso.
     expect(() => render(<Sonda onReady={() => {}} />)).toThrow(/FrontendStateProvider/);
+  });
+});
+
+/** Anota o token em vigor a cada carga: é o que prova de quem é o retrato. */
+function createCountingAdapter(snapshot: FrontendState) {
+  const cargas: Array<string | null> = [];
+  const adapter: StateAdapter = {
+    load: async () => { cargas.push(readStoredSession()?.token ?? null); return snapshot; },
+    apply: async () => snapshot,
+    subscribe: () => () => {},
+  };
+  return { adapter, cargas };
+}
+
+const operadora: FrontendSession = {
+  email: 'ana@ufpe.br',
+  name: 'Ana Coordenadora',
+  role: 'EDITION_ADMIN',
+  remembered: false,
+  token: 'token-da-ana',
+  expiresAt: new Date(Date.now() + 60_000).toISOString(),
+};
+
+/** Deixa a fila de microtarefas e os timers vencerem antes de conferir. */
+async function assentar() {
+  await act(async () => { await new Promise((pronto) => setTimeout(pronto, 0)); });
+}
+
+describe('provider e a troca de sessão', () => {
+  beforeEach(() => clearStoredSession());
+
+  it('entrar e sair recarregam o estado', async () => {
+    // O provider vive no layout raiz, que não remonta na navegação: sem isto o
+    // snapshot público carregado no login sobreviveria ao login, e o operador
+    // veria a visão do espectador — sem staff, sem auditoria e sem rascunho.
+    const { adapter, cargas } = createCountingAdapter(seededFrontendState);
+    render(<FrontendStateProvider adapter={adapter}><Sonda onReady={() => {}} /></FrontendStateProvider>);
+    await waitFor(() => expect(cargas).toHaveLength(1));
+
+    act(() => { writeStoredSession(operadora); });
+    await waitFor(() => expect(cargas).toHaveLength(2));
+
+    act(() => { clearStoredSession(); });
+    await waitFor(() => expect(cargas).toHaveLength(3));
+
+    expect(cargas).toEqual([null, 'token-da-ana', null]);
+  });
+
+  it('vencer a sessão não recarrega, para não pedir outro 401', async () => {
+    // Vencer emite o mesmo evento preservando o token. Recarregar ali levaria a
+    // outro 401, que venceria de novo, sem fim.
+    writeStoredSession(operadora);
+    const { adapter, cargas } = createCountingAdapter(seededFrontendState);
+    render(<FrontendStateProvider adapter={adapter}><Sonda onReady={() => {}} /></FrontendStateProvider>);
+    await waitFor(() => expect(cargas).toHaveLength(1));
+
+    act(() => { expireStoredSession(); });
+    await assentar();
+
+    expect(cargas).toEqual(['token-da-ana']);
+    expect(readStoredSession()?.token).toBe('token-da-ana');
+  });
+});
+
+describe('provider quando a carga falha', () => {
+  it('a falha vira erro na tela com o texto do servidor, e a nova tentativa recompõe', async () => {
+    const recusa = 'O servidor não devolveu o snapshot da edição.';
+    let falhando = true;
+    const adapter: StateAdapter = {
+      load: async () => { if (falhando) throw new Error(recusa); return seededFrontendState; },
+      apply: async () => seededFrontendState,
+      subscribe: () => () => {},
+    };
+    let api: ReturnType<typeof useFrontendState> | null = null;
+
+    render(<FrontendStateProvider adapter={adapter}><Sonda onReady={(value) => { api = value; }} /></FrontendStateProvider>);
+    await waitFor(() => expect(api?.status).toBe('error'));
+
+    expect(api!.error).toBe(recusa);
+    // `hydrated` é o que as telas usam para decidir entre carregar e mostrar:
+    // em erro ele precisa ser falso, senão a tela se dá por pronta com o estado
+    // inicial, que traz competição e edições e parece uma edição de verdade.
+    expect(api!.hydrated).toBe(false);
+
+    falhando = false;
+    await act(async () => { await api!.refresh(); });
+
+    expect(api!.status).toBe('ready');
+    expect(api!.error).toBeNull();
+    expect(api!.hydrated).toBe(true);
+    expect(Object.keys(api!.state.teams)).toEqual(Object.keys(seededFrontendState.teams));
+  });
+
+  it('uma falha depois de um estado bom não apaga o que já estava na tela', async () => {
+    // A tela de erro tem botão de nova tentativa; o que estava carregado precisa
+    // continuar visível atrás dela em vez de virar a edição inicial vazia.
+    let falhando = false;
+    const adapter: StateAdapter = {
+      load: async () => { if (falhando) throw new Error('Falha na requisição (502).'); return seededFrontendState; },
+      apply: async () => seededFrontendState,
+      subscribe: () => () => {},
+    };
+    let api: ReturnType<typeof useFrontendState> | null = null;
+
+    render(<FrontendStateProvider adapter={adapter}><Sonda onReady={(value) => { api = value; }} /></FrontendStateProvider>);
+    await waitFor(() => expect(api?.status).toBe('ready'));
+
+    falhando = true;
+    await act(async () => { await api!.refresh(); });
+
+    expect(api!.status).toBe('error');
+    expect(Object.keys(api!.state.teams)).toEqual(Object.keys(seededFrontendState.teams));
   });
 });

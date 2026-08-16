@@ -88,7 +88,7 @@
     "build": "node scripts/build.mjs",
     "prepare": "node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-    "test": "npm run build && node --test tests/cjs-smoke.test.cjs tests/esm-smoke.test.mjs tests/bracket-rules.test.ts tests/create-id.test.ts tests/date-utils.test.ts tests/discipline-rules.test.ts tests/eligibility.test.ts tests/match-lifecycle.test.ts tests/overall-ranking.test.ts tests/reducer.test.ts tests/regulation.test.ts tests/repository.test.ts tests/scheduling-rules.test.ts tests/staff-roles.test.ts tests/tournament-engine.test.ts tests/tournament-progression.test.ts",
+    "test": "npm run build && node --test \"tests/**/*.test.*\"",
     "attw": "attw --pack .",
     "prepublishOnly": "npm run test && npm run attw"
   },

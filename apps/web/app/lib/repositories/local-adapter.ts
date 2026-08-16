@@ -4,9 +4,10 @@ import { applyAction, type Action } from '@atletica-incinera/intereng-contract/a
 import type { StateAdapter } from './state-adapter.ts';
 
 /**
- * Estado no `localStorage` do próprio navegador — o comportamento que o app tem
- * hoje. Continua sendo a origem usada pelos testes e2e depois que o adaptador
- * HTTP existir, para a suíte não depender de servidor.
+ * Estado no `localStorage` do próprio navegador. É a origem padrão e a que os
+ * e2e de navegador (`tests/e2e/`) usam, para aquela suíte não depender de
+ * servidor de pé. A de modo http (`tests/e2e-http/`) roda contra o adaptador
+ * HTTP de propósito — a escolha é por ambiente, não por evolução do projeto.
  */
 export function createLocalStateAdapter(): StateAdapter {
   return {

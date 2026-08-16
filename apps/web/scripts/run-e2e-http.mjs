@@ -27,12 +27,29 @@ function playwrightCli() {
 process.on('SIGINT', () => { stop(); process.exit(130); });
 process.on('SIGTERM', () => { stop(); process.exit(143); });
 
+/**
+ * Espera o endereço responder **2xx**, e conta o que viu.
+ *
+ * Aceitar qualquer coisa abaixo de 500 dava por no ar uma API que respondia
+ * `404` — que é justamente o caso a pegar: rota de saúde renomeada, prefixo de
+ * versão errado no endereço, ou outro serviço atendendo naquela porta. Nos três
+ * o servidor responde, e nos três a suíte inteira fica vermelha depois.
+ *
+ * O último status volta junto porque "respondeu 404" e "não respondeu nada"
+ * pedem conserto diferente.
+ */
 async function waitFor(url, attempts = 60) {
+  let status = null;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try { const response = await fetch(url); if (response.status < 500) return true; } catch { /* ainda subindo */ }
+    try { const response = await fetch(url); if (response.ok) return { up: true, status: response.status }; status = response.status; } catch { status = null; }
     await new Promise((wait) => setTimeout(wait, 500));
   }
-  return false;
+  return { up: false, status };
+}
+
+/** O que o operador precisa ler antes do "suba a API": o que veio da porta. */
+function lastAnswer(status) {
+  return status === null ? 'não respondeu' : `respondeu ${status}`;
 }
 
 try {
@@ -43,13 +60,15 @@ try {
 
   // Contra a API real, uma checagem curta: se ela não estiver de pé, dizer isso
   // vale mais que deixar oito cenários vermelhos sem causa aparente.
-  const apiUp = await waitFor(`${target.apiUrl}${target.healthPath}`, target.startsMock ? 60 : 10);
-  if (!apiUp) {
+  const health = `${target.apiUrl}${target.healthPath}`;
+  const api = await waitFor(health, target.startsMock ? 60 : 10);
+  if (!api.up) {
     throw new Error(target.startsMock
-      ? 'A API de mentira não subiu.'
-      : `A API real não respondeu em ${target.apiUrl}${target.healthPath}. Suba-a antes (docker compose -f docker-compose.yml -f docker-compose.api.yml up) e confira que o gancho de reset está habilitado (ENABLE_TEST_ENDPOINTS).`);
+      ? `A API de mentira ${lastAnswer(api.status)} em ${health}.`
+      : `A API real ${lastAnswer(api.status)} em ${health}, e a checagem exige 2xx. Suba-a antes (docker compose -f docker-compose.yml -f docker-compose.api.yml up), confira o endereço em NEXT_PUBLIC_API_URL e que o gancho de reset está habilitado (ENABLE_TEST_ENDPOINTS).`);
   }
-  if (!await waitFor(`http://127.0.0.1:${target.appPort}/`)) throw new Error('O app em modo http não subiu.');
+  const app = await waitFor(`http://127.0.0.1:${target.appPort}/`);
+  if (!app.up) throw new Error(`O app em modo http ${lastAnswer(app.status)} em http://127.0.0.1:${target.appPort}/.`);
 
   const runner = spawn(process.execPath, [playwrightCli(), 'test', '--config', 'playwright.http.config.ts', ...process.argv.slice(2)], {
     stdio: 'inherit',

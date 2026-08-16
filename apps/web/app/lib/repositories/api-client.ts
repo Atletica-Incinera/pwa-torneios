@@ -108,8 +108,22 @@ async function runRenewal(fetchImpl?: typeof fetch): Promise<string | null> {
       retryOnUnauthorized: false,
       fetchImpl,
     });
+    /**
+     * A renovação devolve acesso novo; o resto ela pode omitir, e a maioria
+     * omite — refresh não rotativo é o padrão mais comum, e o contrato o
+     * permite. Sem preservar aqui, a credencial de renovação viraria
+     * `undefined` na gravação e o 401 seguinte, uns quinze minutos depois, não
+     * teria com o que renovar: o operador seria expulso para o login no meio da
+     * partida. O prazo pelo mesmo motivo — em branco, ele seria reempurrado
+     * para doze horas a cada renovação, estendendo a sessão além do que o
+     * servidor autorizou.
+     */
     const next = sessionFromLogin({ ...payload, user: payload.user ?? session }, session.remembered);
-    writeStoredSession(next);
+    writeStoredSession({
+      ...next,
+      refreshToken: next.refreshToken ?? session.refreshToken,
+      expiresAt: payload.expiresAt ?? session.expiresAt,
+    });
     return next.token;
   } catch (caught) {
     // O servidor recusar a renovação encerra a sessão: o refresh token morreu.

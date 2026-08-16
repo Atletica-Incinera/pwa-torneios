@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRealtimeChannel } from '../../app/lib/repositories/realtime-channel';
 import { createPollingChannel } from '../../app/lib/repositories/polling-channel';
+import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 
 /**
  * `EventSource` de mentira: registra as aberturas e deixa quem testa emitir os
@@ -98,8 +99,9 @@ describe('canal de tempo real por polling', () => {
     vi.useFakeTimers();
     definirAbaEscondida(true);
     const buscas: string[] = [];
-    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json({}); };
-    const desligar = createPollingChannel({ fetchImpl, getToken: () => null })(() => {}, () => {});
+    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json(seededFrontendState); };
+    const recebidos: FrontendState[] = [];
+    const desligar = createPollingChannel({ fetchImpl, getToken: () => null })((snapshot) => { recebidos.push(snapshot); }, () => {});
 
     await vi.advanceTimersByTimeAsync(5_000);
     expect(buscas).toHaveLength(0);
@@ -109,13 +111,18 @@ describe('canal de tempo real por polling', () => {
     await vi.advanceTimersByTimeAsync(0);
 
     expect(buscas).toHaveLength(1);
+    // Contar requisição não prova entrega: com uma resposta que o
+    // `normalizeSnapshot` recusa, o canal engole o erro e o teste seguiria
+    // verde sem nunca chamar quem espera o estado.
+    expect(recebidos).toHaveLength(1);
+    expect(Object.keys(recebidos[0].teams).length).toBeGreaterThan(0);
     desligar();
   });
 
   it('trocar de aba sem perder ciclo nenhum não vira requisição extra', async () => {
     vi.useFakeTimers();
     const buscas: string[] = [];
-    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json({}); };
+    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json(seededFrontendState); };
     const desligar = createPollingChannel({ fetchImpl, getToken: () => null })(() => {}, () => {});
 
     await vi.advanceTimersByTimeAsync(5_000);
