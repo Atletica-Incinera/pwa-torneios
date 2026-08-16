@@ -68,6 +68,26 @@ test('service worker instala cache e entrega a tela offline', async ({ context, 
   try {
     await page.goto('/rota-nao-cacheada-e2e', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'SEM CONEXÃO' })).toBeVisible();
+
+    // A tela pública mostra os escudos das duas equipes que estão jogando, e
+    // só. Encontrar o elenco inteiro no cache prova que eles entraram na
+    // instalação, e não por terem sido vistos.
+    const cachedBadges = await page.evaluate(async () => {
+      const cache = await caches.open((await caches.keys()).find((key) => key.endsWith('-assets')) ?? '');
+      return (await cache.keys()).filter((request) => new URL(request.url).pathname.startsWith('/teams/')).length;
+    });
+    expect(cachedBadges).toBeGreaterThan(8);
+
+    // E o caminho de verdade, com uma equipe que não aparece na tela de onde
+    // viemos. É um `img` de propósito: o service worker decide pelo
+    // `destination`, e um `fetch` avulso não é imagem para ele.
+    const badgeWidth = await page.evaluate(async () => await new Promise<number>((resolve) => {
+      const image = new Image();
+      image.onload = () => resolve(image.naturalWidth);
+      image.onerror = () => resolve(0);
+      image.src = '/teams/zangada.webp';
+    }));
+    expect(badgeWidth).toBeGreaterThan(0);
   } finally {
     await context.setOffline(false);
   }
