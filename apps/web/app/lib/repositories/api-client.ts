@@ -47,6 +47,16 @@ async function readError(response: Response) {
 }
 
 /**
+ * A renovação não completou, e **não** por culpa da credencial.
+ *
+ * A distinção existe porque as duas falhas levam a lugares opostos: o servidor
+ * recusar a renovação encerra a sessão; não receber resposta não encerra nada.
+ */
+export class RenewalUnavailableError extends Error {
+  constructor() { super('Não foi possível renovar a sessão agora. Tente de novo.'); }
+}
+
+/**
  * Renovação em voo único.
  *
  * Um snapshot vencido derruba várias requisições ao mesmo tempo. Sem isto,
@@ -84,8 +94,13 @@ async function runRenewal(fetchImpl?: typeof fetch): Promise<string | null> {
     const next = sessionFromLogin({ ...payload, user: payload.user ?? session }, session.remembered);
     writeStoredSession(next);
     return next.token;
-  } catch {
-    return null;
+  } catch (caught) {
+    // O servidor recusar a renovação encerra a sessão: o refresh token morreu.
+    // Não receber resposta é outra coisa — rede oscilando, ou a página sendo
+    // descarregada no meio de uma navegação, que aborta as requisições em voo.
+    // Tratar as duas igual expulsa para o login quem só clicou num link.
+    if (caught instanceof UnauthorizedError) return null;
+    throw new RenewalUnavailableError();
   }
 }
 

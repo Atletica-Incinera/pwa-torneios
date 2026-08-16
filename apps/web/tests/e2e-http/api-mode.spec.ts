@@ -119,6 +119,45 @@ test('stream fora do ar: a barra avisa em vez de congelar', async ({ page }) => 
   await expect(page.locator('.sync-state.sync-offline')).toContainText('Sem conexão');
 });
 
+test('renovação que não recebe resposta não expulsa para o login', async ({ page, request }) => {
+  // O caso real: o operador clica num link enquanto o acesso está sendo
+  // renovado. A navegação descarrega a página e o navegador aborta a
+  // requisição em voo. Isso é rede, não credencial recusada — e por um tempo
+  // era tratado igual, mandando para o login quem tinha sessão boa.
+  test.skip(!isMock, 'depende do gancho /test/expire-access');
+  await page.goto('/');
+  await login(page);
+  await request.post(`${api}/test/expire-access`);
+
+  let aborted = false;
+  await page.route('**/auth/refresh', async (route) => {
+    if (aborted) return route.continue();
+    aborted = true;
+    return route.abort('failed');
+  });
+
+  await page.goto('/teams');
+  // A renovação é disparada pelo primeiro 401, que pode chegar depois do load.
+  await expect.poll(() => aborted, { message: 'a renovação precisa ter sido abortada para o cenário valer' }).toBe(true);
+
+  // Esperar o que NÃO deve acontecer não tem sinal positivo para aguardar: a
+  // janela existe para a guarda chegar a decidir e, se for o caso, redirecionar.
+  await page.waitForTimeout(500);
+
+  // O que não pode acontecer de jeito nenhum: a sessão ser dada como vencida.
+  await expect(page).not.toHaveURL(/access=expired/);
+  const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('intereng:frontend-session') ?? '{}'));
+  expect(Date.parse(stored.expiresAt), 'a sessão não pode ser carimbada como vencida').toBeGreaterThan(Date.now());
+
+  // E a sessão continua servindo: recarregar entra direto, sem passar pelo
+  // login. Recarregar em vez de clicar em "Tentar novamente" é de propósito —
+  // o botão recompõe só uma das pipelines de estado da página, e o que este
+  // cenário precisa provar é que a sessão sobreviveu, não quantas telas o
+  // botão conserta.
+  await page.reload();
+  await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
+});
+
 test('acesso vencido é renovado sozinho, sem devolver ao login', async ({ page, request }) => {
   // O gancho que vence o acesso sem derrubar a renovação é do mock: na API real
   // o mesmo caminho é exercitado esperando o token curto expirar.
