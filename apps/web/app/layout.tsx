@@ -2,6 +2,7 @@ import type { Viewport } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import './motion.css';
+import { appleStartupImages } from './lib/pwa-assets';
 import { PwaRegistration } from './components/PwaRegistration';
 import { UiProvider } from './components/UiProvider';
 
@@ -63,7 +64,9 @@ export const metadata = {
     ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
-  appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const },
+  // Sem `startupImage`, o iPhone abre o app instalado com tela branca até o
+  // React montar — o oposto do que o `background_color` do manifesto promete.
+  appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const, startupImage: appleStartupImages },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

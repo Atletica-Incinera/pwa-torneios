@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { manifestScreenshots } from './lib/pwa-assets';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -19,6 +20,9 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
       { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
+    // Sem capturas, Chrome e Edge mostram a ficha mínima de instalação em vez
+    // da rica. Geradas por `npm run pwa:assets`.
+    screenshots: manifestScreenshots,
     shortcuts: [
       { name: 'Jogos ao vivo', short_name: 'Ao vivo', url: '/public', icons: [{ src: '/icon-192.png', sizes: '192x192', type: 'image/png' }] },
       // Os atalhos apontam para rotas finais. `/public/matches` ainda existe e

@@ -13,7 +13,8 @@
     "test:e2e": "npm run build && node scripts/run-e2e.mjs",
     "test:visual:update": "npm run build && node scripts/run-e2e.mjs --grep \"regressão visual\" --update-snapshots",
     "test:e2e:http": "node scripts/build-http.mjs && node scripts/run-e2e-http.mjs",
-    "test:e2e:api": "node scripts/run-e2e-api.mjs"
+    "test:e2e:api": "node scripts/run-e2e-api.mjs",
+    "pwa:assets": "node scripts/generate-pwa-assets.mjs"
   },
   "dependencies": {
     "@atletica-incinera/intereng-contract": "0.1.0",

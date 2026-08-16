@@ -11,6 +11,33 @@ test('manifesto publica ícones instaláveis e maskable', async ({ request }) =>
   ]));
 });
 
+test('a ficha de instalação tem captura estreita e larga, e os arquivos existem', async ({ request }) => {
+  const manifest = await (await request.get('/manifest.webmanifest')).json() as { screenshots?: Array<{ src: string; sizes: string; form_factor: string }> };
+  const screenshots = manifest.screenshots ?? [];
+  // Sem os dois formatos, Chrome e Edge caem na ficha mínima de instalação.
+  expect(screenshots.map((item) => item.form_factor)).toEqual(expect.arrayContaining(['narrow', 'wide']));
+  for (const screenshot of screenshots) {
+    const response = await request.get(screenshot.src);
+    expect(response.status(), screenshot.src).toBe(200);
+  }
+});
+
+test('as telas de abertura do iOS existem, uma por consulta de mídia', async ({ page, request }) => {
+  await page.goto('/public');
+  const links = page.locator('link[rel="apple-touch-startup-image"]');
+  // O iOS escolhe por consulta de mídia exata e não tem fallback: aparelho sem
+  // linha correspondente abre com tela branca.
+  await expect(links).not.toHaveCount(0);
+  const declared = await links.evaluateAll((nodes) => nodes.map((node) => ({
+    href: node.getAttribute('href') ?? '', media: node.getAttribute('media') ?? '',
+  })));
+  expect(new Set(declared.map((item) => item.media)).size).toBe(declared.length);
+  for (const item of declared) {
+    expect(item.media, item.href).toMatch(/device-width.+device-height.+device-pixel-ratio/);
+    expect((await request.get(item.href)).status(), item.href).toBe(200);
+  }
+});
+
 test('todo atalho do manifesto abre uma rota final', async ({ request }) => {
   const manifest = await (await request.get('/manifest.webmanifest')).json() as { shortcuts: Array<{ name: string; url: string }> };
   expect(manifest.shortcuts.length).toBeGreaterThan(0);
