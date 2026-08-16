@@ -27,7 +27,7 @@ integração com a API resolve.
 | Ambiente Docker | **80%** — compose sem API embutida, quatro overrides, contexto na raiz, build args | rodar `docker compose build web` e `up web` |
 | Pedido à API | **100%** — 12 tasks escritas em [TASKS_API.md](TASKS_API.md) | colar no repositório da API |
 | API (outro repositório) | **23 de 25** tasks deles; **0 de 12** novas | segurado por decisão |
-| PWA | **100% do que não depende de servidor** — manifesto com capturas e atalhos, service worker v8, tela offline, atualização sob confirmação, ícones e maskable, splash de iOS, escudos e sons no pré-cache, handler de `push` | inscrição de push, que é a TASK-27 |
+| PWA | **100% do que não depende de servidor** — manifesto com capturas e atalhos, service worker v8, tela offline, atualização sob confirmação, ícones e maskable, splash de iOS, escudos no pré-cache, sons guardados ao serem tocados, handler de `push` | inscrição de push, que é a TASK-27 |
 | Integração ponta a ponta | **0%** | bloqueada pela API |
 
 ### Os testes, contados onde eles moram
@@ -89,10 +89,19 @@ saber por que uma linha existe é o que impede alguém de removê-la depois:
 | Escudos fora do pré-cache: primeira abertura offline com imagem quebrada | os 16 arquivos de `public/teams/` entram no `install`, no cache de recursos — que é onde `staleWhileRevalidate` procura. `tests/unit/service-worker.test.ts` confere que a lista bate com a pasta |
 | Preferência de notificação sem handler de `push` | o service worker trata `push` e `notificationclick`, e o app avisa sozinho quando uma partida da modalidade escolhida começa ou termina |
 
-A versão do service worker subiu junto, e voltou a subir quando os sons do
-placar entraram no pré-cache: `public/sw.js` está em `intereng-v8`. O número no
-fim não é decorativo — é o que o `activate` usa para apagar o cache anterior, e
-há um teste exigindo o formato.
+A versão do service worker subiu junto, e voltou a subir quando os sons
+passaram a ser guardados: `public/sw.js` está em `intereng-v8`. O número no fim
+não é decorativo — é o que o `activate` usa para apagar o cache anterior, e há
+um teste exigindo o formato.
+
+Os sons ficaram **fora** do pré-cache, e a razão vale registro porque a primeira
+tentativa fez o contrário. São 5,9 MB contra 0,5 MB de todo o resto: baixá-los
+na instalação castiga quem só quer ver o placar da arquibancada, e derrubou o
+navegador na suíte assim que muitos contextos instalaram o worker em sequência.
+Quem precisa deles é o mesário, e `warmSportsSounds()` os carrega ao abrir o
+placar ao vivo — ainda com rede, antes de a do ginásio cair. O
+`staleWhileRevalidate` os guarda a partir daí, porque `new Audio()` pede com
+`destination: 'audio'`.
 
 O que sobrou de PWA não é do front: **aviso com o app fechado depende do
 servidor** — chave VAPID, rota de inscrição e envio. É a TASK-27.
