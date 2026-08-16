@@ -1,5 +1,6 @@
 import type { CompletionRule, KnockoutMethod, KnockoutRule, RosterRule, ScoringAction, SecondaryAction, StandingsRule, WalkoverRule } from './regulation.js';
 import { seedAthletes, seedDisciplines, seedMatches, seedStaff, seedTeams, seedTournaments } from './edition-seed.js';
+import type { StaffRoleLabel } from './staff-roles.js';
 
 export type CompetitionState = { id: string; name: string; slug: string; active: boolean };
 export type EditionState = { id: string; name: string; year: number; start: string; end: string; status: 'Planejamento' | 'Em andamento' | 'Finalizada' | 'Arquivada'; active: boolean; competitionId?: string };
@@ -45,7 +46,7 @@ export type StaffState = {
   name: string;
   email: string;
   initials: string;
-  role: 'Admin da edição' | 'Gestor de modalidade';
+  role: StaffRoleLabel;
   scope: string;
   revoked?: boolean;
 };

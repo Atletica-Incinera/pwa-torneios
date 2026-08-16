@@ -1,4 +1,7 @@
-export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
+import type { StaffRole } from '@atletica-incinera/intereng-contract/rules';
+
+/** O papel da sessão é o do contrato: o servidor emite exatamente estes. */
+export type FrontendRole = StaffRole;
 
 /**
  * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador

@@ -4,11 +4,8 @@ import { hasStarted, isTournamentStarted } from './status.js';
 import { athletesOfTeam, eligibleAthletes, findTeamByName, listTeams } from './edition-catalog.js';
 import type { Regulation } from './regulation.js';
 
-export type { AthleteView as AthleteRef } from './edition-catalog.js';
-
 /** O diretório de equipes é o mesmo usado pelas telas: `edition-catalog`. */
 export { listTeams as teamDirectory, findTeamByName, athletesOfTeam, eligibleAthletes };
-export type { TeamView as TeamRef } from './edition-catalog.js';
 
 export type RosterCheck = { ok: boolean; count: number; severity: 'ok' | 'aviso' | 'erro'; message: string };
 

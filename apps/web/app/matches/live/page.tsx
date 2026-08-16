@@ -10,7 +10,7 @@ import { AdminRouteGuard } from '../../components/AdminRouteGuard';
 import { useUi } from '../../components/UiProvider';
 import { MatchEventState, MatchScoreSnapshot, MatchTiebreakState, useFrontendState } from '../../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../../lib/frontend-session';
-import { findMatch, listMatches, type MatchView, formatClock, matchClockLabel, describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod, evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, operatorLockMs, setWinner, isLive, matchStatus, createId } from '@atletica-incinera/intereng-contract/rules';
+import { findMatch, listMatches, type MatchView, formatClock, matchClockLabel, describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod, evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, operatorLockMs, operatorRenewMs, setWinner, isLive, matchStatus, createId } from '@atletica-incinera/intereng-contract/rules';
 import { impactSoundForEvent, ImpactSound, playImpactSound, soundForLifecycle, warmSportsSounds } from '../../lib/sound-effects';
 import { LoadingScreen } from '../../components/LoadingScreen';
 
@@ -18,6 +18,18 @@ type EventTone = 'blue' | 'pink' | 'orange';
 
 /** Placeholder de render: a tela devolve "partida não encontrada" logo adiante. */
 const emptyMatch: MatchView = { id: '', discipline: 'Modalidade', entryA: 'Equipe A', logoA: '', entryB: 'Equipe B', logoB: '', scoreA: null, scoreB: null, date: 'A definir', time: '--:--', venue: 'A definir', phase: 'Fase atual', status: 'Agendada', created: false };
+
+/**
+ * De quanto em quanto tempo a tela oferece a trava ao contrato.
+ *
+ * A batida não decide nada: quem grava é o redutor, e só depois de
+ * `operatorRenewMs`. O intervalo é amostragem, então precisa caber na folga
+ * entre a renovação e o vencimento — bater de 90 em 90 s empurraria a próxima
+ * gravação para os 180 s, com a trava vencendo aos 120 s e a operação caindo
+ * sozinha no meio da partida. Metade da folga deixa margem para uma batida
+ * atrasada, que é o que acontece com a aba em segundo plano.
+ */
+const heartbeatIntervalMs = (operatorLockMs - operatorRenewMs) / 2;
 
 export default function LiveMatchPage() {
   return <AdminRouteGuard><Suspense fallback={<LoadingScreen message="Preparando placar..." />}><LiveMatchContent /></Suspense></AdminRouteGuard>;
@@ -51,8 +63,9 @@ function LiveMatchContent() {
   const finished = status === matchStatus.finished;
   const live = isLive(status);
   const authorized = canManageDiscipline(session, match.discipline);
-  const operatorFresh = Boolean(persisted.operatorHeartbeat && Date.now() - new Date(persisted.operatorHeartbeat).getTime() < operatorLockMs);
-  const operatorConflict = Boolean(operatorFresh && persisted.operatorId && persisted.operatorId !== operatorId.current);
+  // Quem decide se a trava de outro dispositivo ainda vale é o contrato — o
+  // mesmo `evaluateOperatorLock` que o redutor consulta antes de gravar.
+  const operatorConflict = evaluateOperatorLock(persisted, operatorId.current) === 'blocked';
   const holdsOperation = persisted.operatorId === operatorId.current;
   const allowed = authorized && !operatorConflict;
 
@@ -111,7 +124,7 @@ function LiveMatchContent() {
     // re-renderizava a cada tique, no meio da partida.
     const heartbeat = () => { void dispatch({ type: 'match/claimOperator', payload: { id: match.id, operatorId: operatorId.current, operatorName: session?.name ?? 'Operador' } }); };
     heartbeat();
-    const timer = window.setInterval(heartbeat, 15_000);
+    const timer = window.setInterval(heartbeat, heartbeatIntervalMs);
     return () => {
       window.clearInterval(timer);
       void dispatch({ type: 'match/releaseOperator', payload: { id: match.id, operatorId: operatorId.current } });

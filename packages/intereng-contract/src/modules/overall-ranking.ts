@@ -73,8 +73,6 @@ export function suggestAutomaticAwards(state: FrontendState, editionId?: string)
   return suggestions;
 }
 
-export type RankingRow = { id: string; name: string; points: number; bonuses: number; disciplines: number; rank: number };
-
 /** Classificação geral da edição, considerando apenas bonificações vivas. */
 export function computeOverallRanking(state: Pick<FrontendState, 'overallRanking'>, teams: readonly { id: string; name: string }[], editionId?: string) {
   const awards = activeAwards(state, editionId);

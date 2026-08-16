@@ -1,4 +1,5 @@
 import type { AthleteState, DisciplineState, MatchState, StaffState, TeamState, TournamentPhase, TournamentState } from './frontend-state.js';
+import type { StaffRole } from './staff-roles.js';
 
 /**
  * Dados iniciais da edição no adaptador local.
@@ -71,3 +72,19 @@ export const seedStaff: Record<string, StaffState> = {
   'bruno@ufpe.br': { name: 'Bruno Martins', email: 'bruno@ufpe.br', initials: 'BM', role: 'Gestor de modalidade', scope: 'Futsal' },
   'camila@ufpe.br': { name: 'Camila Rocha', email: 'camila@ufpe.br', initials: 'CR', role: 'Gestor de modalidade', scope: 'Vôlei' },
 };
+
+export type DemoUser = { email: string; password: string; name: string; role: StaffRole; scope?: string };
+
+/**
+ * Os acessos de demonstração da edição de exemplo.
+ *
+ * Ficam aqui porque quem confere a senha muda de lado — hoje é o navegador,
+ * amanhã é a API — e as duas pontas precisam concordar sobre e-mail, senha,
+ * papel e escopo. Enquanto cada uma mantinha a sua lista, um acesso podia
+ * entrar no modo local e ser recusado no modo `http`.
+ */
+export const demoUsers: readonly DemoUser[] = [
+  { email: 'super@intereng.com', password: 'super2026', name: 'Super Admin', role: 'SUPER_ADMIN' },
+  { email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora', role: 'EDITION_ADMIN' },
+  { email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins', role: 'DISCIPLINE_MANAGER', scope: 'Futsal' },
+];

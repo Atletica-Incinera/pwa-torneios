@@ -136,8 +136,8 @@ Configuráveis em *Modalidades → (modalidade) → Regras da modalidade*.
 
 ## 6. Governança e operação
 
-- **Fonte da verdade:** as regras estão isoladas em `app/lib/*` justamente para serem reaproveitadas pelo backend. Enquanto ele não existe, o LocalStorage não garante concorrência entre dispositivos — a validação é de interface, não de servidor.
-- **Trava de operador:** heartbeat de 30 s, com ações explícitas de assumir (com confirmação e auditoria) e liberar a operação.
+- **Fonte da verdade:** as regras não moram mais no front. Foram extraídas para `@atletica-incinera/intereng-contract` — a tabela de módulos em *Vocabulário*, no topo, diz onde cada uma está — justamente para o backend **importá-las**, não reescrevê-las. Enquanto ele não assume, o LocalStorage não garante concorrência entre dispositivos: a validação é de interface, não de servidor.
+- **Trava de operador:** a trava vale 2 min e é regravada a partir de 90 s sem renovação (`operatorLockMs` e `operatorRenewMs`, no pacote), com ações explícitas de assumir (com confirmação e auditoria) e liberar a operação.
 - **Auditoria:** ações sensíveis gravam antes, depois e o motivo das exceções. A tela **nunca exibe registro de exemplo**: uma entrada inventada ali seria lida como alteração real, com nome de pessoa e placar que não aconteceram.
 - **Nada de número decorativo:** contagem de elenco, inscritos, progresso da categoria e tabela de classificação saem sempre do dado real. Quando não há dado, a tela diz que está pendente em vez de preencher com um valor plausível.
 - **Publicação:** `Rascunho`, `Publicado`, `Em andamento`, `Encerrado` e `Arquivado`. A área pública mostra apenas disputas publicadas e resultados oficiais (`Encerrada` e `W.O.`).

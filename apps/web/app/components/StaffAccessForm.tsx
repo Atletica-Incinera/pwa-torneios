@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
-import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
+import { listDisciplines, staffRoleLabels } from '@atletica-incinera/intereng-contract/rules';
 import { canGrantRole, useFrontendSession } from '../lib/frontend-session';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
@@ -12,7 +12,7 @@ function initialsFrom(name: string) { return name.trim().split(/\s+/).slice(0, 2
 export function StaffAccessForm() {
   const router = useRouter(); const { state, dispatch } = useFrontendState();
   const { session } = useFrontendSession();
-  const grantableRoles = (['Admin da edição', 'Gestor de modalidade'] as const).filter((item) => canGrantRole(session, item));
+  const grantableRoles = staffRoleLabels.filter((item) => canGrantRole(session, item));
   const [name, setName] = useState(''); const [email, setEmail] = useState(''); const [role, setRole] = useState<StaffState['role']>('Gestor de modalidade'); const [scope, setScope] = useState<string>(''); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false);
   useUnsavedChanges(Boolean(name || email) && !submitting);
   const options = listDisciplines(state, getActiveEdition(state)?.id).filter((item) => item.enabled).map((item) => item.name);

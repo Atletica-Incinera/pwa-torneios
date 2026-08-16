@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import { privateTournamentStatuses } from '@atletica-incinera/intereng-contract/rules';
+import { demoUsers } from '@atletica-incinera/intereng-contract/seed';
 
 /**
  * A API de mentira do contrato.
@@ -12,11 +13,6 @@ import { privateTournamentStatuses } from '@atletica-incinera/intereng-contract/
  * exatamente o que o backend fará — e devolve o snapshot como resposta.
  */
 const port = Number(process.env.MOCK_API_PORT ?? 3201);
-const users = [
-  { email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora', role: 'EDITION_ADMIN' as const },
-  { email: 'super@intereng.com', password: 'super2026', name: 'Super Admin', role: 'SUPER_ADMIN' as const },
-  { email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins', role: 'DISCIPLINE_MANAGER' as const, scope: 'Futsal' },
-];
 
 let snapshot: FrontendState = seededFrontendState;
 const sessions = new Map<string, { email: string; name: string }>();
@@ -100,13 +96,13 @@ createServer(async (request, response) => {
 
   if (url.pathname === '/auth/login' && request.method === 'POST') {
     const { email, password } = await readBody(request) as { email?: string; password?: string };
-    const user = users.find((item) => item.email === email && item.password === password);
+    const user = demoUsers.find((item) => item.email === email && item.password === password);
     if (!user) return send(response, 401, { message: 'E-mail ou senha inválidos.' });
     const token = `token-${user.email}`;
     const refreshToken = `refresh-${user.email}`;
     sessions.set(token, { email: user.email, name: user.name });
     refreshTokens.set(refreshToken, { email: user.email, name: user.name });
-    return send(response, 200, { token, refreshToken, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: { email: user.email, name: user.name, role: user.role, scope: 'scope' in user ? user.scope : undefined } });
+    return send(response, 200, { token, refreshToken, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: { email: user.email, name: user.name, role: user.role, scope: user.scope } });
   }
 
   if (url.pathname === '/auth/refresh' && request.method === 'POST') {

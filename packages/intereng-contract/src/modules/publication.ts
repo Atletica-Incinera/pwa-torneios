@@ -1,10 +1,7 @@
-import type { FrontendState, TournamentState } from './frontend-state.js';
-import { privateTournamentStatuses, tournamentStatus } from './status.js';
+import type { FrontendState } from './frontend-state.js';
+import { privateTournamentStatuses } from './status.js';
 
 export { isOfficialResult, officialMatchStatuses } from './status.js';
-
-/** Estados de disputa que o público pode ver. */
-export const publicTournamentStatuses: TournamentState['status'][] = [tournamentStatus.published, tournamentStatus.running, tournamentStatus.closed];
 
 /**
  * A lista de exclusão vive em `status.ts`: o catálogo inicial usa rótulos

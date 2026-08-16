@@ -16,6 +16,7 @@ export * from './modules/overall-ranking.js';
 export * from './modules/publication.js';
 export * from './modules/regulation.js';
 export * from './modules/scheduling-rules.js';
+export * from './modules/staff-roles.js';
 export * from './modules/status.js';
 export * from './modules/tournament-engine.js';
 export * from './modules/tournament-progression.js';
