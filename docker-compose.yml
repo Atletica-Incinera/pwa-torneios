@@ -123,7 +123,7 @@ services:
       S3_MAX_LOGO_BYTES: ${S3_MAX_LOGO_BYTES:-8388608}
       REDIS_STREAM_TTL: ${REDIS_STREAM_TTL:-3600}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-    command: ["sh", "-c", "npm run prisma:push && npm run start:prod"]
+    command: ["sh", "-c", "npm run prisma:migrate && npm run start:prod"]
     depends_on:
       postgres:
         condition: service_healthy
