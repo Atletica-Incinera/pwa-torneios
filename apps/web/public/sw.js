@@ -1,4 +1,4 @@
-const VERSION = 'intereng-v7';
+const VERSION = 'intereng-v8';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const PAGES = ['/offline', '/public', '/public/teams', '/public/tournaments', '/public/standings/general'];
@@ -8,6 +8,15 @@ const ICONS = ['/icon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-51
 // primeira abertura offline mostrava imagem quebrada em toda parte.
 // `tests/unit/service-worker.test.ts` confere que esta lista bate com a pasta.
 const BADGES = ['/teams/alcateia.webp', '/teams/cangaceiros.webp', '/teams/caotica.webp', '/teams/energizada.webp', '/teams/engenhosa.webp', '/teams/graxeiros.webp', '/teams/incinera.webp', '/teams/invasora.webp', '/teams/invocados.webp', '/teams/radioativa.webp', '/teams/reativa.webp', '/teams/soberana.webp', '/teams/thenebrosa.webp', '/teams/tubaroes.webp', '/teams/voraz.webp', '/teams/zangada.webp'];
+// Os sons ficam **fora** do pré-cache. São 5,9 MB contra 0,5 MB de todo o
+// resto, e baixá-los na instalação atinge quem só quer ver o placar da
+// arquibancada — além de derrubar o navegador quando muitos contextos instalam
+// o worker em sequência, que foi como isto apareceu na suíte.
+// Quem precisa deles é o mesário, e ele os aquece no momento certo:
+// `warmSportsSounds()` (`app/lib/sound-effects.ts`) carrega o elenco inteiro ao
+// abrir o placar ao vivo com som ligado — ainda com rede, antes de a do ginásio
+// cair. Como `new Audio()` pede com `destination: 'audio'`, o
+// `staleWhileRevalidate` abaixo os guarda a partir daí.
 const ASSETS = [...ICONS, ...BADGES];
 
 // Página e recurso vão para caches diferentes porque são servidos por
@@ -15,6 +24,11 @@ const ASSETS = [...ICONS, ...BADGES];
 // `staleWhileRevalidate` no de recursos. Guardar tudo num só faria o
 // pré-cache não ser encontrado por quem mais precisa dele — o caminho da
 // imagem, que é o que fica sem rede.
+// Os sons entram no mesmo cache de recursos, para o `staleWhileRevalidate`
+// achá-los, mas por uma promessa própria e com a falha engolida: são 6 MB
+// contra 0,5 MB de todo o resto, e um `addAll` que rejeita derruba a instalação
+// inteira do service worker. Trocar o app offline por um efeito sonoro seria
+// mau negócio — o que faltar aqui é recuperado na primeira reprodução com rede.
 self.addEventListener('install', (event) => event.waitUntil(Promise.all([
   caches.open(PAGE_CACHE).then((cache) => cache.addAll(PAGES)),
   caches.open(ASSET_CACHE).then((cache) => cache.addAll(ASSETS)),
@@ -68,7 +82,11 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(ASSET_CACHE);
   const cached = await cache.match(request);
-  const fresh = fetch(request).then((response) => { if (response.ok) cache.put(request, response.clone()); return response; }).catch(() => cached);
+  // `status === 200` e não `ok`: mídia costuma ser pedida por faixa, e guardar
+  // um 206 é proibido pelo Cache API — `cache.put` rejeitaria sozinho, longe de
+  // qualquer `catch`, e o pedaço nunca substituiria o arquivo inteiro do
+  // pré-cache.
+  const fresh = fetch(request).then((response) => { if (response.status === 200) cache.put(request, response.clone()); return response; }).catch(() => cached);
   return cached || fresh;
 }
 
@@ -79,5 +97,7 @@ self.addEventListener('fetch', (event) => {
   if (new URL(event.request.url).pathname.startsWith('/_next/')) return;
   if (event.request.mode === 'navigate') { event.respondWith(networkFirst(event.request)); return; }
   const destination = event.request.destination;
-  if (['image', 'font', 'style', 'script'].includes(destination)) event.respondWith(staleWhileRevalidate(event.request));
+  // `'audio'` é o `destination` de `new Audio(src)`. Sem ele o pré-cache dos
+  // sons nunca seria consultado, e a lista acima não serviria para nada.
+  if (['image', 'font', 'style', 'script', 'audio'].includes(destination)) event.respondWith(staleWhileRevalidate(event.request));
 });

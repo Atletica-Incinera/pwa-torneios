@@ -10,7 +10,10 @@ node_modules
 **/.next
 **/.next-http
 **/.next-api
-dist
+# Sem o `**`, casava só com um `dist` na raiz — que não existe. O do contrato
+# entrava no contexto à toa: a imagem não o consome do host, ela o reconstrói
+# com `npm run build:contract` e copia do próprio estágio de build.
+**/dist
 build
 coverage
 *.tsbuildinfo

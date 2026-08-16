@@ -30,9 +30,14 @@ COPY . .
 ARG NEXT_PUBLIC_DATA_SOURCE=local
 ARG NEXT_PUBLIC_API_URL=/api/v1
 ARG NEXT_PUBLIC_REALTIME=sse
+ARG NEXT_PUBLIC_REALTIME_INTERVAL=5000
 ENV NEXT_PUBLIC_DATA_SOURCE=$NEXT_PUBLIC_DATA_SOURCE
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_REALTIME=$NEXT_PUBLIC_REALTIME
+ENV NEXT_PUBLIC_REALTIME_INTERVAL=$NEXT_PUBLIC_REALTIME_INTERVAL
+# `npm ci --ignore-scripts` deixou o `prepare` do pacote de fora: sem esta linha
+# o `dist` do contrato não existe nem para o build do app, nem para copiar
+# adiante — é ela que garante que o alvo do link do workspace tenha conteúdo.
 RUN npm run build:contract && npm run build
 
 FROM node:24-alpine AS runner
@@ -42,6 +47,13 @@ ENV NODE_ENV=production
 # na raiz aponta para `apps/web` e quebraria se o app mudasse de lugar.
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
+# `node_modules/@atletica-incinera/intereng-contract` é um link para
+# `packages/intereng-contract`, criado pelo `npm ci`. Sem o alvo, o link chega
+# na imagem apontando para o vazio. Hoje o App Router embute o contrato dentro
+# de `.next/server` e disfarça a falta; mexer em `serverExternalPackages` faria
+# a resolução voltar para o link e virar `MODULE_NOT_FOUND` em produção.
+COPY --from=builder /app/packages/intereng-contract/package.json ./packages/intereng-contract/package.json
+COPY --from=builder /app/packages/intereng-contract/dist ./packages/intereng-contract/dist
 COPY --from=builder /app/apps/web/package.json ./apps/web/package.json
 COPY --from=builder /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=builder /app/apps/web/.next ./apps/web/.next

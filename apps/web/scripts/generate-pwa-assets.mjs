@@ -2,6 +2,12 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
+// `@playwright/test` reexporta o `chromium`, e é o único pacote do Playwright
+// que este projeto declara. Pedir `playwright` direto funcionava só por ele
+// estar aninhado como dependência transitiva, e abriria espaço para as duas
+// versões divergirem — o binário do navegador é baixado pela versão instalada,
+// não pela importada.
+import { chromium } from '@playwright/test';
 import { screenshotCaptures, splashDevices, splashFile } from '../app/lib/pwa-assets.ts';
 
 /**
@@ -20,7 +26,6 @@ import { screenshotCaptures, splashDevices, splashFile } from '../app/lib/pwa-as
  *   npm run build && npm run pwa:assets
  */
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
 
 const port = 3105;
 const background = '#022734';

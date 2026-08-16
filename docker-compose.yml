@@ -82,6 +82,7 @@ services:
         NEXT_PUBLIC_DATA_SOURCE: ${NEXT_PUBLIC_DATA_SOURCE:-local}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api/v1}
         NEXT_PUBLIC_REALTIME: ${NEXT_PUBLIC_REALTIME:-sse}
+        NEXT_PUBLIC_REALTIME_INTERVAL: ${NEXT_PUBLIC_REALTIME_INTERVAL:-5000}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3001/public"]

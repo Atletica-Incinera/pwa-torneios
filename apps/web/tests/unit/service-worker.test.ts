@@ -26,11 +26,50 @@ test('todo escudo da pasta está no pré-cache do service worker', () => {
   assert.deepEqual([...badges].sort(), [...onDisk].sort());
 });
 
+/**
+ * Os sons não entram no pré-cache — são 5,9 MB, e a explicação está no `sw.js`.
+ * O que precisa continuar amarrado é a tabela do app à pasta: um arquivo
+ * renomeado deixa o placar mudo no gol, e nada mais avisaria.
+ */
+test('todo som que o app toca existe na pasta', () => {
+  const source = readFileSync(resolve(web, 'app/lib/sound-effects.ts'), 'utf8');
+  const referenced = [...source.matchAll(/'(\/sounds\/[^']+)'/g)].map((match) => match[1]);
+  assert.ok(referenced.length > 0, 'nenhum som referenciado em sound-effects.ts');
+
+  const onDisk = new Set(readdirSync(resolve(web, 'public/sounds'))
+    .filter((file) => /\.(mp3|wav)$/.test(String(file)))
+    .map((file) => `/sounds/${file}`));
+  for (const src of referenced) assert.ok(onDisk.has(src), `${src} é tocado pelo app e não existe em public/sounds/`);
+});
+
 test('o pré-cache não aponta para arquivo que não existe', () => {
   const files = new Set(readdirSync(resolve(web, 'public'), { recursive: true })
     .map((entry) => `/${String(entry).replace(/\\/g, '/')}`));
   for (const asset of [...listed('ICONS'), ...listed('BADGES')]) {
     assert.ok(files.has(asset), `${asset} está no pré-cache e não existe em public/`);
+  }
+});
+
+/**
+ * `PAGES` não são arquivos em `public/`: são rotas do Next, e o `install` faz
+ * `cache.addAll(PAGES)` — onde **um único 404 rejeita a instalação inteira** do
+ * service worker. Renomear uma rota deixaria o PWA sem nada offline.
+ *
+ * Sem subir o servidor, o que dá para afirmar é que existe o `page` do
+ * App Router correspondente, que é o que separa 200 de 404. O que fica de fora
+ * é o que só aparece em execução: uma página que chame `notFound()`, que
+ * dependa de dado ausente ou que estoure na renderização passa por aqui e
+ * continua derrubando a instalação. Provar isso exigiria o app compilado e de
+ * pé — é a suíte e2e, não este teste.
+ */
+test('toda página do pré-cache corresponde a uma rota do App Router', () => {
+  const routes = new Set(readdirSync(resolve(web, 'app'), { recursive: true })
+    .map((entry) => String(entry).replace(/\\/g, '/'))
+    .filter((entry) => /(^|\/)page\.[jt]sx?$/.test(entry))
+    // Grupo de rota — `(publico)` — organiza a pasta e não aparece na URL.
+    .map((entry) => `/${entry.replace(/\/?page\.[jt]sx?$/, '')}`.replace(/\/\([^/]+\)/g, '')));
+  for (const page of listed('PAGES')) {
+    assert.ok(routes.has(page), `${page} está no pré-cache e não é rota em app/`);
   }
 });
 

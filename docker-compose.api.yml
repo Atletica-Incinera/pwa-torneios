@@ -45,6 +45,14 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://app.localhost}
       ENABLE_TEST_ENDPOINTS: ${ENABLE_TEST_ENDPOINTS:-false}
       PORT: 3000
+    # O app fala com a API pelo Traefik, e não precisa desta porta. Quem precisa
+    # é a suíte `E2E_API=real`, que roda fora do Docker e mira
+    # `http://127.0.0.1:3000/api/v1` (`scripts/e2e-target.mjs`): pelo Traefik ela
+    # teria de resolver `app.localhost`, que o Windows não resolve sem entrada no
+    # hosts — e a equipe desenvolve no Windows. Mesma razão de postgres e redis
+    # publicarem as deles.
+    ports:
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
