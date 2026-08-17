@@ -1,4 +1,4 @@
-const VERSION = 'intereng-v7';
+const VERSION = 'intereng-v8';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const PUBLIC_DATA_CACHE = `${VERSION}-public-data`;
@@ -44,6 +44,10 @@ function canStore(request, response) {
   return !request.headers.has('authorization') && response?.ok && response.type !== 'opaque';
 }
 
+function canStorePublicAsset(request, response) {
+  return !request.headers.has('authorization') && (response?.ok || response?.type === 'opaque');
+}
+
 async function publicPageNetworkFirst(request) {
   try {
     const response = await fetch(request);
@@ -84,7 +88,9 @@ async function assetStaleWhileRevalidate(request) {
   const cached = await cache.match(request);
   const fresh = fetch(request)
     .then(async (response) => {
-      if (canStore(request, response)) await cache.put(request, response.clone());
+      // Logotipos S3/MinIO são públicos e chegam como resposta opaca quando a
+      // imagem é cross-origin. O Cache Storage pode preservá-los para o offline.
+      if (canStorePublicAsset(request, response)) await cache.put(request, response.clone());
       return response;
     })
     .catch(() => cached);
@@ -106,7 +112,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (!sameOrigin) return;
+  if (!sameOrigin) {
+    if (request.destination === 'image') event.respondWith(assetStaleWhileRevalidate(request));
+    return;
+  }
   // Chunks do Next/HMR nunca entram no cache do PWA para não sobreviver a builds.
   if (url.pathname.startsWith('/_next/')) return;
 
