@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   // `NEXT_PUBLIC_DATA_SOURCE` é embutido na compilação, então cada origem de
   // dados precisa da sua build. Separar a pasta deixa as duas conviverem: a
   // suíte local não derruba a do HTTP nem o contrário.
