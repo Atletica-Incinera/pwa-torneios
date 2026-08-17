@@ -33,7 +33,10 @@ export function createLocalAuthAdapter(): AuthAdapter {
         expiresAt: new Date(Date.now() + sessionDurationMs).toISOString(),
       };
       writeStoredSession(session);
-      return session;
+      // A releitura aplica o escopo deste aparelho. No modo local o acesso é um
+      // só e nada muda, mas quem chama recebe o mesmo objeto que a guarda de
+      // rota vai ler — e é isso que impede os dois modos de divergirem.
+      return readStoredSession() ?? session;
     },
 
     async signOut() {

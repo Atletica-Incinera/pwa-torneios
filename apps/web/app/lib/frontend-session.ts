@@ -1,14 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AuthError, type AuthAdapter, type FrontendRole, type FrontendSession } from './repositories/auth-adapter';
+import { activeScopeOf, AuthError, scopeLabel, sessionScopes, type AuthAdapter, type FrontendRole, type FrontendSession, type SessionScope } from './repositories/auth-adapter';
 import { createLocalAuthAdapter, demoUsers } from './repositories/local-auth-adapter';
 import { createHttpAuthAdapter } from './repositories/http-auth-adapter';
+import { scopeChangeEvent, writeActiveScopeId } from './repositories/active-scope';
 import { clearStoredSession, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
 import { resolveDataSource } from './repositories/state-adapter';
 
-export type { FrontendRole, FrontendSession };
-export { demoUsers };
+export type { FrontendRole, FrontendSession, SessionScope };
+export { activeScopeOf, demoUsers, scopeLabel, sessionScopes };
 
 function createAuthAdapter(): AuthAdapter {
   // Mesma escolha de ambiente da origem de dados: token local ou token da API.
@@ -77,12 +78,37 @@ export function useFrontendSession() {
     };
     sync();
     window.addEventListener(sessionChangeEvent, sync);
+    // Trocar de escopo não muda a sessão gravada, mas muda `role` e `scope`
+    // derivados — e são eles que a guarda de rota e as telas comparam.
+    window.addEventListener(scopeChangeEvent, sync);
     window.addEventListener('storage', sync);
-    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener(scopeChangeEvent, sync); window.removeEventListener('storage', sync); };
   }, []);
   const logout = useCallback(() => { void adapter.signOut(); }, []);
   return { session, hydrated, expired, logout };
 }
+
+/**
+ * Passa a atuar por outro dos seus acessos.
+ *
+ * Não é operação da edição: não vai ao servidor, não entra na auditoria e vale
+ * só neste aparelho — o servidor continua conhecendo todos os papéis e
+ * decidindo cada escrita por conta própria. O que muda é qual deles o app usa.
+ */
+export function switchScope(scopeId: string) {
+  writeActiveScopeId(scopeId);
+}
+
+/** Um acesso só não merece seletor: não há para onde trocar. */
+export function canSwitchScope(session: FrontendSession | null) { return sessionScopes(session).length > 1; }
+
+/**
+ * Os cinco predicados de autorização decidem pelo **escopo ativo**.
+ *
+ * `session.role` e `session.scope` são derivados dele na leitura da sessão, e
+ * por isso nenhum deles precisa saber que existe uma lista de acessos: trocar
+ * de escopo troca o que o app oferece, com a mesma comparação de sempre.
+ */
 
 /** Super admin é o desenvolvedor do app, não a organização do evento. */
 export function isSuperAdmin(session: FrontendSession | null) { return session?.role === 'SUPER_ADMIN'; }

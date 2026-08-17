@@ -119,6 +119,51 @@ export function calculateStandings(participants: readonly string[], matches: rea
     .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
+/**
+ * As tabelas oficiais de uma categoria, pela chave com que a tela as procura:
+ * nome do grupo quando a fase tem grupos, nome da fase quando não tem.
+ *
+ * Só o modo `http` as preenche — lá quem calcula e ordena a classificação é o
+ * servidor, e a ordem dele é a oficial. No modo local elas não existem e a
+ * tabela continua saindo de `calculateStandings`, que é o que faz o app
+ * funcionar sem servidor.
+ */
+export type OfficialStandings = Record<string, Standing[]>;
+
+/**
+ * A tabela que a tela exibe: a oficial quando existe, a calculada quando não.
+ *
+ * Quando o servidor mandou a classificação daquela chave, ela vale **inteira** —
+ * ordem e números juntos. Consumir só a ordem produziria uma tabela que se
+ * contradiz: a posição viria de uma cadeia de desempate e os números de outra, e
+ * quem lê não encontraria nos números a razão da posição. E os números não são
+ * os mesmos: o servidor conta vitória por quem ficou gravado como vencedor da
+ * partida, não pelo placar, então um W.O. sem vencedor gravado vira empate de
+ * um ponto para cada lado enquanto o cálculo daqui dá vitória a alguém.
+ *
+ * Tabela oficial **vazia** não é tabela: quer dizer que o recálculo nunca rodou
+ * naquela fase, e mostrar nada faria um torneio que ainda não começou parecer um
+ * torneio sem inscritos. Aí calcula.
+ */
+export function resolveStandings(official: readonly Standing[] | undefined, participants: readonly string[], matches: readonly TournamentMatch[], rule: StandingsRule = defaultStandingsRule): Standing[] {
+  return official?.length ? official.map((row) => ({ ...row })) : calculateStandings(participants, matches, rule);
+}
+
+/**
+ * A linha oficial de um participante na categoria.
+ *
+ * Procura na ordem em que as tabelas foram montadas, que é a ordem das fases:
+ * quem joga a fase de grupos e o mata-mata aparece nas duas, e a posição que
+ * descreve a campanha é a da primeira.
+ */
+export function findOfficialStanding(official: OfficialStandings | undefined, name: string): Standing | undefined {
+  for (const table of Object.values(official ?? {})) {
+    const row = table.find((item) => item.name === name);
+    if (row) return { ...row };
+  }
+  return undefined;
+}
+
 export function distributeGroups(participants: readonly string[], groups: readonly string[], seeds: Record<string, number>) {
   if (!groups.length) return Object.fromEntries(participants.map((team) => [team, 'Geral']));
   const ordered = [...participants].sort((a, b) => (seeds[a] ?? 999) - (seeds[b] ?? 999));

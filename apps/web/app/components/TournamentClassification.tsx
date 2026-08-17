@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { StatusBadge } from './AppShell';
-import { calculateStandings, TournamentMatch, describeTiebreakers, resolveRegulation, defaultAdvancement, describeAdvancement, listMatches, isOfficialResult } from '@atletica-incinera/intereng-contract/rules';
+import { resolveStandings, TournamentMatch, describeTiebreakers, resolveRegulation, defaultAdvancement, describeAdvancement, listMatches, isOfficialResult } from '@atletica-incinera/intereng-contract/rules';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
@@ -52,7 +52,9 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   const [view, setView] = useState(availableGroups[0]);
   const activeView = view === 'Chaveamento' || availableGroups.includes(view) ? view : availableGroups[0];
   const groupParticipants = activeView === 'Chaveamento' ? [] : participants.filter((team) => assignments[team] === activeView || availableGroups.length === 1);
-  const table = calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
+  // A tabela oficial é a do servidor quando o modo `http` trouxe uma para esta
+  // aba; sem servidor, é calculada aqui pelo regulamento da modalidade.
+  const table = resolveStandings(setup?.standings?.[activeView], groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
   const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
   const classificationPhase = phases.find((phase) => phase.format !== 'Mata-mata' && (phase.format === 'Liga' || phase.groups.includes(activeView))) ?? phases.find((phase) => phase.format !== 'Mata-mata');
   const qualifierCount = classificationPhase?.qualifiers;

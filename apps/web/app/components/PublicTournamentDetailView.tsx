@@ -11,6 +11,7 @@ import { MatchCard } from './MatchCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { findCategory, listMatches, isPublicTournamentStatus, isLive, isOfficialResult, isPendingMatch } from '@atletica-incinera/intereng-contract/rules';
 import { useTablistKeys } from '../lib/use-tablist-keys';
+import { hasOverallRanking } from '../lib/source-capabilities';
 
 type Tab = 'tabela' | 'jogos' | 'fases';
 
@@ -92,7 +93,7 @@ export function PublicTournamentDetailView({ id }: { id: string }) {
       </div>
 
       <div className="public-secondary-actions">
-        <Link href="/public/standings/general" className="wide-action"><Trophy size={18} /> CLASSIFICAÇÃO GERAL <span>›</span></Link>
+        {hasOverallRanking() ? <Link href="/public/standings/general" className="wide-action"><Trophy size={18} /> CLASSIFICAÇÃO GERAL <span>›</span></Link> : null}
         <Link href="/public/teams" className="wide-action"><Users size={18} /> EQUIPES E ELENCOS <span>›</span></Link>
       </div>
     </PublicAppShell>

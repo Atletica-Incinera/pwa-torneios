@@ -1,7 +1,7 @@
 import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
-import { apiBaseUrl, apiRequest } from './api-client.ts';
+import { apiBaseUrl } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
-import { normalizeSnapshot, type RealtimeConnect } from './http-adapter.ts';
+import { loadEditionState, type RealtimeConnect } from './http-adapter.ts';
 import { createPollingChannel, type ChannelOptions } from './polling-channel.ts';
 
 /**
@@ -77,13 +77,9 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
       const ticket = requested + 1;
       requested = ticket;
       try {
-        const payload = await apiRequest<Partial<FrontendState>>({
-          path: `/editions/${edition}/snapshot`,
-          token: token(),
-          fetchImpl: options.fetchImpl,
-        });
+        const { state } = await loadEditionState({ edition, getToken: token, fetchImpl: options.fetchImpl });
         if (closed || ticket !== requested) return;
-        onSnapshot(normalizeSnapshot(payload));
+        onSnapshot(state);
       } catch {
         // Falha aqui não derruba o canal: o próximo evento tenta de novo, e o
         // 401 já é tratado por quem despacha.
@@ -163,7 +159,7 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
         // auditoria e rascunhos da tela de quem tem direito de vê-los.
         if (token()) return;
         try {
-          onSnapshot(normalizeSnapshot(JSON.parse(message.data) as Partial<FrontendState>));
+          onSnapshot(JSON.parse(message.data) as FrontendState);
           onConnection?.('online');
         } catch { /* quadro malformado não derruba o canal */ }
       });

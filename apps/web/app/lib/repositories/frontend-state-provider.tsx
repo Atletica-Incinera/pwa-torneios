@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { initialFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
 import type { Action } from '@atletica-incinera/intereng-contract/actions';
 import { collectMatchNotifications, showMatchNotifications } from '../match-notifications.ts';
+import { scopeChangeEvent } from './active-scope.ts';
 import { preferencesChangeEvent, withDevicePreferences, writeDevicePreferences, type DevicePreferences } from './device-preferences.ts';
 import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
@@ -62,9 +63,18 @@ function handleUnauthorized(caught: unknown) {
   if (caught instanceof UnauthorizedError) expireStoredSession();
 }
 
-/** O token em vigor, usado para perceber que a sessão trocou de dono. */
-function currentToken() {
-  return readStoredSession()?.token ?? null;
+/**
+ * Quem está pedindo os dados, agora.
+ *
+ * É o token **e** o escopo em uso: os dois decidem o que a carga devolve. O
+ * token diz de quem é a sessão; o escopo diz por qual dos papéis dela o app
+ * está atuando, e no modo `http` é ele que resolve a edição a carregar e o que
+ * o servidor concede — `GET /editions/:id/staff-roles`, por exemplo, só
+ * responde a quem administra aquela edição.
+ */
+function currentIdentity() {
+  const session = readStoredSession();
+  return `${session?.token ?? ''}|${session?.activeScopeId ?? ''}`;
 }
 
 export function FrontendStateProvider({ children, adapter: injected }: { children: React.ReactNode; adapter?: StateAdapter }) {
@@ -155,20 +165,29 @@ export function FrontendStateProvider({ children, adapter: injected }: { childre
      * espectador, sem staff, sem auditoria e sem rascunho. E na saída seria o
      * contrário: rascunho e staff continuariam na tela pública.
      *
-     * O gatilho é a **troca de token**, não o evento em si. Vencer a sessão
-     * emite o mesmo evento preservando o token; recarregar ali levaria a outro
-     * 401, que venceria de novo, sem fim.
+     * O gatilho é a **troca de identidade**, não o evento em si. Vencer a
+     * sessão emite o mesmo evento preservando o token; recarregar ali levaria a
+     * outro 401, que venceria de novo, sem fim.
+     *
+     * Trocar de escopo entra no mesmo gancho, e por isto: é a mesma pergunta —
+     * "quem está pedindo mudou?" — e a resposta muda o que a carga traz. No
+     * modo `http` o escopo escolhe a edição a remontar e decide o que o
+     * servidor concede; sem recarregar, a pessoa passaria a admin de uma edição
+     * continuando a ver os dados da outra. Comparar o valor, e não reagir ao
+     * evento, é o que impede o laço: um evento de escopo que não mudou nada não
+     * recarrega nada.
      */
-    let token = currentToken();
+    let identity = currentIdentity();
     const sync = () => {
-      const next = currentToken();
-      if (next === token) return;
-      token = next;
+      const next = currentIdentity();
+      if (next === identity) return;
+      identity = next;
       void refresh();
     };
     window.addEventListener(sessionChangeEvent, sync);
+    window.addEventListener(scopeChangeEvent, sync);
     window.addEventListener('storage', sync);
-    return () => { window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+    return () => { window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener(scopeChangeEvent, sync); window.removeEventListener('storage', sync); };
   }, [refresh]);
 
   useEffect(() => {

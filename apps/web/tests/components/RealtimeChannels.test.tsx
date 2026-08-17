@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createRealtimeChannel } from '../../app/lib/repositories/realtime-channel';
 import { createPollingChannel } from '../../app/lib/repositories/polling-channel';
-import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
+import { createMockFetch } from '../mock-api/api';
 
 /**
  * `EventSource` de mentira: registra as aberturas e deixa quem testa emitir os
@@ -95,43 +96,62 @@ describe('canal de tempo real por stream', () => {
 });
 
 describe('canal de tempo real por polling', () => {
+  /**
+   * Um ciclo do canal virou muitas requisições: a API não tem snapshot, e cada
+   * releitura remonta a edição das rotas granulares. O que conta um ciclo é a
+   * primeira rota da remontagem, e não o total de chamadas.
+   */
+  function contandoCiclos() {
+    const { fetchImpl } = createMockFetch();
+    const ciclos: string[] = [];
+    const contando: typeof fetch = async (input, init) => {
+      if (String(input).includes('/competitions?')) ciclos.push(String(input));
+      return fetchImpl(input, init);
+    };
+    return { ciclos, fetchImpl: contando };
+  }
+
+  /** A remontagem tem ondas encadeadas: uma volta de relógio não as esgota. */
+  async function assentar() {
+    for (let volta = 0; volta < 30; volta += 1) await vi.advanceTimersByTimeAsync(0);
+  }
+
   it('a volta para a aba busca na hora, sem esperar o ciclo inteiro', async () => {
     vi.useFakeTimers();
     definirAbaEscondida(true);
-    const buscas: string[] = [];
-    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json(seededFrontendState); };
+    const { ciclos, fetchImpl } = contandoCiclos();
     const recebidos: FrontendState[] = [];
     const desligar = createPollingChannel({ fetchImpl, getToken: () => null })((snapshot) => { recebidos.push(snapshot); }, () => {});
 
     await vi.advanceTimersByTimeAsync(5_000);
-    expect(buscas).toHaveLength(0);
+    expect(ciclos).toHaveLength(0);
 
     definirAbaEscondida(false);
     document.dispatchEvent(new Event('visibilitychange'));
-    await vi.advanceTimersByTimeAsync(0);
+    await assentar();
 
-    expect(buscas).toHaveLength(1);
-    // Contar requisição não prova entrega: com uma resposta que o
-    // `normalizeSnapshot` recusa, o canal engole o erro e o teste seguiria
-    // verde sem nunca chamar quem espera o estado.
+    expect(ciclos).toHaveLength(1);
+    // Contar requisição não prova entrega: com uma remontagem que falha, o
+    // canal engole o erro e o teste seguiria verde sem nunca chamar quem
+    // espera o estado.
     expect(recebidos).toHaveLength(1);
-    expect(Object.keys(recebidos[0].teams).length).toBeGreaterThan(0);
+    expect(Object.keys(recebidos[0].tournaments).length).toBeGreaterThan(0);
     desligar();
   });
 
   it('trocar de aba sem perder ciclo nenhum não vira requisição extra', async () => {
     vi.useFakeTimers();
-    const buscas: string[] = [];
-    const fetchImpl: typeof fetch = async (input) => { buscas.push(String(input)); return Response.json(seededFrontendState); };
+    const { ciclos, fetchImpl } = contandoCiclos();
     const desligar = createPollingChannel({ fetchImpl, getToken: () => null })(() => {}, () => {});
 
     await vi.advanceTimersByTimeAsync(5_000);
-    expect(buscas).toHaveLength(1);
+    await assentar();
+    expect(ciclos).toHaveLength(1);
 
     document.dispatchEvent(new Event('visibilitychange'));
-    await vi.advanceTimersByTimeAsync(0);
+    await assentar();
 
-    expect(buscas).toHaveLength(1);
+    expect(ciclos).toHaveLength(1);
     desligar();
   });
 });

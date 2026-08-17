@@ -106,9 +106,15 @@ pwa_torneios/
 ## O contrato é um pacote, não um arquivo copiado
 
 `@atletica-incinera/intereng-contract` guarda o formato da edição, as 32 ações
-nomeadas e as regras puras. Existe para que o front e a API não escrevam a
-mesma regra duas vezes e divirjam em silêncio — a API **porta** o que está
-aqui, não reescreve.
+nomeadas e as regras puras. Nasceu para que o front e a API não escrevessem a
+mesma regra duas vezes.
+
+> **Desde 2026-08-17 só o front o consome.** A equipe decidiu por REST
+> granular, e com isso a API passou a ter as próprias regras — placar,
+> desempate, vencedor, elegibilidade. O pacote continua sendo o motor de regras
+> deste lado e o único lugar onde elas têm teste, mas **a divergência entre as
+> duas implementações não emite sinal nenhum**. O que diverge está enumerado em
+> [CONTRATO_API.md](CONTRATO_API.md).
 
 `npm install` na raiz já o constrói: o `prepare` do pacote roda o `tsc` duas
 vezes, porque o consumidor NestJS é CommonJS com TypeScript 5.7 e um pacote

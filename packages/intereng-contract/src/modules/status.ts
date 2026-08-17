@@ -1,5 +1,6 @@
-import type { MatchState, TournamentState } from './frontend-state.js';
+import type { EditionState, MatchState, TournamentState } from './frontend-state.js';
 
+export type EditionStatus = EditionState['status'];
 export type MatchStatus = NonNullable<MatchState['status']>;
 export type TournamentStatus = TournamentState['status'];
 
@@ -25,6 +26,36 @@ export const tournamentStatus = {
   closed: 'Encerrado',
   archived: 'Arquivado',
 } as const satisfies Record<string, TournamentStatus>;
+
+/**
+ * A edição é a exceção: guarda o enum da API, não o rótulo.
+ *
+ * A constante existe pelo mesmo motivo das de cima — `'ONGOING'` da edição e
+ * `'ONGOING'` da categoria são o mesmo texto para estados diferentes, e o
+ * compilador só distingue os dois se cada um tiver seu nome.
+ */
+export const editionStatus = {
+  planning: 'PLANNING',
+  ongoing: 'ONGOING',
+  finished: 'FINISHED',
+  archived: 'ARCHIVED',
+} as const satisfies Record<string, EditionStatus>;
+
+/**
+ * Os estados da edição na ordem do ciclo de vida.
+ *
+ * O seletor da tela de edições lista a partir daqui: enquanto as opções eram
+ * quatro `<option>` escritas à mão, acrescentar um estado exigia lembrar de
+ * dois lugares, e a ordem podia sair diferente da do vocabulário.
+ */
+export const editionStatuses: EditionStatus[] = [editionStatus.planning, editionStatus.ongoing, editionStatus.finished, editionStatus.archived];
+
+const editionStatusLabels: Record<EditionStatus, string> = {
+  PLANNING: 'Planejamento',
+  ONGOING: 'Em andamento',
+  FINISHED: 'Finalizada',
+  ARCHIVED: 'Arquivada',
+};
 
 /** Resultado oficial: entra na classificação e aparece na área pública. */
 export const officialMatchStatuses: MatchStatus[] = [matchStatus.finished, matchStatus.walkover];
@@ -68,6 +99,17 @@ export function isTournamentStarted(status?: string) {
 
 export function isTournamentDecided(status?: string) {
   return decidedTournamentStatuses.includes(status as TournamentStatus);
+}
+
+/**
+ * Rótulo do estado da edição, em português, para o card e o seletor.
+ *
+ * Devolve o próprio código quando não conhece o estado: se a API ganhar um
+ * quinto valor antes deste pacote, a tela mostra `'SUSPENDED'` — feio, e
+ * ainda assim melhor do que um espaço em branco no lugar do estado.
+ */
+export function getEditionStatusLabel(status: string) {
+  return editionStatusLabels[status as EditionStatus] ?? status;
 }
 
 /** Rótulo curto do estado da partida, usado nos cards e no resumo. */

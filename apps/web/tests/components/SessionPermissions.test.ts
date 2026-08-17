@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import type { FrontendRole, FrontendSession } from '../../app/lib/repositories/auth-adapter';
-import { canGrantRole, canManageDiscipline, canManageEdition, canReadAudit, isSuperAdmin } from '../../app/lib/frontend-session';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { scopeId, type FrontendRole, type FrontendSession, type SessionScope } from '../../app/lib/repositories/auth-adapter';
+import { clearActiveScopeId } from '../../app/lib/repositories/active-scope';
+import { clearStoredSession, readStoredSession, writeStoredSession } from '../../app/lib/repositories/session-storage';
+import { canGrantRole, canManageDiscipline, canManageEdition, canReadAudit, canSwitchScope, isSuperAdmin, sessionScopes, switchScope } from '../../app/lib/frontend-session';
 
 /**
  * As regras de autorização do app, uma a uma.
@@ -90,5 +92,105 @@ describe('operação por modalidade', () => {
   it('sem sessão não se opera nada', () => {
     expect(canManageDiscipline(null, 'Futsal')).toBe(false);
     expect(canManageDiscipline(null)).toBe(false);
+  });
+});
+
+/**
+ * Multi-escopo: a mesma conta com mais de um papel.
+ *
+ * O que muda não são os predicados acima — eles continuam comparando `role` e
+ * `scope` —, e sim de onde esses dois campos vêm: do escopo em uso, escolhido
+ * neste aparelho. Por isso os casos abaixo passam pelo armazenamento em vez de
+ * montar a sessão na mão: é lá que a derivação acontece, e é lá que ela pode
+ * quebrar.
+ */
+function escopo(role: FrontendRole, extras: Partial<SessionScope> = {}): SessionScope {
+  const base = { role, ...extras };
+  return { ...base, id: scopeId(base) };
+}
+
+const adminDe2025 = escopo('EDITION_ADMIN', { editionId: 'intereng-2025', editionName: 'InterEng 2025' });
+const gestorDeFutsal2026 = escopo('DISCIPLINE_MANAGER', { editionId: 'intereng-2026', editionName: 'InterEng 2026', disciplineId: 'futsal', discipline: 'Futsal' });
+const dosDoisAcessos: FrontendSession = { ...sessao('EDITION_ADMIN'), scopes: [adminDe2025, gestorDeFutsal2026] };
+
+describe('mais de um acesso na mesma conta', () => {
+  beforeEach(() => { clearStoredSession(); clearActiveScopeId(); });
+
+  it('sem escolha feita, vale o acesso mais amplo', () => {
+    writeStoredSession(dosDoisAcessos);
+    const lida = readStoredSession();
+
+    expect(lida?.activeScopeId).toBe(adminDe2025.id);
+    expect(lida?.scope).toBe('InterEng 2025');
+    expect(canManageEdition(lida)).toBe(true);
+  });
+
+  it('a autorização segue o escopo em uso, e não a soma dos acessos', () => {
+    // Admin de uma edição e gestor de uma modalidade de outra: atuando como
+    // gestor, o que a outra edição concede não vale — o servidor recusaria.
+    writeStoredSession(dosDoisAcessos);
+    switchScope(gestorDeFutsal2026.id);
+    const lida = readStoredSession();
+
+    expect(canManageEdition(lida)).toBe(false);
+    expect(canReadAudit(lida)).toBe(false);
+    expect(canGrantRole(lida, 'Gestor de modalidade')).toBe(false);
+    expect(canManageDiscipline(lida, 'Futsal')).toBe(true);
+    expect(canManageDiscipline(lida, 'Vôlei')).toBe(false);
+  });
+
+  it('voltar ao acesso mais amplo devolve o que ele concedia', () => {
+    writeStoredSession(dosDoisAcessos);
+    switchScope(gestorDeFutsal2026.id);
+    switchScope(adminDe2025.id);
+
+    expect(canManageEdition(readStoredSession())).toBe(true);
+  });
+
+  it('trocar de escopo não concede nem revoga acesso: a lista continua inteira', () => {
+    writeStoredSession(dosDoisAcessos);
+    switchScope(gestorDeFutsal2026.id);
+
+    expect(sessionScopes(readStoredSession()).map((item) => item.id)).toEqual([adminDe2025.id, gestorDeFutsal2026.id]);
+  });
+
+  it('escolha que não existe mais cai no primeiro acesso, em vez de sessão sem papel', () => {
+    // Papel revogado, ou outro usuário no mesmo aparelho: a preferência é do
+    // aparelho e sobrevive ao login seguinte, que pode ter outros acessos.
+    writeStoredSession(dosDoisAcessos);
+    switchScope('intereng-2024:natacao');
+    const lida = readStoredSession();
+
+    expect(lida?.activeScopeId).toBe(adminDe2025.id);
+    expect(canManageEdition(lida)).toBe(true);
+  });
+
+  it('super admin fura os guards e continua sendo um acesso à parte', () => {
+    const acumulado: FrontendSession = { ...sessao('SUPER_ADMIN'), scopes: [escopo('SUPER_ADMIN'), gestorDeFutsal2026] };
+    writeStoredSession(acumulado);
+    expect(canReadAudit(readStoredSession())).toBe(true);
+
+    switchScope(gestorDeFutsal2026.id);
+    // Escolher o escopo estreito não tira o poder no servidor; tira da tela,
+    // que é o ponto: dá para operar a modalidade sem a área de administração.
+    expect(canReadAudit(readStoredSession())).toBe(false);
+    expect(canManageDiscipline(readStoredSession(), 'Futsal')).toBe(true);
+  });
+
+  it('quem tem um acesso só não ganha seletor', () => {
+    expect(canSwitchScope(gestorDeFutsal)).toBe(false);
+    expect(canSwitchScope(adminDaEdicao)).toBe(false);
+    expect(canSwitchScope(dosDoisAcessos)).toBe(true);
+    expect(canSwitchScope(null)).toBe(false);
+  });
+
+  it('sessão gravada antes de a lista existir vale como um acesso só', () => {
+    // Nenhuma versão nova do app pode devolver ao login quem já estava dentro.
+    writeStoredSession(gestorDeFutsal);
+    const lida = readStoredSession();
+
+    expect(sessionScopes(lida)).toHaveLength(1);
+    expect(canManageDiscipline(lida, 'Futsal')).toBe(true);
+    expect(canManageDiscipline(lida, 'Vôlei')).toBe(false);
   });
 });

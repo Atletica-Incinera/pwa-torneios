@@ -1,103 +1,252 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { seededFrontendState, type FrontendState } from '@atletica-incinera/intereng-contract/state';
+import type { Action } from '@atletica-incinera/intereng-contract/actions';
 import { storageKey } from '../../app/lib/browser-state';
-import { applyAction, type Action } from '@atletica-incinera/intereng-contract/actions';
 import { createLocalStateAdapter } from '../../app/lib/repositories/local-adapter';
 import { createHttpStateAdapter } from '../../app/lib/repositories/http-adapter';
-import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
+import { createMockFetch } from '../mock-api/api';
 
 /**
- * Servidor de mentira que roda o mesmo reducer do cliente — é exatamente o que
- * o backend fará. Se os dois adaptadores divergirem para a mesma sequência de
- * ações, a troca de origem quebraria as telas.
+ * O adaptador HTTP contra a API de mentira — a mesma que os e2e sobem.
+ *
+ * Não há mais como comparar estado com o adaptador local: o local roda o
+ * reducer do contrato e a API é REST granular, sem despachante de ações e sem
+ * snapshot. O que precisa ser provado mudou de lugar — não é mais "os dois
+ * chegam ao mesmo estado", é "a remontagem monta a edição inteira, e a falha
+ * de uma rota derruba a carga em vez de entregar meia edição".
  */
-function createFakeApi(initial: FrontendState) {
-  let snapshot = initial;
-  const fetchImpl: typeof fetch = async (input, init) => {
-    const url = String(input);
-    if (url.endsWith('/snapshot')) return Response.json(snapshot);
-    if (url.endsWith('/actions')) {
-      const action = JSON.parse(String(init?.body)) as Action;
-      snapshot = applyAction(snapshot, action, { actor: 'Ana Coordenadora' });
-      return Response.json(snapshot);
-    }
-    return new Response('não encontrado', { status: 404 });
-  };
-  return { fetchImpl };
+
+async function comSessao(email = 'ana@ufpe.br', password = 'intereng2026') {
+  const { api, fetchImpl } = createMockFetch();
+  const resposta = await fetchImpl('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+  const { data } = await resposta.json() as { data: { accessToken: string } };
+  return { api, fetchImpl, token: data.accessToken };
 }
 
-const sequence: Action[] = [
-  { type: 'team/create', payload: { id: 'aurora', team: { name: 'Aurora', initials: 'AUR', created: true } }, audit: { action: 'Equipe cadastrada', entity: 'Aurora' } },
-  { type: 'athlete/create', payload: { id: 'atleta-1', athlete: { name: 'Nina', teamId: 'aurora', modalities: ['Futsal'], created: true } }, audit: { action: 'Atleta cadastrado', entity: 'Nina' } },
-  { type: 'match/update', payload: { id: 'semifinal-1', patch: { venue: 'Ginásio 2' } }, audit: { action: 'Partida remarcada', entity: 'Alcateia × Cangaceiros' } },
-  { type: 'ranking/addAwards', payload: { awards: [{ id: 'award-1', editionId: 'intereng-2026', teamId: 'aurora', discipline: 'Futsal', metricId: 'metric-champion', points: 10, createdAt: '2026-10-20T12:00:00.000Z', origin: 'manual' }] } },
-];
+function adaptador(fetchImpl: typeof fetch, token: string | null) {
+  return createHttpStateAdapter({ fetchImpl, getToken: () => token });
+}
 
 /**
- * O que precisa bater entre as origens é o estado. Id, horário e autor do
- * registro de auditoria são carimbados por quem aplica a ação — no navegador
- * pela sessão local, no servidor pelo token — e por isso saem da comparação.
+ * Segura o efeito do recálculo por N leituras da classificação, que é como a
+ * corrida acontece na API: o recálculo roda fora da requisição que o disparou.
  */
-function comparable(state: FrontendState) {
-  return JSON.stringify({ ...state, audit: state.audit.map((entry) => ({ ...entry, id: '', at: '', actor: '' })) });
+async function atrasarClassificacao(fetchImpl: typeof fetch, reads: number) {
+  await fetchImpl('/api/v1/test/standings-lag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reads }) });
 }
 
-async function run(adapter: StateAdapter) {
-  let state = await adapter.load();
-  for (const action of sequence) state = await adapter.apply(action);
-  return state;
-}
-
-describe('contrato entre as origens de dados', () => {
+describe('carga da edição pelas rotas granulares', () => {
   beforeEach(() => { window.localStorage.clear(); });
 
-  it('local e HTTP produzem o mesmo estado para a mesma sequência de ações', async () => {
-    const { fetchImpl } = createFakeApi(seededFrontendState);
+  it('remonta a edição inteira do que as rotas devolvem', async () => {
+    const { fetchImpl, token } = await comSessao();
 
-    const local = await run(createLocalStateAdapter());
-    const remote = await run(createHttpStateAdapter({ fetchImpl, getToken: () => 'token-de-teste' }));
+    const state = await adaptador(fetchImpl, token).load();
 
-    expect(comparable(remote)).toBe(comparable(local));
+    expect(state.editions.find((edition) => edition.active)?.id).toBe('intereng-2026');
+    expect(Object.values(state.teams).map((team) => team.name)).toContain('Alcateia');
+    expect(Object.keys(state.disciplines)).toContain('Futsal');
+    expect(Object.values(state.tournaments).map((item) => item.name)).toContain('Futsal Masculino');
+    expect(Object.values(state.matches).map((match) => match.entryA)).toContain('Alcateia');
+    // O elenco vem das inscrições da edição, não de uma lista de atletas solta.
+    expect(Object.values(state.athletes).find((athlete) => athlete.name === 'Ana Lima')?.modalities).toContain('Futsal');
+    // Nada do estado é gravado no navegador: a verdade é do servidor.
+    expect(window.localStorage.getItem(storageKey)).toBeNull();
   });
 
-  it('o adaptador local grava o resultado, e o HTTP confia na resposta do servidor', async () => {
-    const { fetchImpl } = createFakeApi(seededFrontendState);
-    const action = sequence[0];
+  it('uma rota que falha derruba a carga inteira, em vez de entregar meia edição', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const comFalha: typeof fetch = async (input, init) => {
+      if (String(input).includes('/tournaments')) return new Response(JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro interno no servidor.' } }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return fetchImpl(input, init);
+    };
 
-    await createLocalStateAdapter().apply(action);
-    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? '{}').teams?.aurora?.name).toBe('Aurora');
+    // Uma edição sem categorias porque ninguém cadastrou e uma edição sem
+    // categorias porque a rota caiu são idênticas na tela — e a segunda faz o
+    // operador cadastrar tudo de novo.
+    await expect(adaptador(comFalha, token).load()).rejects.toThrow(/erro interno/i);
+  });
 
-    window.localStorage.clear();
-    const remote = await createHttpStateAdapter({ fetchImpl }).apply(action);
-    expect(remote.teams.aurora?.name).toBe('Aurora');
-    expect(window.localStorage.getItem(storageKey)).toBeNull();
+  it('o que o servidor nega por papel não derruba a carga: só falta na tela', async () => {
+    // Gestor de modalidade não pode ler o staff da edição — 403 é a resposta
+    // certa, e a tela dele simplesmente não tem essa parte.
+    const { fetchImpl, token } = await comSessao('bruno@ufpe.br', 'futsal2026');
+
+    const state = await adaptador(fetchImpl, token).load();
+
+    expect(state.staff).toEqual({});
+    expect(Object.keys(state.tournaments).length).toBeGreaterThan(0);
+  });
+
+  it('sem sessão a carga é a do espectador, com o que as rotas abertas devolvem', async () => {
+    const { fetchImpl } = createMockFetch();
+
+    const state = await adaptador(fetchImpl, null).load();
+
+    expect(state.staff).toEqual({});
+    // O catálogo global exige sessão, mas o nome da equipe viaja no elenco e
+    // nas inscrições: a tela pública continua com equipe nomeada.
+    expect(Object.values(state.teams).map((team) => team.name)).toContain('Alcateia');
+    expect(Object.keys(state.tournaments).length).toBeGreaterThan(0);
+  });
+
+  it('sessão recusada com token na mão não vira visão de espectador', async () => {
+    const { fetchImpl } = createMockFetch();
+
+    // Engolir o 401 aqui devolveria ao operador uma edição sem staff e sem
+    // catálogo, sem nenhum aviso: ele acharia que perdeu os dados.
+    await expect(adaptador(fetchImpl, 'token-que-ninguem-emitiu').load()).rejects.toThrow();
   });
 });
 
-describe('envelope da resposta', () => {
-  /** Um servidor de uma resposta só: o que interessa aqui é a forma do corpo. */
-  function adapterReading(body: unknown) {
-    const fetchImpl: typeof fetch = async () => Response.json(body);
-    return createHttpStateAdapter({ fetchImpl, getToken: () => 'token-de-teste' });
-  }
+describe('operações que viram chamadas REST', () => {
+  it('cadastrar equipe vai ao catálogo global e o registro volta na releitura', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const action: Action = { type: 'team/create', payload: { id: 'aurora-http', team: { name: 'Aurora HTTP', initials: 'AUR', created: true } }, audit: { action: 'Equipe cadastrada', entity: 'Aurora HTTP' } };
 
-  it('desembrulha o envelope da API mesmo quando ele traz mais de duas chaves', async () => {
-    const state = await adapterReading({ data: seededFrontendState, meta: { revision: 4 }, links: { self: '/editions/active/snapshot' } }).load();
-    expect(Object.keys(state.teams)).toEqual(Object.keys(seededFrontendState.teams));
+    const state = await adaptador(fetchImpl, token).apply(action);
+
+    const criada = Object.entries(state.teams).find(([, team]) => team.name === 'Aurora HTTP');
+    expect(criada).toBeTruthy();
+    // O id é do servidor: o que o cliente escolheu não sobrevive ao cadastro.
+    expect(criada?.[0]).not.toBe('aurora-http');
   });
 
-  it('o payload cru do mock do contrato continua chegando inteiro', async () => {
-    const state = await adapterReading(seededFrontendState).load();
-    expect(Object.keys(state.teams)).toEqual(Object.keys(seededFrontendState.teams));
+  it('remarcar partida manda o instante, e o horário volta como foi digitado', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+
+    const state = await adapter.apply({ type: 'match/update', payload: { id: 'semifinal-1', patch: { date: '2026-10-15', time: '19:45', venue: 'Ginásio 2' } } });
+
+    expect(state.matches['semifinal-1'].date).toBe('2026-10-15');
+    expect(state.matches['semifinal-1'].time).toBe('19:45');
+    expect(state.matches['semifinal-1'].venue).toBe('Ginásio 2');
   });
 
-  it('recusa em voz alta o corpo com `data` e companhia que não é de envelope', async () => {
-    await expect(adapterReading({ data: seededFrontendState, page: 1, total: 3 }).load()).rejects.toThrow(/não reconhece/i);
+  it('mudar só o horário preserva o dia que já estava marcado', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    const antes = await adapter.load();
+
+    const state = await adapter.apply({ type: 'match/update', payload: { id: 'semifinal-1', patch: { time: '21:15' } } });
+
+    expect(state.matches['semifinal-1'].date).toBe(antes.matches['semifinal-1'].date);
+    expect(state.matches['semifinal-1'].time).toBe('21:15');
   });
 
-  it('recusa a resposta sem o estado da edição em vez de devolver uma edição vazia', async () => {
-    // Sem isto, `normalizeSnapshot` completaria cada coleção com vazio: a tela
-    // ficaria `pronta`, plausível e sem nada dentro, sem nenhum erro.
-    await expect(adapterReading({ ok: true }).load()).rejects.toThrow(/estado da edição/i);
+  it('encerrar a partida é transição de estado, e é ela que carimba o vencedor', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+
+    const state = await adapter.apply({ type: 'match/update', payload: { id: 'semifinal-1', patch: { status: 'Encerrada' } } });
+
+    expect(state.matches['semifinal-1'].status).toBe('Encerrada');
+  });
+
+  it('recusa mexer no placar pela partida, dizendo de onde ele vem', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+
+    // `PATCH /matches/:id` não tem placar no DTO, e com `forbidNonWhitelisted`
+    // mandá-lo devolveria um 400 de validação que não diz o que foi feito.
+    await expect(adapter.apply({ type: 'match/update', payload: { id: 'semifinal-1', patch: { scoreA: 3 } } })).rejects.toThrow(/placar/i);
+  });
+
+  it('ativar edição é pô-la em andamento no servidor', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+    await adapter.apply({ type: 'edition/update', payload: { id: 'intereng-2026', patch: { status: 'PLANNING' } } });
+
+    const state = await adapter.apply({ type: 'edition/activate', payload: { id: 'intereng-2026' } });
+
+    expect(state.editions.find((edition) => edition.id === 'intereng-2026')?.status).toBe('ONGOING');
+    expect(state.editions.find((edition) => edition.active)?.id).toBe('intereng-2026');
+  });
+
+  it('ativar edição onde o operador não tem papel é recusado pelo servidor', async () => {
+    // A guarda de navegação do front não decide isto: quem decide é o papel
+    // por edição, e a coordenadora de 2026 não administra 2025.
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+
+    await expect(adapter.apply({ type: 'edition/activate', payload: { id: 'intereng-2025' } })).rejects.toThrow(/forbidden/i);
+  });
+
+  it('renomear a edição não manda o ano junto, que a API recusaria inteiro', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+
+    const state = await adapter.apply({ type: 'edition/update', payload: { id: 'intereng-2026', patch: { name: 'Edição de estreia' } } });
+
+    expect(state.editions.find((edition) => edition.id === 'intereng-2026')?.name).toBe('Edição de estreia');
+    await expect(adapter.apply({ type: 'edition/update', payload: { id: 'intereng-2026', patch: { year: 2027 } } })).rejects.toThrow(/ano da edição/i);
+  });
+
+  it('a ação de outro módulo falha dizendo de quem é a vez e onde encaixar', async () => {
+    const { fetchImpl, token } = await comSessao();
+
+    // Um `não implementado` genérico faria a próxima pessoa procurar o lugar
+    // no escuro — e o operador repetir a mesma ação achando que é a rede.
+    await expect(adaptador(fetchImpl, token).apply({ type: 'match/updateClock', payload: { id: 'semifinal-1', patch: { clockSeconds: 12 } } }))
+      .rejects.toThrow(/operação de partida/i);
+    await expect(adaptador(fetchImpl, token).apply({ type: 'ranking/close', payload: { closure: { editionId: 'intereng-2026', at: '2026-10-20T12:00:00.000Z', actor: 'Ana' } } }))
+      .rejects.toThrow(/ranking geral/i);
+  });
+});
+
+describe('classificação vinda do servidor', () => {
+  it('a tabela do grupo chega pronta, com a ordem e a posição que o servidor gravou', async () => {
+    const { fetchImpl, token } = await comSessao();
+
+    const state = await adaptador(fetchImpl, token).load();
+
+    const grupo = state.tournaments['volei-f'].standings?.['Grupo A'];
+    expect(grupo?.map((row) => row.name)).toEqual(['Caótica', 'Energizada']);
+    // Ninguém jogou ainda: as duas empatam em todos os critérios e o servidor
+    // grava a mesma posição para as duas. O cálculo daqui numeraria 1 e 2 — é
+    // a diferença que denuncia de onde a tabela veio.
+    expect(grupo?.map((row) => row.rank)).toEqual([1, 1]);
+  });
+
+  it('encerrar a partida espera o recálculo antes de reler a classificação', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+    await atrasarClassificacao(fetchImpl, 1);
+
+    const state = await adapter.apply({ type: 'match/update', payload: { id: 'volei-grupo-a', patch: { status: 'Encerrada' } } });
+
+    // Sem a espera, a releitura pega a tabela de antes: a partida encerrada na
+    // tela e a classificação sem ela, sem nada dizendo qual está atrasada.
+    expect(state.tournaments['volei-f'].standings?.['Grupo A']?.map((row) => row.played)).toEqual([1, 1]);
+  });
+
+  it('recálculo que não chega a tempo deixa valendo a tabela do servidor, não uma calculada aqui', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    await adapter.load();
+    await atrasarClassificacao(fetchImpl, 9);
+
+    const state = await adapter.apply({ type: 'match/update', payload: { id: 'volei-grupo-a', patch: { status: 'Encerrada' } } });
+
+    expect(state.matches['volei-grupo-a'].status).toBe('Encerrada');
+    // Trocar a origem no meio faria a ordem mudar sozinha e voltar atrás no
+    // ciclo seguinte — pior do que uma tabela com um jogo de atraso.
+    expect(state.tournaments['volei-f'].standings?.['Grupo A']?.map((row) => row.played)).toEqual([0, 0]);
+  });
+});
+
+describe('adaptador local', () => {
+  beforeEach(() => { window.localStorage.clear(); });
+
+  it('grava o resultado no navegador, ao contrário do HTTP', async () => {
+    await createLocalStateAdapter().apply({ type: 'team/create', payload: { id: 'aurora', team: { name: 'Aurora', created: true } } });
+
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? '{}').teams?.aurora?.name).toBe('Aurora');
   });
 });

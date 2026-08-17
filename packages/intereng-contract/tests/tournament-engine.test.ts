@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateStandings, distributeGroups, formatClock, generateRoundRobin, qualifiedTeams, resolveRegulation, type StandingsRule } from '@atletica-incinera/intereng-contract/rules';
+import { calculateStandings, distributeGroups, findOfficialStanding, formatClock, generateRoundRobin, qualifiedTeams, resolveRegulation, resolveStandings, type Standing, type StandingsRule } from '@atletica-incinera/intereng-contract/rules';
 
 test('calcula J, V, E, D e pontos com desempate', () => {
   const table = calculateStandings(['A', 'B', 'C'], [
@@ -94,4 +94,36 @@ test('fair play usa os pontos disciplinares da partida', () => {
 
   assert.deepEqual(table.map((row) => row.name), ['B', 'A']);
   assert.equal(table[0].tiebreak, 'Fair play');
+});
+
+/** Uma linha como o servidor a manda: já com posição, já ordenada. */
+function oficial(name: string, rank: number, points: number): Standing {
+  return { rank, name, played: 1, won: 0, drawn: 1, lost: 0, goalsFor: 1, goalsAgainst: 1, balance: 0, points, disciplinary: 0 };
+}
+
+test('a tabela oficial vence o cálculo local, inclusive na ordem', () => {
+  const partidas = [{ id: '1', entryA: 'A', entryB: 'B', scoreA: 3, scoreB: 0, status: 'Encerrada' }];
+
+  // O cálculo daqui poria A na frente com 3 pontos. Quando o servidor mandou a
+  // tabela, é a dele que vale — misturar a ordem de um com os números do outro
+  // deixaria a posição sem justificativa nos números exibidos.
+  assert.deepEqual(resolveStandings([oficial('B', 1, 1), oficial('A', 2, 1)], ['A', 'B'], partidas).map((row) => row.name), ['B', 'A']);
+  assert.deepEqual(resolveStandings(undefined, ['A', 'B'], partidas).map((row) => row.name), ['A', 'B']);
+});
+
+test('tabela oficial vazia não é tabela: cai no cálculo', () => {
+  // Fase que nunca foi recalculada devolve lista vazia. Exibi-la faria um
+  // torneio que ainda não começou parecer um torneio sem inscritos.
+  const table = resolveStandings([], ['A', 'B'], []);
+
+  assert.deepEqual(table.map((row) => row.name), ['A', 'B']);
+  assert.equal(table[0].played, 0);
+});
+
+test('a linha oficial do participante vem da primeira fase em que ele aparece', () => {
+  const tabelas = { 'Grupo A': [oficial('A', 1, 4)], 'Mata-mata': [oficial('A', 3, 0)] };
+
+  assert.equal(findOfficialStanding(tabelas, 'A')?.points, 4);
+  assert.equal(findOfficialStanding(tabelas, 'Z'), undefined);
+  assert.equal(findOfficialStanding(undefined, 'A'), undefined);
 });

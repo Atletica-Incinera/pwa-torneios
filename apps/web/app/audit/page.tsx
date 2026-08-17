@@ -4,6 +4,7 @@ import { Filter, History, Radio, Shield, Trophy } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from '../components/AppShell';
 import { AuditState, useFrontendState } from '../lib/repositories/browser-repository';
+import { hasAuditTrail } from '../lib/source-capabilities';
 
 
 function categoryOf(log: AuditState) {
@@ -17,6 +18,20 @@ export default function AuditPage() {
   // como alteração real, com nome de pessoa e placar que nunca existiram.
   const logs = state.audit;
   const visibleLogs = useMemo(() => filter === 'Tudo' ? logs : logs.filter((log) => categoryOf(log) === filter), [filter, logs]);
+
+  /**
+   * Com a origem em http, `state.audit` sai vazio da remontagem — e vazio nesta
+   * tela mente. A lista vazia diz "ninguém alterou nada"; a verdade é que o
+   * servidor registra cada alteração numa tabela que ele não publica: os
+   * controllers da API não expõem nenhuma leitura de log. Sem rota, não há o
+   * que paginar nem o que limitar; há o que declarar.
+   */
+  if (!hasAuditTrail()) {
+    return <AppShell active="profile" eyebrow="SEGURANÇA" title="AUDITORIA" subtitle="O histórico desta edição fica no servidor">
+      <section className="section-block no-top"><EmptyState title="HISTÓRICO NÃO PUBLICADO" copy="O servidor grava cada alteração, e não oferece nenhuma rota que devolva esses registros. Esta tela não está mostrando um histórico vazio: não está mostrando histórico nenhum." /></section>
+      <div className="info-banner"><History size={19} /><p>Enquanto a API não publicar a leitura da auditoria, o app não tem de onde ler. Uma lista vazia aqui seria lida como &quot;ninguém mexeu em nada&quot;, e é por isso que ela não aparece.</p></div>
+    </AppShell>;
+  }
 
   return <AppShell active="profile" eyebrow="SEGURANÇA" title="AUDITORIA" subtitle="Histórico real das alterações da edição">
     <div className="filter-strip">{(['Tudo', 'Partidas', 'Cadastros'] as const).map((item) => <button type="button" key={item} className={`filter-chip${filter === item ? ' active' : ''}`} onClick={() => setFilter(item)}>{item}</button>)}<button type="button" className="filter-icon" onClick={() => setFilter('Tudo')} aria-label="Limpar filtros"><Filter size={18} /></button></div>

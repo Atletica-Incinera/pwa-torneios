@@ -1,9 +1,18 @@
 import type { CompletionRule, KnockoutMethod, KnockoutRule, RosterRule, ScoringAction, SecondaryAction, StandingsRule, WalkoverRule } from './regulation.js';
+import type { OfficialStandings } from './tournament-engine.js';
 import { seedAthletes, seedDisciplines, seedMatches, seedStaff, seedTeams, seedTournaments } from './edition-seed.js';
 import type { StaffRoleLabel } from './staff-roles.js';
 
 export type CompetitionState = { id: string; name: string; slug: string; active: boolean };
-export type EditionState = { id: string; name: string; year: number; start: string; end: string; status: 'Planejamento' | 'Em andamento' | 'Finalizada' | 'Arquivada'; active: boolean; competitionId?: string };
+/**
+ * O estado da edição é o enum da API, em inglês, e não o rótulo da tela.
+ *
+ * Este pacote é o que a API instala: enquanto o valor guardado fosse
+ * `'Em andamento'`, cada ponta traduzia por conta própria e uma tabela de
+ * quatro linhas ficava entre o que o servidor grava e o que o front compara.
+ * O português volta na exibição, por `getEditionStatusLabel` em `status.ts`.
+ */
+export type EditionState = { id: string; name: string; year: number; start: string; end: string; status: 'PLANNING' | 'ONGOING' | 'FINISHED' | 'ARCHIVED'; active: boolean; competitionId?: string };
 export type TeamState = { name?: string; initials?: string; responsible?: string; logo?: string; archived?: boolean; created?: boolean; tone?: 'blue' | 'pink' | 'orange' };
 export type AthleteState = { name?: string; teamId?: string; modalities?: string[]; created?: boolean; /** Saiu da equipe: o registro fica para o histórico, mas não conta no elenco. */ removed?: boolean };
 export type DisciplineRule = {
@@ -26,7 +35,7 @@ export type DisciplineState = { config?: string; rules?: DisciplineRule; enabled
 export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number };
 /** Origem das equipes do mata-mata: quantas por grupo, melhores terceiros e cruzamento. */
 export type TournamentAdvancement = { perGroup: number; bestThirds: number; crossing: 'padrao' | 'sequencial'; thirdPlaceMatch: boolean };
-export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado' | 'Arquivado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; editionId?: string; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange'; advancement?: TournamentAdvancement; /** Equipes que avançam sem jogar, por posição no chaveamento. */ byes?: Record<string, string> };
+export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado' | 'Arquivado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; editionId?: string; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange'; advancement?: TournamentAdvancement; /** Equipes que avançam sem jogar, por posição no chaveamento. */ byes?: Record<string, string>; /** Classificação já calculada e ordenada pelo servidor. Só o modo `http` a preenche; sem ela a tabela é calculada aqui. */ standings?: OfficialStandings };
 /** Estado do placar imediatamente antes do evento, usado para desfazer. */
 export type MatchScoreSnapshot = { scoreA: number; scoreB: number; periodScoreA: number; periodScoreB: number; currentPeriod: number };
 export type MatchEventState = { id: string; at: string; elapsedSeconds: number; period?: number; periodElapsedSeconds?: number; type: string; detail: string; side: 'home' | 'away' | 'neutral'; scoreA: number; scoreB: number; previousScoreA?: number; previousScoreB?: number; points?: number; previous?: MatchScoreSnapshot };
@@ -69,9 +78,9 @@ export type FrontendState = {
 export const initialFrontendState: FrontendState = {
   competitions: [{ id: 'jogos-engenharia', name: 'InterEng', slug: 'intereng', active: true }],
   editions: [
-    { id: 'intereng-2026', name: '2026', year: 2026, start: '2026-10-12', end: '2026-10-19', status: 'Em andamento', active: true, competitionId: 'jogos-engenharia' },
-    { id: 'intereng-2025', name: '2025', year: 2025, start: '2025-10-13', end: '2025-10-20', status: 'Finalizada', active: false, competitionId: 'jogos-engenharia' },
-    { id: 'intereng-2024', name: '2024', year: 2024, start: '2024-10-14', end: '2024-10-21', status: 'Arquivada', active: false, competitionId: 'jogos-engenharia' },
+    { id: 'intereng-2026', name: '2026', year: 2026, start: '2026-10-12', end: '2026-10-19', status: 'ONGOING', active: true, competitionId: 'jogos-engenharia' },
+    { id: 'intereng-2025', name: '2025', year: 2025, start: '2025-10-13', end: '2025-10-20', status: 'FINISHED', active: false, competitionId: 'jogos-engenharia' },
+    { id: 'intereng-2024', name: '2024', year: 2024, start: '2024-10-14', end: '2024-10-21', status: 'ARCHIVED', active: false, competitionId: 'jogos-engenharia' },
   ],
   teams: {},
   athletes: {},
@@ -118,6 +127,16 @@ export function getActiveEdition(state: Pick<FrontendState, 'competitions' | 'ed
 }
 
 /**
+ * Estados de edição gravados antes de o valor virar o enum da API.
+ *
+ * Sem isto, um snapshot antigo continua dizendo `'Em andamento'`: o card ainda
+ * mostra o texto certo, mas o seletor não acha a opção e exibe a primeira da
+ * lista — a tela afirma `Planejamento` sobre uma edição em andamento. Some
+ * quando não houver mais navegador com snapshot dessa época.
+ */
+const legacyEditionStatuses: Record<string, EditionState['status']> = { 'Planejamento': 'PLANNING', 'Em andamento': 'ONGOING', 'Finalizada': 'FINISHED', 'Arquivada': 'ARCHIVED' };
+
+/**
  * Lê um snapshot gravado, completando o que falta com a base recebida.
  *
  * A base vem por parâmetro e não tem valor padrão de propósito: no
@@ -129,7 +148,11 @@ export function parseFrontendState(value: string | null, base: FrontendState): F
   try {
     const parsed = JSON.parse(value) as Partial<FrontendState>;
     const competitions = (parsed.competitions ?? base.competitions).map((competition) => competition.id === 'jogos-engenharia' && competition.name === 'Jogos de Engenharia' ? { ...competition, name: 'InterEng', slug: 'intereng' } : competition);
-    const editions = (parsed.editions ?? base.editions).map((edition) => /^InterEng\s+\d{4}$/i.test(edition.name) ? { ...edition, name: String(edition.year) } : edition);
+    const editions = (parsed.editions ?? base.editions).map((edition) => ({
+      ...edition,
+      name: /^InterEng\s+\d{4}$/i.test(edition.name) ? String(edition.year) : edition.name,
+      status: legacyEditionStatuses[edition.status] ?? edition.status,
+    }));
     const activeEditionId = getActiveEdition({ competitions, editions })?.id ?? 'intereng-2026';
     const tournaments = Object.fromEntries(Object.entries(parsed.tournaments ?? {}).map(([id, item]) => [id, { ...item, editionId: item.editionId ?? activeEditionId }]));
     const matches = Object.fromEntries(Object.entries(parsed.matches ?? {}).map(([id, item]) => [id, { ...item, editionId: item.editionId ?? activeEditionId }]));

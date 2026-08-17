@@ -1,5 +1,21 @@
 # Integração com a API — estado, comparação e custo
 
+> **Decidido em 2026-08-17: o caminho B.** Este documento recomendava o caminho
+> A — a API ganhar a borda de snapshot e o despachante de ações. A equipe
+> decidiu o contrário: **REST granular fica, e o front se adapta**. A
+> recomendação da seção 5 está mantida no texto porque o argumento continua
+> valendo como registro do custo que se aceitou pagar, não porque a discussão
+> siga aberta. **Não a reabra.** O que a API oferece está em
+> [CONTRATO_API.md](CONTRATO_API.md); o que restou a pedir a ela, em
+> [TASKS_API.md](TASKS_API.md).
+>
+> O que o caminho B custou, medido depois de andado: o adaptador HTTP passou de
+> 93 para ~509 linhas mais um arquivo de tradução de ~600; das 32 ações, **9**
+> falam com a API e 23 esperam tabela; o id do cliente foi trocado pelo do
+> servidor, com a navegação depois de criar e a idempotência do reenvio junto;
+> e as oito lacunas de schema da seção 3 **continuam todas existindo**, como
+> este documento previa.
+
 Levantamento feito **de fora**, sem tocar em `Atletica-Incinera/intereng-api`.
 Aquele repositório tem um loop de agentes que commita direto na `main`; este
 documento existe para a decisão ser tomada com número na mão, não para virar
@@ -153,10 +169,18 @@ traduz os 32 tipos para os services. O REST continua vivo para quem quiser.
 lacunas de schema existem nos dois caminhos. O caminho B soma a reescrita do
 front sem remover nenhuma delas — paga duas vezes.
 
-O que precisa de decisão humana, e não minha:
+### Decidida em 2026-08-17, contra a recomendação acima
 
-1. Se a TASK-15 passa a ser a borda de snapshot, e quem escreve isso. **Em
-   aberto.**
+**Fica o caminho B.** A única questão que este documento deixou em aberto — se a
+TASK-15 viraria a borda de snapshot e quem a escreveria — foi respondida: não
+vira, e ninguém a escreve. A API continua REST granular, um controller por
+recurso, e o front absorveu a composição.
+
+O argumento do caminho A não foi refutado; foi superado por outra ordem de
+razões, que não é minha para registrar. O que era previsão e virou fato: as
+lacunas de schema continuam intactas, e agora estão nomeadas nas tasks que
+sobraram ([TASKS_API.md](TASKS_API.md)) em vez de escondidas atrás de um
+despachante que responderia 501.
 
 ### Decididas em 2026-08-13, e já implementadas
 

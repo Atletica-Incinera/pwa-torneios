@@ -17,9 +17,13 @@ Público  Ao vivo · Modalidades · Equipes
 ```
 
 Fonte da verdade em código: o pacote `@atletica-incinera/intereng-contract`,
-publicado a partir de `packages/intereng-contract/` e consumido pelos dois
-lados. **A API importa estas regras, não as reescreve** — foi para isso que
-elas saíram do front.
+publicado a partir de `packages/intereng-contract/`.
+
+**Desde 2026-08-17 ele descreve as regras do front, não as das duas metades.**
+A API ficou REST granular e passou a calcular placar, desempate, vencedor e
+elegibilidade por conta própria. Cinco regras deste documento, portanto, valem
+para o que a tela mostra e podem divergir do que o banco guarda, sem aviso — a
+lista está em [CONTRATO_API.md](CONTRATO_API.md).
 
 | Assunto | Módulo |
 | --- | --- |

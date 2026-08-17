@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { createId } from '@atletica-incinera/intereng-contract/rules';
+import { createId, editionStatus } from '@atletica-incinera/intereng-contract/rules';
 
 function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 
@@ -32,7 +32,7 @@ export function CompetitionCreationForm() {
       type: 'competition/create',
       payload: {
         competition: { id, name: form.name.trim(), slug: finalSlug, active: false },
-        edition: { id: editionId, name: form.year, year: Number(form.year), start: form.start, end: form.end, status: 'Planejamento', active: false, competitionId: id },
+        edition: { id: editionId, name: form.year, year: Number(form.year), start: form.start, end: form.end, status: editionStatus.planning, active: false, competitionId: id },
       },
       audit: { action: 'Torneio criado', entity: form.name.trim(), after: `Edição ${form.year}` },
     });

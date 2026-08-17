@@ -148,7 +148,7 @@ test('ativar torneio ou edição é exclusivo: o anterior deixa de ser o context
   const base = {
     ...initialFrontendState,
     competitions: [{ id: 'jogos-engenharia', name: 'InterEng', slug: 'intereng', active: true }, { id: 'copa', name: 'Copa', slug: 'copa', active: false }],
-    editions: [{ id: 'e-2026', name: '2026', year: 2026, start: '2026-10-01', end: '2026-10-30', status: 'Em andamento' as const, active: true }, { id: 'e-2027', name: '2027', year: 2027, start: '2027-10-01', end: '2027-10-30', status: 'Planejamento' as const, active: false }],
+    editions: [{ id: 'e-2026', name: '2026', year: 2026, start: '2026-10-01', end: '2026-10-30', status: 'ONGOING' as const, active: true }, { id: 'e-2027', name: '2027', year: 2027, start: '2027-10-01', end: '2027-10-30', status: 'PLANNING' as const, active: false }],
   };
 
   const torneio = applyAction(base, { type: 'competition/activate', payload: { id: 'copa' } }, context);
@@ -163,7 +163,7 @@ test('criar torneio traz junto a primeira edição', () => {
     type: 'competition/create',
     payload: {
       competition: { id: 'copa', name: 'Copa', slug: 'copa', active: false },
-      edition: { id: 'e-2027', name: '2027', year: 2027, start: '2027-10-01', end: '2027-10-30', status: 'Planejamento', active: false, competitionId: 'copa' },
+      edition: { id: 'e-2027', name: '2027', year: 2027, start: '2027-10-01', end: '2027-10-30', status: 'PLANNING', active: false, competitionId: 'copa' },
     },
     audit: { action: 'Torneio criado', entity: 'Copa' },
   }, context);

@@ -603,6 +603,10 @@ ul.form-feedback li { line-height: 1.45; }
 .module-list > * > div { display: grid; gap: 4px; }
 .module-list small { color: rgba(251,254,249,.45); }
 .module-list b { color: rgba(251,254,249,.4); font-size: 20px; }
+/* O acesso em uso precisa se distinguir sem depender só do texto. Contorno, e
+   não borda: a borda dos cartões é pintada pelo tema de cada tela. */
+.scope-option.active { outline: 2px solid var(--orange); outline-offset: -2px; }
+.scope-option.active b { color: var(--orange); }
 .audit-list { display: grid; gap: 0; }
 .audit-list article { display: grid; grid-template-columns: 48px 1fr; gap: 13px; padding: 15px 0; border-bottom: 1px solid var(--line); }
 .audit-icon { width: 46px; height: 50px; display: grid; place-items: center; clip-path: polygon(0 0,100% 0,84% 100%,0 100%); }

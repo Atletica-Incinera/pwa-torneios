@@ -7,6 +7,7 @@ import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-
 import { listDisciplines } from '@atletica-incinera/intereng-contract/rules';
 import { disciplineHref } from '../lib/discipline-href';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { hasOverallRanking } from '../lib/source-capabilities';
 
 export default function DisciplinesPage() {
   const { state } = useFrontendState();
@@ -25,7 +26,8 @@ export default function DisciplinesPage() {
       actionHref={canManageEdition(session) ? "/disciplines/new" : undefined}
       actionLabel="Adicionar modalidade"
     >
-      <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link>
+      {/* Sem ranking geral na origem, o atalho some: ele levaria a uma tela que só sabe dizer que não existe. */}
+      {hasOverallRanking() ? <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link> : null}
       <section className="poster-list">
         {disciplines.map((discipline, index) => (
           <Link href={disciplineHref(discipline.name)} className={`discipline-card accent-${discipline.tone}${discipline.enabled ? '' : ' is-disabled'}`} key={discipline.name}>

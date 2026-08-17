@@ -1,7 +1,5 @@
-import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
-import { apiRequest } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
-import { normalizeSnapshot, type RealtimeConnect } from './http-adapter.ts';
+import { loadEditionState, type RealtimeConnect } from './http-adapter.ts';
 
 /**
  * Tempo real pobre: relê o snapshot de tempos em tempos.
@@ -51,13 +49,13 @@ export function createPollingChannel(options: ChannelOptions = {}): RealtimeConn
       if (typeof document !== 'undefined' && document.hidden) { skipped = true; return schedule(); }
       skipped = false;
       try {
-        // Sem sessão, o app é o do espectador: pede a versão pública.
-        const path = token() ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
-        const payload = await apiRequest<Partial<FrontendState>>({ path, token: token(), fetchImpl: options.fetchImpl });
+        // A API não tem snapshot: releitura aqui é a mesma remontagem que o
+        // adaptador faz, e o que o espectador não pode ver o servidor nega.
+        const { state } = await loadEditionState({ edition, getToken: token, fetchImpl: options.fetchImpl });
         if (stopped) return;
         failures = 0;
         onConnection?.('online');
-        onSnapshot(normalizeSnapshot(payload));
+        onSnapshot(state);
       } catch {
         // Uma falha é ruído de rede; duas seguidas já merecem avisar a tela.
         failures += 1;

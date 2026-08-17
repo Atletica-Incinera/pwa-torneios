@@ -60,8 +60,9 @@ documentação está na tabela mais abaixo.
 Este repositório é um **workspace npm**: um `package.json` e um lockfile na
 raiz, dois membros declarados em `workspaces`, e `npm install` na raiz
 resolvendo os dois de uma vez. O `packages/` não é uma pasta de conveniência —
-é onde vive o artefato que a API instala, e essa é a razão de o repositório ser
-um workspace em vez de só uma aplicação.
+é onde vivem as regras do torneio, publicadas como artefato versionado e
+testadas contra o `dist`, e essa é a razão de o repositório ser um workspace em
+vez de só uma aplicação.
 
 ```txt
 pwa_torneios/
@@ -71,7 +72,7 @@ pwa_torneios/
 │   ├── packages/
 │   │   └── intereng-contract/       # @atletica-incinera/intereng-contract:
 │   │                                # tipos da edição, as 32 ações e as regras
-│   │                                # puras. Publicado daqui, instalado pela API
+│   │                                # puras. Publicado daqui, consumido pelo front
 │   ├── docs/                        # ver a tabela abaixo
 │   ├── package.json                 # workspaces e lockfile único
 │   ├── docker-compose.yml           # Infra + app
@@ -97,8 +98,8 @@ dentro — o porquê está em [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 | [`REGRAS_DE_NEGOCIO.md`](docs/REGRAS_DE_NEGOCIO.md) | As regras do torneio e, principalmente, os padrões escolhidos |
 | [`PAPEIS_E_FLUXOS.md`](docs/PAPEIS_E_FLUXOS.md) | Os quatro papéis, o que cada um alcança e os fluxos de tela |
 | [`VISUAL_IMPLEMENTATION_SPEC.md`](docs/VISUAL_IMPLEMENTATION_SPEC.md) | A especificação visual da interface |
-| [`CONTRATO_API.md`](docs/CONTRATO_API.md) | O que a API precisa oferecer para o modo `http` funcionar |
-| [`TASKS_API.md`](docs/TASKS_API.md) | As 12 tasks escritas para colar no repositório da API |
+| [`CONTRATO_API.md`](docs/CONTRATO_API.md) | O que a API REST oferece e como o modo `http` a consome |
+| [`TASKS_API.md`](docs/TASKS_API.md) | O que ainda se pede à API, e o que morreu com a virada de arquitetura |
 | [`INTEGRACAO_API.md`](docs/INTEGRACAO_API.md) | O levantamento do estado da API e o custo de cada caminho |
 
 ## Fluxo de desenvolvimento

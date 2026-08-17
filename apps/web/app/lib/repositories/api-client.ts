@@ -40,8 +40,8 @@ const envelopeCompanions = new Set(['meta', 'links', 'statusCode', 'timestamp', 
  * serve aos dois sem configuração.
  *
  * O que não dá para decidir é recusado aqui, alto. Passar adiante um corpo
- * embrulhado que não foi reconhecido termina em `normalizeSnapshot`, que
- * completa cada coleção com vazio: a tela fica pronta, plausível e sem nada
+ * embrulhado que não foi reconhecido termina na remontagem da edição, que
+ * completaria cada coleção com vazio: a tela fica pronta, plausível e sem nada
  * dentro — a pior falha possível, porque não parece falha.
  */
 function unwrap<T>(payload: unknown): T {
@@ -53,13 +53,40 @@ function unwrap<T>(payload: unknown): T {
   return (payload as { data: T }).data;
 }
 
+/**
+ * Falha que o servidor descreveu.
+ *
+ * O status e o `code` viajam junto com a frase porque quem chama decide coisas
+ * diferentes com eles: `403` numa coleção que exige papel é ausência de
+ * permissão — a tela segue sem aquela parte —, enquanto qualquer outro erro na
+ * mesma coleção é falha de carga e precisa parar tudo. Sem o status, distinguir
+ * um do outro exigiria ler a mensagem, que é texto de humano e muda.
+ */
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) {
+    super(message);
+  }
+}
+
+/**
+ * A frase que o operador lê.
+ *
+ * Três formas convivem: `{ error: { code, message, details } }` da API,
+ * `{ message }` do Nest cru e `{ message: [...] }` do class-validator. No 400
+ * de validação a API troca a mensagem por um literal fixo — "Erro de validação
+ * nos campos enviados." — e guarda o que é legível em `details[].issue`; o
+ * `details[].field` é a primeira palavra da mensagem em português, quase sempre
+ * um artigo, e por isso não é exibido.
+ */
 async function readError(response: Response) {
   try {
-    const payload = await response.json() as { error?: { message?: string }; message?: string | string[] };
-    const message = payload.error?.message ?? (Array.isArray(payload.message) ? payload.message[0] : payload.message);
-    return message || `Falha na requisição (${response.status}).`;
+    const payload = await response.json() as { error?: { code?: string; message?: string; details?: Array<{ field?: string; issue?: string }> }; message?: string | string[] };
+    const base = payload.error?.message ?? (Array.isArray(payload.message) ? payload.message[0] : payload.message);
+    const issue = payload.error?.details?.find((detail) => detail.issue)?.issue;
+    const message = issue && base ? `${base} ${issue}` : base || issue;
+    return { message: message || `Falha na requisição (${response.status}).`, code: payload.error?.code };
   } catch {
-    return `Falha na requisição (${response.status}).`;
+    return { message: `Falha na requisição (${response.status}).`, code: undefined };
   }
 }
 
@@ -157,7 +184,13 @@ export async function apiRequest<T>({ path, method = 'GET', body, token, fetchIm
   }
 
   if (response.status === 401) throw new UnauthorizedError();
-  if (!response.ok) throw new Error(await readError(response));
-  if (response.status === 204) return undefined as T;
+  if (!response.ok) {
+    const { message, code } = await readError(response);
+    throw new ApiError(message, response.status, code);
+  }
+  // 204 é o corpo vazio dos DELETE da API; 205 e o `Content-Length: 0` de um
+  // proxy caem no mesmo caso — `response.json()` num corpo vazio estoura com
+  // um `SyntaxError` que não diz nada a quem lê o log.
+  if (response.status === 204 || response.headers.get('content-length') === '0') return undefined as T;
   return unwrap<T>(await response.json());
 }

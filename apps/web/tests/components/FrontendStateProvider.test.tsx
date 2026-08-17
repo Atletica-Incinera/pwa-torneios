@@ -5,7 +5,8 @@ import { applyAction, type Action } from '@atletica-incinera/intereng-contract/a
 import { FrontendStateProvider } from '../../app/lib/repositories/frontend-state-provider';
 import { useFrontendState } from '../../app/lib/repositories/browser-repository';
 import { UiProvider } from '../../app/components/UiProvider';
-import type { FrontendSession } from '../../app/lib/repositories/auth-adapter';
+import { scopeId, type FrontendSession, type SessionScope } from '../../app/lib/repositories/auth-adapter';
+import { clearActiveScopeId, writeActiveScopeId } from '../../app/lib/repositories/active-scope';
 import { clearStoredSession, expireStoredSession, readStoredSession, writeStoredSession } from '../../app/lib/repositories/session-storage';
 import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
 
@@ -117,7 +118,7 @@ async function assentar() {
 }
 
 describe('provider e a troca de sessão', () => {
-  beforeEach(() => clearStoredSession());
+  beforeEach(() => { clearStoredSession(); clearActiveScopeId(); });
 
   it('entrar e sair recarregam o estado', async () => {
     // O provider vive no layout raiz, que não remonta na navegação: sem isto o
@@ -149,6 +150,27 @@ describe('provider e a troca de sessão', () => {
 
     expect(cargas).toEqual(['token-da-ana']);
     expect(readStoredSession()?.token).toBe('token-da-ana');
+  });
+
+  it('trocar de escopo recarrega: a permissão muda, e os dados precisam mudar junto', async () => {
+    // Quem é admin de uma edição e gestor de outra troca de acesso esperando
+    // ver a edição daquele papel. Sem recarregar, a tela passaria a oferecer
+    // administração sobre a edição que continuou aberta.
+    const admin: SessionScope = { ...{ role: 'EDITION_ADMIN' as const, editionId: 'intereng-2025' }, id: scopeId({ role: 'EDITION_ADMIN', editionId: 'intereng-2025' }) };
+    const gestor: SessionScope = { ...{ role: 'DISCIPLINE_MANAGER' as const, editionId: 'intereng-2026', discipline: 'Futsal' }, id: scopeId({ role: 'DISCIPLINE_MANAGER', editionId: 'intereng-2026', discipline: 'Futsal' }) };
+    writeStoredSession({ ...operadora, scopes: [admin, gestor] });
+    const { adapter, cargas } = createCountingAdapter(seededFrontendState);
+    render(<FrontendStateProvider adapter={adapter}><Sonda onReady={() => {}} /></FrontendStateProvider>);
+    await waitFor(() => expect(cargas).toHaveLength(1));
+
+    act(() => { writeActiveScopeId(gestor.id); });
+    await waitFor(() => expect(cargas).toHaveLength(2));
+
+    // Escolher de novo o mesmo escopo não recarrega: o gatilho é a identidade
+    // ter mudado, não o evento ter chegado — é o que impede o laço.
+    act(() => { writeActiveScopeId(gestor.id); });
+    await assentar();
+    expect(cargas).toHaveLength(2);
   });
 });
 
