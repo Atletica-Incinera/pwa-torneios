@@ -61,7 +61,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-intereng}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-intereng-local-secret}
-      MINIO_API_CORS_ALLOW_ORIGIN: http://${WEB_HOST:-app.localhost},http://localhost:3001
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_API_CORS_ALLOW_ORIGIN:-http://app.localhost,http://localhost:3001}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -88,7 +88,8 @@ services:
     entrypoint: >-
       /bin/sh -c "
       mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
-      mc mb --ignore-existing local/$${S3_BUCKET}
+      mc mb --ignore-existing local/$${S3_BUCKET} &&
+      mc anonymous set download local/$${S3_BUCKET}/teams
       "
     restart: "no"
     networks:
@@ -113,13 +114,14 @@ services:
       COOKIE_SAME_SITE: lax
       PII_PEPPER: ${PII_PEPPER:-local-pii-pepper-change-in-production}
       PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-local-32-byte-key-change-me-now!}
-      S3_ENDPOINT: http://minio:9000
-      S3_PRESIGN_ENDPOINT: http://localhost:9000
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-http://localhost:9000}
       S3_REGION: ${S3_REGION:-us-east-1}
       S3_BUCKET: ${S3_BUCKET:-intereng}
       S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-intereng}
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-intereng-local-secret}
-      S3_FORCE_PATH_STYLE: "true"
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:9000/intereng}
       S3_PRESIGN_TTL_SECONDS: ${S3_PRESIGN_TTL_SECONDS:-300}
       S3_MAX_LOGO_BYTES: ${S3_MAX_LOGO_BYTES:-8388608}
       REDIS_STREAM_TTL: ${REDIS_STREAM_TTL:-3600}

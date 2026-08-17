@@ -17,7 +17,7 @@ export type StateAdapter = {
    */
   apply(action: Action): Promise<FrontendState>;
   /**
-   * Avisa quando o estado mudou por fora (outra aba, ou o socket da API) e
+   * Avisa quando o estado mudou por fora (outra aba, ou uma revisão da API) e
    * quando a ligação com a origem cai ou volta.
    */
   subscribe(onRemoteChange: (next: FrontendState) => void, onConnection?: (state: ConnectionState) => void): () => void;
@@ -28,7 +28,7 @@ export type ConnectionState = 'online' | 'offline';
 
 export type DataSource = 'local' | 'http';
 
-/** Origem dos dados escolhida por ambiente. Só `local` existe até a Fase 5. */
+/** Origem dos dados escolhida por ambiente. */
 export function resolveDataSource(): DataSource {
   return process.env.NEXT_PUBLIC_DATA_SOURCE === 'http' ? 'http' : 'local';
 }

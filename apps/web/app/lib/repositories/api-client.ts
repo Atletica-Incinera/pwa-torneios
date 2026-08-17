@@ -20,7 +20,7 @@ export function apiBaseUrl() {
   return process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '') ?? '/api';
 }
 
-type ApiEnvelope<T> = { data: T; meta?: unknown };
+export type ApiEnvelope<T> = { data: T; meta?: unknown };
 type ApiErrorEnvelope = { error?: { message?: string | string[] } };
 
 export type ApiRequest = {
@@ -54,6 +54,14 @@ function unwrap<T>(response: AxiosResponse<ApiEnvelope<T>>): T {
 
 function statusOf(error: unknown): number | undefined {
   return axios.isAxiosError(error) ? error.response?.status : undefined;
+}
+
+function isRetriableActionNetworkError(error: unknown, request: ApiRequest): boolean {
+  return axios.isAxiosError(error)
+    && !axios.isCancel(error)
+    && !error.response
+    && request.method === 'POST'
+    && /^\/editions\/[^/]+\/actions(?:\?|$)/.test(request.path);
 }
 
 function requestError(error: unknown): Error {
@@ -131,11 +139,11 @@ export function cancelPendingSessionRefresh(): void {
   refreshPromise = null;
 }
 
-async function execute<T>(
+async function executeEnvelope<T>(
   client: AxiosInstance,
   request: ApiRequest,
   token: string | null | undefined,
-): Promise<T> {
+): Promise<ApiEnvelope<T>> {
   const config: AxiosRequestConfig = {
     url: request.path,
     method: request.method ?? 'GET',
@@ -146,13 +154,30 @@ async function execute<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
   };
-  return unwrap(await client.request<ApiEnvelope<T>>(config));
+  const response = await client.request<ApiEnvelope<T>>(config);
+  if (response.status === 204) return { data: undefined as T };
+  return response.data;
 }
 
-export async function apiRequest<T>(request: ApiRequest): Promise<T> {
+export async function apiRequestEnvelope<T>(request: ApiRequest): Promise<ApiEnvelope<T>> {
   const client = request.adapter ? createClient(request.adapter) : defaultClient;
+  let networkRetryUsed = false;
+  const execute = async (token: string | null | undefined) => {
+    try {
+      return await executeEnvelope<T>(client, request, token);
+    } catch (error) {
+      if (!networkRetryUsed && isRetriableActionNetworkError(error, request)) {
+        networkRetryUsed = true;
+        // A primeira tentativa pode ter sido confirmada no servidor antes de a
+        // conexão cair. Body e Idempotency-Key permanecem exatamente iguais.
+        return executeEnvelope<T>(client, request, token);
+      }
+      throw error;
+    }
+  };
+
   try {
-    return await execute<T>(client, request, request.token);
+    return await execute(request.token);
   } catch (error) {
     if (statusOf(error) !== 401) throw requestError(error);
     if (request.skipAuthRefresh) throw new UnauthorizedError();
@@ -162,7 +187,7 @@ export async function apiRequest<T>(request: ApiRequest): Promise<T> {
       ? current.token
       : (await refreshApiSession(request.adapter)).token;
     try {
-      return await execute<T>(client, request, retryToken);
+      return await execute(retryToken);
     } catch (retryError) {
       if (statusOf(retryError) === 401) {
         expireStoredSession();
@@ -171,4 +196,8 @@ export async function apiRequest<T>(request: ApiRequest): Promise<T> {
       throw requestError(retryError);
     }
   }
+}
+
+export async function apiRequest<T>(request: ApiRequest): Promise<T> {
+  return (await apiRequestEnvelope<T>(request)).data;
 }
