@@ -15,7 +15,7 @@ export type StateStatus = 'loading' | 'ready' | 'error';
 export type DispatchResult = { ok: boolean; error?: string };
 
 function createAdapter(): StateAdapter {
-  // A origem é escolhida por ambiente: os e2e continuam no adaptador local.
+  // O adaptador local só é usado quando a suíte legada o solicita explicitamente.
   if (resolveDataSource() === 'http') return createHttpStateAdapter({ connect: createRealtimeChannel() });
   return createLocalStateAdapter();
 }

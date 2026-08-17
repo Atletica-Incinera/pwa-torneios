@@ -4,9 +4,8 @@ import type { Action } from './actions.ts';
 /**
  * A fronteira entre as telas e a origem dos dados.
  *
- * Hoje existe uma implementação (`localStorage`). Quando o backend entrar, a
- * implementação HTTP satisfaz esta mesma interface e a escolha passa a ser de
- * ambiente — nenhuma tela precisa saber de onde o dado veio.
+ * A implementação HTTP é a origem padrão. O adaptador local permanece
+ * disponível apenas quando solicitado explicitamente pelas suítes legadas.
  */
 export type StateAdapter = {
   /** Snapshot completo da edição. */
@@ -30,5 +29,8 @@ export type DataSource = 'local' | 'http';
 
 /** Origem dos dados escolhida por ambiente. */
 export function resolveDataSource(): DataSource {
-  return process.env.NEXT_PUBLIC_DATA_SOURCE === 'http' ? 'http' : 'local';
+  const configured = process.env.NEXT_PUBLIC_DATA_SOURCE;
+  if (!configured || configured === 'http') return 'http';
+  if (configured === 'local') return 'local';
+  throw new Error('NEXT_PUBLIC_DATA_SOURCE deve ser "http" ou "local".');
 }
