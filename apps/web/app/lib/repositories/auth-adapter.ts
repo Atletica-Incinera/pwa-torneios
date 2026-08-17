@@ -1,18 +1,73 @@
 export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
 
+export type FrontendEditionRole = {
+  roleAssignmentId: string;
+  editionId: string;
+  editionName: string;
+  editionDisciplineId: string | null;
+  disciplineId: string | null;
+  disciplineName: string | null;
+  role: Exclude<FrontendRole, 'SUPER_ADMIN'>;
+};
+
 export type FrontendSessionUser = {
   id: string;
   email: string;
   name: string;
   role: FrontendRole;
   scope?: string;
+  editionRoles: FrontendEditionRole[];
+  selectedRoleAssignmentId?: string;
+  selectedEditionId?: string;
+  selectedEditionDisciplineId?: string;
 };
 
 export type AuthSessionResponse = {
   token: string;
   expiresAt: string;
-  user: FrontendSessionUser;
+  user: Omit<FrontendSessionUser, 'editionRoles'> & {
+    editionRoles?: FrontendEditionRole[];
+  };
 };
+
+/**
+ * Converte a identidade emitida pela API para o contexto ativo da interface.
+ * `role` e `scope` continuam existindo para as telas legadas, mas a lista
+ * completa preserva todos os papéis que podem ser selecionados nesta sessão.
+ */
+export function normalizeSessionUser(
+  user: AuthSessionResponse['user'],
+  previous?: FrontendSession | null,
+): FrontendSessionUser {
+  const editionRoles = Array.isArray(user.editionRoles) ? user.editionRoles : [];
+  const requestedRoleAssignmentId = previous?.selectedRoleAssignmentId
+    ?? user.selectedRoleAssignmentId;
+  const requestedRole = requestedRoleAssignmentId
+    ? editionRoles.find((role) => role.roleAssignmentId === requestedRoleAssignmentId)
+    : undefined;
+  const matchingLegacyRole = user.role === 'DISCIPLINE_MANAGER'
+    ? editionRoles.find((role) => role.role === 'DISCIPLINE_MANAGER' && role.disciplineName === user.scope)
+    : editionRoles.find((role) => role.role === user.role);
+  const selectedRole = requestedRole
+    ?? matchingLegacyRole
+    ?? editionRoles.find((role) => role.role === user.role);
+
+  return {
+    ...user,
+    editionRoles,
+    role: selectedRole?.role ?? user.role,
+    scope: selectedRole?.role === 'DISCIPLINE_MANAGER'
+      ? selectedRole.disciplineName ?? user.scope
+      : undefined,
+    selectedRoleAssignmentId: selectedRole?.roleAssignmentId,
+    selectedEditionId: selectedRole?.editionId
+      ?? previous?.selectedEditionId
+      ?? user.selectedEditionId,
+    selectedEditionDisciplineId: selectedRole?.role === 'DISCIPLINE_MANAGER'
+      ? selectedRole.editionDisciplineId ?? undefined
+      : undefined,
+  };
+}
 
 /**
  * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador

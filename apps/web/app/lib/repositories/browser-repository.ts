@@ -26,6 +26,7 @@ export type {
   OverallMetricState,
   OverallPosition,
   OverallRankingState,
+  PhaseStandingState,
   StaffState,
   TeamState,
   TournamentAdvancement,

@@ -38,6 +38,10 @@ export function readStoredSession(): FrontendSession | null {
       name: parsed.name ?? parsed.email.split('@')[0],
       role: parsed.role,
       scope: parsed.scope,
+      editionRoles: Array.isArray(parsed.editionRoles) ? parsed.editionRoles : [],
+      selectedRoleAssignmentId: parsed.selectedRoleAssignmentId,
+      selectedEditionId: parsed.selectedEditionId,
+      selectedEditionDisciplineId: parsed.selectedEditionDisciplineId,
       remembered: parsed.remembered ?? Boolean(local),
       token: parsed.token ?? '',
       // Sessão gravada antes de existir prazo vale até o próximo login.
@@ -98,4 +102,15 @@ export function expireStoredSession() {
 export function readSessionToken(): string | null {
   const session = readStoredSession();
   return session?.token || null;
+}
+
+/** Escopo granular selecionado para o snapshot e as operações da edição. */
+export function readSelectedEditionDisciplineId(): string | null {
+  return readStoredSession()?.selectedEditionDisciplineId ?? null;
+}
+
+/** Papel de edição selecionado; super admin não precisa declarar recorte. */
+export function readSelectedEditionRole(): 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER' | null {
+  const role = readStoredSession()?.role;
+  return role === 'EDITION_ADMIN' || role === 'DISCIPLINE_MANAGER' ? role : null;
 }

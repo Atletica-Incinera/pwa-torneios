@@ -13,7 +13,11 @@ import { ErrorScreen } from './ErrorScreen';
 const editionAdminPrefixes = ['/competitions', '/disciplines/new', '/staff', '/athletes', '/teams/new'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, status, error, refresh } = useFrontendState();
-  const revoked = Boolean(session?.email && state.staff[session.email]?.revoked);
+  const matchingStaffRoles = session?.email ? Object.values(state.staff).filter((member) => (
+    member.email === session.email
+    && (session.role === 'DISCIPLINE_MANAGER' ? member.role === 'Gestor de modalidade' && member.scope === session.scope : member.role === 'Admin da edição')
+  )) : [];
+  const revoked = matchingStaffRoles.length > 0 && matchingStaffRoles.every((member) => member.revoked);
   const rosterCreation = /^\/teams\/[^/]+\/athletes\/new$/.test(pathname);
   const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && (rosterCreation || editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix))))
     // A auditoria é do super admin: nem o organizador entra.

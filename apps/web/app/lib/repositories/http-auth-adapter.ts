@@ -1,6 +1,6 @@
 import type { AxiosAdapter } from 'axios';
 import { apiRequest, cancelPendingSessionRefresh, refreshApiSession } from './api-client.ts';
-import { AuthError, UnauthorizedError, type AuthAdapter, type AuthSessionResponse, type FrontendSession } from './auth-adapter.ts';
+import { AuthError, normalizeSessionUser, UnauthorizedError, type AuthAdapter, type AuthSessionResponse, type FrontendSession } from './auth-adapter.ts';
 import { clearStoredSession, readStoredSession, writeStoredSession } from './session-storage.ts';
 
 /**
@@ -27,7 +27,12 @@ export function createHttpAuthAdapter(adapter?: AxiosAdapter): AuthAdapter {
         if (caught instanceof UnauthorizedError) throw new AuthError('E-mail ou senha inválidos.');
         throw new AuthError(caught instanceof Error ? caught.message : 'Não foi possível entrar.');
       }
-      const session: FrontendSession = { ...payload.user, remembered, token: payload.token, expiresAt: payload.expiresAt };
+      const session: FrontendSession = {
+        ...normalizeSessionUser(payload.user),
+        remembered,
+        token: payload.token,
+        expiresAt: payload.expiresAt,
+      };
       writeStoredSession(session);
       return session;
     },
@@ -45,7 +50,27 @@ export function createHttpAuthAdapter(adapter?: AxiosAdapter): AuthAdapter {
     async restore() {
       const session = readStoredSession();
       if (!session?.token) return null;
-      if (Date.parse(session.expiresAt) > Date.now()) return session;
+      if (Date.parse(session.expiresAt) > Date.now()) {
+        if (session.role === 'SUPER_ADMIN' || session.editionRoles.length) return session;
+        try {
+          const user = await apiRequest<AuthSessionResponse['user']>({
+            path: '/auth/me',
+            token: session.token,
+            adapter,
+            skipAuthRefresh: true,
+          });
+          const hydrated: FrontendSession = {
+            ...normalizeSessionUser(user, session),
+            remembered: session.remembered,
+            token: session.token,
+            expiresAt: session.expiresAt,
+          };
+          writeStoredSession(hydrated);
+          return hydrated;
+        } catch {
+          return null;
+        }
+      }
       try { return await refreshApiSession(adapter); } catch { return null; }
     },
   };

@@ -19,6 +19,7 @@ import { isLive, matchStatus } from '../../lib/status';
 import { impactSoundForEvent, ImpactSound, playImpactSound, soundForLifecycle, warmSportsSounds } from '../../lib/sound-effects';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { createId } from '../../lib/create-id';
+import { getOperatorDeviceId } from '../../lib/repositories/operator-device';
 
 type EventTone = 'blue' | 'pink' | 'orange';
 
@@ -37,7 +38,7 @@ function LiveMatchContent() {
   const { confirm, toast } = useUi();
   const operationLock = useRef(false);
   const periodEndHandled = useRef(false);
-  const operatorId = useRef(`operator-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const operatorId = useRef(getOperatorDeviceId());
   const scheduled = listMatches(state);
   const requestedMatch = matchId ? findMatch(state, matchId) : undefined;
   // Sem partida pedida, opera a que está ao vivo; sem nenhuma, a primeira da agenda.

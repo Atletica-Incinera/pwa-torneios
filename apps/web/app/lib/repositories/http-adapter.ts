@@ -2,12 +2,31 @@ import { getActiveEdition, initialFrontendState, type FrontendState } from '../f
 import { createId } from '../create-id.ts';
 import type { AxiosAdapter } from 'axios';
 import { apiRequestEnvelope, type ApiEnvelope } from './api-client.ts';
-import { readSessionToken } from './session-storage.ts';
+import { readSelectedEditionDisciplineId, readSelectedEditionRole, readSessionToken } from './session-storage.ts';
+import { getOperatorDeviceId } from './operator-device.ts';
 import type { Action } from './actions.ts';
 import type { ConnectionState, StateAdapter } from './state-adapter.ts';
 
 const snapshotRevisions = new WeakMap<FrontendState, number>();
 const snapshotEditions = new WeakMap<FrontendState, string>();
+const pendingSnapshotRequests = new Map<
+  string,
+  Promise<ApiEnvelope<Partial<FrontendState>>>
+>();
+
+function sharePendingSnapshotRequest(
+  key: string,
+  request: () => Promise<ApiEnvelope<Partial<FrontendState>>>,
+): Promise<ApiEnvelope<Partial<FrontendState>>> {
+  const current = pendingSnapshotRequests.get(key);
+  if (current) return current;
+
+  const pending = request().finally(() => {
+    if (pendingSnapshotRequests.get(key) === pending) pendingSnapshotRequests.delete(key);
+  });
+  pendingSnapshotRequests.set(key, pending);
+  return pending;
+}
 
 function envelopeRevision(meta: unknown): number | undefined {
   if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return undefined;
@@ -140,9 +159,38 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
     // Sem sessão, o app é o do espectador: o servidor devolve a versão
     // pública, sem staff, sem auditoria e sem categoria em rascunho. Filtrar
     // isso só na tela deixaria o dado sair do servidor mesmo assim.
-    const path = token() ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
+    const authenticated = Boolean(token());
+    const path = authenticated ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
     const sequence = ++requestSequence;
-    return acceptSnapshot(await request<Partial<FrontendState>>(path, 'GET'), sequence);
+    const selectedEditionRole = authenticated ? readSelectedEditionRole() : null;
+    const selectedEditionDisciplineId = selectedEditionRole === 'DISCIPLINE_MANAGER'
+      ? readSelectedEditionDisciplineId()
+      : null;
+    const operatorDeviceId = authenticated ? getOperatorDeviceId() : null;
+    const headers = selectedEditionRole ? {
+      'X-Edition-Role': selectedEditionRole,
+      'X-Operator-Id': operatorDeviceId as string,
+      ...(selectedEditionDisciplineId
+        ? { 'X-Edition-Discipline-Id': selectedEditionDisciplineId }
+        : {}),
+    } : operatorDeviceId ? { 'X-Operator-Id': operatorDeviceId } : undefined;
+    const requestSnapshot = () => request<Partial<FrontendState>>(
+      path,
+      'GET',
+      undefined,
+      headers,
+    );
+    const requestKey = JSON.stringify([
+      path,
+      token(),
+      selectedEditionRole,
+      selectedEditionDisciplineId,
+      operatorDeviceId,
+    ]);
+    const envelope = options.adapter
+      ? await requestSnapshot()
+      : await sharePendingSnapshotRequest(requestKey, requestSnapshot);
+    return acceptSnapshot(envelope, sequence);
   };
 
   return {
@@ -150,12 +198,23 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
 
     async apply(action: Action) {
       const idempotencyKey = createId('mutation');
+      const selectedEditionRole = readSelectedEditionRole();
+      const selectedEditionDisciplineId = selectedEditionRole === 'DISCIPLINE_MANAGER'
+        ? readSelectedEditionDisciplineId()
+        : null;
       const sequence = ++requestSequence;
       const envelope = await request<Partial<FrontendState>>(
         `/editions/${edition}/actions`,
         'POST',
         action,
-        { 'Idempotency-Key': idempotencyKey },
+        {
+          'Idempotency-Key': idempotencyKey,
+          'X-Operator-Id': getOperatorDeviceId(),
+          ...(selectedEditionRole ? { 'X-Edition-Role': selectedEditionRole } : {}),
+          ...(selectedEditionDisciplineId
+            ? { 'X-Edition-Discipline-Id': selectedEditionDisciplineId }
+            : {}),
+        },
       );
       return acceptSnapshot(envelope, sequence);
     },

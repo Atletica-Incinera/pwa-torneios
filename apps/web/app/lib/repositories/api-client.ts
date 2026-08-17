@@ -5,6 +5,7 @@ import axios, {
   type AxiosResponse,
 } from 'axios';
 import {
+  normalizeSessionUser,
   UnauthorizedError,
   type AuthSessionResponse,
   type FrontendSession,
@@ -88,7 +89,7 @@ async function requestSessionRefresh(client: AxiosInstance): Promise<FrontendSes
       throw new UnauthorizedError();
     }
     const session: FrontendSession = {
-      ...payload.user,
+      ...normalizeSessionUser(payload.user, current),
       remembered: current.remembered,
       token: payload.token,
       expiresAt: payload.expiresAt,

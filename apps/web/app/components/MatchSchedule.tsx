@@ -16,6 +16,7 @@ export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatus
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const day = formatAgendaDate(selectedDate, today);
+  const disciplineLabel = discipline || 'todas as modalidades';
   const visibleMatches = listMatches(state, activeEdition?.id, { discipline, tournamentId })
     // Na área pública, só entram jogos de disputas publicadas.
     .filter((match) => !publicView || isPublicMatch(state, match))
@@ -34,7 +35,7 @@ export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatus
       </div>
       <section className="match-list" aria-label="Jogos filtrados por modalidade e data">
         {visibleMatches.map((match) => <MatchCard key={match.id} match={{ ...match, phase: '' }} href={`${hrefBase}/${match.id}`} />)}
-        {!visibleMatches.length ? <EmptyState title="SEM JOGOS NESTA DATA" copy={`${day.long}. Navegue pelos dias ou abra o calendário para consultar a agenda de ${discipline}.`} /> : null}
+        {!visibleMatches.length ? <EmptyState title="SEM JOGOS NESTA DATA" copy={`${day.long}. Navegue pelos dias ou abra o calendário para consultar a agenda de ${disciplineLabel}.`} /> : null}
       </section>
     </>
   );
