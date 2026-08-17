@@ -171,6 +171,38 @@ function unsupported(what: string): never {
   throw new Error(`${what} A API não tem rota para isso.`);
 }
 
+/**
+ * A escrita que, ao falhar, deixa outra escrita gravada atrás de si.
+ *
+ * Várias ações do front viram duas ou mais chamadas REST, e a API não tem
+ * transação nem rota de desfazer: quando a segunda falha, o que a primeira
+ * gravou fica no servidor. "Não foi possível salvar" é, aí, uma frase falsa —
+ * e cara, porque o operador tenta de novo e ou fica com dois registros, ou
+ * esbarra num conflito de campo único que não explica de onde ele veio.
+ *
+ * `gravado` é essa parte da mensagem: o que já está no servidor e por onde
+ * retomar. Só quem escreveu a tradução sabe disso; o servidor não tem como
+ * dizer. A frase dele vai junto mesmo assim, porque é ela que diz **por que**
+ * falhou, e o erro original vira `cause` para não sumir do log.
+ *
+ * `gravado` nulo é o caso em que nada foi gravado antes — o passo anterior não
+ * chegou a acontecer. Aí não há o que declarar e o erro passa intacto.
+ */
+async function afterWrite<T>(gravado: string | null, step: () => Promise<T>): Promise<T> {
+  try {
+    return await step();
+  } catch (caught) {
+    if (!gravado) throw caught;
+    // Sessão morta atravessa inteira. Quem decide expulsar olha o **tipo**, não
+    // a mensagem — `handleUnauthorized` no provider faz `instanceof
+    // UnauthorizedError` —, então embrulhar aqui deixaria o operador com um
+    // aviso de sessão expirada e a sessão viva, sem caminho de volta ao login.
+    if (caught instanceof UnauthorizedError) throw caught;
+    const motivo = caught instanceof Error ? caught.message : String(caught);
+    throw new Error(`${gravado} O servidor recusou: ${motivo}`, { cause: caught });
+  }
+}
+
 type Requester = <T>(path: string, method?: 'GET' | 'POST' | 'PATCH' | 'DELETE', body?: unknown) => Promise<T>;
 
 /**
@@ -214,9 +246,19 @@ async function collect<T>(request: Requester, path: string): Promise<T[]> {
  * cada onda tudo é paralelo.
  */
 export async function loadEditionState(options: HttpAdapterOptions = {}): Promise<{ state: FrontendState; index: ApiIndex }> {
-  const token = (options.getToken ?? readSessionToken)();
-  const request: Requester = (path, method = 'GET', body) => apiRequest({ path, method, body, token, fetchImpl: options.fetchImpl });
-  const autenticado = Boolean(token);
+  /**
+   * O token é lido **a cada requisição**, não uma vez para a carga inteira.
+   *
+   * A remontagem sai em quatro ondas. Se o acesso vencer no meio, a onda que
+   * toma 401 renova e segue — mas as ondas seguintes, com o valor capturado no
+   * início, sairiam com o token velho, tomariam 401 também e forçariam uma
+   * segunda renovação. Contra o mock isso é só desperdício; contra uma API que
+   * invalide a credencial de renovação anterior ao rotacionar, é a sessão do
+   * operador se derrubando sozinha no meio de uma carga.
+   */
+  const readToken = options.getToken ?? readSessionToken;
+  const request: Requester = (path, method = 'GET', body) => apiRequest({ path, method, body, token: readToken(), fetchImpl: options.fetchImpl });
+  const autenticado = Boolean(readToken());
 
   // Onda 1: o que não depende de saber qual é a edição.
   const [competitions, me] = await Promise.all([
@@ -323,7 +365,14 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
     case 'competition/create': {
       const { competition, edition } = action.payload;
       const criada = await request<ApiCompetition>('/competitions', 'POST', { name: competition.name, slug: competition.slug || slugFrom(competition.name) });
-      return request(`/competitions/${criada.id}/editions`, 'POST', editionBody(edition));
+      // Daqui em diante a competição existe e não há como apagá-la: a API não
+      // tem `DELETE /competitions/:id`. Quem lesse "não foi possível criar"
+      // cadastraria de novo e ficaria com duas — ou com um conflito de slug que
+      // não conta que a primeira tentativa gravou.
+      return afterWrite(
+        `A competição "${criada.name}" foi criada, mas a edição não. Abra a competição e crie a edição de novo, em vez de cadastrar a competição outra vez.`,
+        () => request(`/competitions/${criada.id}/editions`, 'POST', editionBody(edition)),
+      );
     }
 
     case 'edition/create': {
@@ -342,9 +391,15 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
       if (patch.name !== undefined) dados.name = patch.name;
       if (patch.start !== undefined) dados.startDate = dayToIso(patch.start);
       if (patch.end !== undefined) dados.endDate = dayToIso(patch.end);
-      if (Object.keys(dados).length) await request(`/editions/${id}`, 'PATCH', dados);
+      const salvou = Object.keys(dados).length > 0;
+      if (salvou) await request(`/editions/${id}`, 'PATCH', dados);
       // Sem tradução: o estado guardado já é o enum que a rota espera.
-      if (patch.status !== undefined) await request(`/editions/${id}/status`, 'PATCH', { status: patch.status });
+      if (patch.status !== undefined) {
+        await afterWrite(
+          salvou ? 'O nome e as datas da edição foram salvos, mas o estado não mudou. A tela ainda mostra os valores antigos: recarregue antes de editar de novo.' : null,
+          () => request(`/editions/${id}/status`, 'PATCH', { status: patch.status }),
+        );
+      }
       return;
     }
 
@@ -374,16 +429,29 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
     case 'athlete/create': {
       const { id, athlete } = action.payload;
       const index = await currentIndex();
+      /**
+       * Tudo que pode recusar a operação é resolvido **antes** do POST.
+       *
+       * Depois dele o atleta já está no catálogo global, e a API não tem
+       * `DELETE /athletes/:id`: recusar aí deixa um registro que ninguém pediu
+       * e que ainda barra o próximo cadastro, porque `document` é único. Vale
+       * para as duas recusas — a equipe que falta e a modalidade que não está
+       * na edição, que `disciplineIdOf` rejeitava só dentro do `map`.
+       *
+       * Cada modalidade do atleta é uma inscrição na edição, e a API exige
+       * equipe em todas — inclusive nas individuais.
+       */
+      const teamId = athlete.teamId;
+      if (!teamId) unsupported('A inscrição de atleta exige uma equipe.');
+      const inscricoes = (athlete.modalities ?? []).map((modality) => disciplineIdOf(index, modality));
+
       const criado = await request<ApiAthlete>('/athletes', 'POST', { name: athlete.name ?? id, document: documentFor(id) });
-      // Cada modalidade do atleta é uma inscrição na edição, e a API exige
-      // equipe em todas — inclusive nas individuais.
-      if (!athlete.teamId) unsupported('A inscrição de atleta exige uma equipe.');
-      await Promise.all((athlete.modalities ?? []).map((modality) => request(`/editions/${index.editionId}/rosters`, 'POST', {
-        disciplineId: disciplineIdOf(index, modality),
-        athleteId: criado.id,
-        teamId: athlete.teamId,
-      })));
-      return;
+      return afterWrite(
+        inscricoes.length ? `O atleta "${criado.name}" entrou no catálogo, mas não foi inscrito nas modalidades. Abra o atleta e inscreva-o, em vez de cadastrá-lo de novo.` : null,
+        async () => {
+          await Promise.all(inscricoes.map((disciplineId) => request(`/editions/${index.editionId}/rosters`, 'POST', { disciplineId, athleteId: criado.id, teamId })));
+        },
+      );
     }
 
     case 'athlete/update': {
@@ -400,23 +468,43 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
       }
 
       const alvo = patch.modalities;
+      // Não é `alvo != null`: uma lista igual à que já está lá não escreve
+      // nada, e anunciar inscrição que não houve é tão enganoso quanto calar a
+      // que houve.
+      let inscreveu = false;
       if (alvo) {
         const atuais = new Map(rosters.map((roster) => [roster.disciplineName, roster]));
         const novas = alvo.filter((modality) => !atuais.has(modality));
         const saindo = rosters.filter((roster) => !alvo.includes(roster.disciplineName));
         const teamId = patch.teamId ?? rosters[0]?.teamId;
         if (novas.length && !teamId) unsupported('A inscrição de atleta exige uma equipe.');
-        await Promise.all([
-          ...novas.map((modality) => request(`/editions/${index.editionId}/rosters`, 'POST', { disciplineId: disciplineIdOf(index, modality), athleteId: id, teamId })),
-          // Sem DELETE do lado do gestor de modalidade, sair de uma modalidade
-          // é a inscrição virar WITHDRAWN — e é o que mantém o histórico.
-          ...saindo.map((roster) => request(`/editions/${index.editionId}/rosters/${roster.id}`, 'PATCH', { status: 'WITHDRAWN' })),
-        ]);
+        // As modalidades viram id antes de qualquer escrita, pelo mesmo motivo
+        // de `athlete/create`: `disciplineIdOf` dentro do `map` recusaria a
+        // segunda modalidade com a inscrição da primeira já em voo.
+        const entrando = novas.map((modality) => disciplineIdOf(index, modality));
+        const escritas = entrando.length + saindo.length;
+        inscreveu = escritas > 0;
+        await afterWrite(
+          // Uma inscrição só não deixa rastro: ou foi, ou não foi. Da segunda
+          // em diante o `Promise.all` pode ter gravado parte — e repetir a
+          // operação bate no `@@unique(editionDiscipline, athlete)` do que já
+          // entrou, com um conflito que não diz que a metade valeu.
+          escritas > 1 ? 'Parte das modalidades do atleta pode ter sido gravada. Recarregue e confira as modalidades antes de tentar de novo.' : null,
+          () => Promise.all([
+            ...entrando.map((disciplineId) => request(`/editions/${index.editionId}/rosters`, 'POST', { disciplineId, athleteId: id, teamId })),
+            // Sem DELETE do lado do gestor de modalidade, sair de uma modalidade
+            // é a inscrição virar WITHDRAWN — e é o que mantém o histórico.
+            ...saindo.map((roster) => request(`/editions/${index.editionId}/rosters/${roster.id}`, 'PATCH', { status: 'WITHDRAWN' })),
+          ]),
+        );
       }
 
       if (patch.teamId !== undefined) {
         const trocar = rosters.filter((roster) => roster.teamId !== patch.teamId && (!alvo || alvo.includes(roster.disciplineName)));
-        await Promise.all(trocar.map((roster) => request(`/editions/${index.editionId}/rosters/${roster.id}`, 'PATCH', { teamId: patch.teamId })));
+        await afterWrite(
+          inscreveu ? 'As modalidades do atleta foram atualizadas, mas a troca de equipe não. Recarregue antes de tentar de novo: repetir a operação inteira recadastraria a modalidade que já entrou.' : null,
+          () => Promise.all(trocar.map((roster) => request(`/editions/${index.editionId}/rosters/${roster.id}`, 'PATCH', { teamId: patch.teamId }))),
+        );
       }
       return;
     }
@@ -458,7 +546,8 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
         if (patch.entryA !== undefined) dados.entryAId = entries[patch.entryA] ?? null;
         if (patch.entryB !== undefined) dados.entryBId = entries[patch.entryB] ?? null;
       }
-      if (Object.keys(dados).length) await request(`/matches/${id}`, 'PATCH', dados);
+      const remarcou = Object.keys(dados).length > 0;
+      if (remarcou) await request(`/matches/${id}`, 'PATCH', dados);
       // O estado vai por último: virar FINISHED é o que carimba o vencedor e
       // dispara o recálculo da classificação, e ele precisa ver a partida já
       // com o local e o horário novos.
@@ -466,7 +555,10 @@ async function write(action: Action, request: Requester, currentIndex: () => Pro
         const status = toMatchStatus(patch.status);
         const phaseId = status === 'FINISHED' ? (await currentIndex()).matchPhase[id] : undefined;
         const antes = phaseId ? await standingsSignature(request, phaseId) : undefined;
-        await request(`/matches/${id}/status`, 'PATCH', { status });
+        await afterWrite(
+          remarcou ? 'A remarcação da partida foi salva, mas o estado não mudou. A tela ainda mostra o horário antigo: recarregue antes de tentar de novo.' : null,
+          () => request(`/matches/${id}/status`, 'PATCH', { status }),
+        );
         if (phaseId && antes !== undefined) await settleStandings(request, phaseId, antes);
       }
       return;

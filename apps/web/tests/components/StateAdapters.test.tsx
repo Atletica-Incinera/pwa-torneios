@@ -241,6 +241,84 @@ describe('classificação vinda do servidor', () => {
   });
 });
 
+/**
+ * A API não tem transação nem rota de desfazer, e várias ações do front são
+ * duas escritas seguidas. O que se prova aqui é o que o operador lê quando a
+ * segunda falha: sem a frase dizendo o que já foi gravado, ele repete a
+ * operação e fica com o registro em dobro que a mensagem disse não existir.
+ */
+describe('escrita que falha depois de já ter gravado', () => {
+  beforeEach(() => { window.localStorage.clear(); });
+
+  /** Recusa uma rota específica e deixa o resto do mock respondendo. */
+  function recusando(fetchImpl: typeof fetch, recusar: (url: string, method: string) => boolean): typeof fetch {
+    return async (input, init) => {
+      if (!recusar(String(input), init?.method ?? 'GET')) return fetchImpl(input, init);
+      return new Response(JSON.stringify({ error: { code: 'INTERNAL_ERROR', message: 'Ocorreu um erro interno no servidor.' } }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    };
+  }
+
+  it('a competição que ficou é declarada quando a edição não vai junto', async () => {
+    const { fetchImpl, token } = await comSessao('super@intereng.com', 'super2026');
+    const semEdicao = recusando(fetchImpl, (url, method) => method === 'POST' && /\/competitions\/[^/]+\/editions$/.test(url));
+    const action: Action = {
+      type: 'competition/create',
+      payload: {
+        competition: { id: 'copa-nova', name: 'Copa Nova', slug: 'copa-nova', active: true },
+        edition: { id: 'copa-nova-2026', name: 'Copa Nova 2026', year: 2026, start: '2026-03-01', end: '2026-03-10', status: 'PLANNING', active: false },
+      },
+    };
+
+    await expect(adaptador(semEdicao, token).apply(action)).rejects.toThrow(/A competição "Copa Nova" foi criada, mas a edição não/);
+
+    // A frase precisa ser verdade: a competição está no servidor, e não há
+    // `DELETE /competitions/:id` para tirá-la. Quem lesse "não foi possível
+    // criar" cadastraria a segunda.
+    const state = await adaptador(fetchImpl, token).load();
+    expect(state.competitions.map((competition) => competition.name)).toContain('Copa Nova');
+  });
+
+  it('atleta sem equipe é recusado antes de entrar no catálogo', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const adapter = adaptador(fetchImpl, token);
+    const action: Action = { type: 'athlete/create', payload: { id: 'iris-sem-equipe', athlete: { name: 'Íris Sem Equipe', modalities: ['Futsal'], created: true } } };
+
+    await expect(adapter.apply(action)).rejects.toThrow(/exige uma equipe/i);
+
+    // A recusa vinha depois do `POST /athletes`: o atleta nascia no catálogo e
+    // a operação falhava — e o documento derivado do id ainda barrava a
+    // segunda tentativa, já com a equipe preenchida.
+    const state = await adapter.load();
+    expect(Object.values(state.athletes).map((athlete) => athlete.name)).not.toContain('Íris Sem Equipe');
+  });
+
+  it('o atleta que ficou no catálogo é declarado quando a inscrição não vai', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const semInscricao = recusando(fetchImpl, (url, method) => method === 'POST' && url.includes('/rosters'));
+    const action: Action = { type: 'athlete/create', payload: { id: 'iris-mendes', athlete: { name: 'Íris Mendes', teamId: 'alcateia', modalities: ['Futsal'], created: true } } };
+
+    await expect(adaptador(semInscricao, token).apply(action)).rejects.toThrow(/entrou no catálogo, mas não foi inscrito/);
+
+    const state = await adaptador(fetchImpl, token).load();
+    expect(Object.values(state.athletes).map((athlete) => athlete.name)).toContain('Íris Mendes');
+  });
+
+  it('remarcar e encerrar na mesma ação: o horário salvo é declarado quando o estado falha', async () => {
+    const { fetchImpl, token } = await comSessao();
+    const semEstado = recusando(fetchImpl, (url, method) => method === 'PATCH' && url.endsWith('/status'));
+    const adapter = adaptador(semEstado, token);
+    await adapter.load();
+
+    await expect(adapter.apply({ type: 'match/update', payload: { id: 'semifinal-1', patch: { time: '20:30', status: 'Encerrada' } } }))
+      .rejects.toThrow(/A remarcação da partida foi salva, mas o estado não mudou/);
+
+    // A tela fica com o horário antigo porque o provider não relê depois de
+    // falhar — e é justamente isso que a mensagem manda o operador desfazer.
+    const state = await adaptador(fetchImpl, token).load();
+    expect(state.matches['semifinal-1'].time).toBe('20:30');
+  });
+});
+
 describe('adaptador local', () => {
   beforeEach(() => { window.localStorage.clear(); });
 

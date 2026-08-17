@@ -1,6 +1,6 @@
-import type { FrontendState } from '@atletica-incinera/intereng-contract/state';
 import { apiBaseUrl } from './api-client.ts';
 import { readSessionToken } from './session-storage.ts';
+import { toEditionState } from './api-mapping.ts';
 import { loadEditionState, type RealtimeConnect } from './http-adapter.ts';
 import { createPollingChannel, type ChannelOptions } from './polling-channel.ts';
 
@@ -16,6 +16,17 @@ import { createPollingChannel, type ChannelOptions } from './polling-channel.ts'
  * `EventSource` não envia `Authorization`; token na query vaza em log de proxy,
  * histórico e `Referer`; e cookie não atravessa `app.localhost` × `api.localhost`
  * com `SameSite=Strict`. Manter o canal sem segredo resolve os três de uma vez.
+ *
+ * **Hoje este transporte não tem servidor.** A API tem SSE por partida
+ * (`GET /matches/:matchId/stream`, evento `match-event`) e a equipe decidiu
+ * contra um stream por edição; `/editions/:id/stream` não existe nem lá nem no
+ * mock, então em modo `sse` o canal nasce caído e a barra fica em "Sem conexão".
+ * O que o tempo real vira daqui em diante é decisão humana em aberto — a
+ * TASK-22 de `docs/TASKS_API.md` lista as três saídas —, e é por isso que o
+ * listener continua de pé em vez de desligado: desligá-lo seria escolher uma
+ * delas. O que **não** podia continuar é ele absorver corpo sem checar forma,
+ * e é isso que `toEditionState` resolve abaixo. Enquanto a decisão não vem,
+ * `NEXT_PUBLIC_REALTIME=poll` é o transporte que funciona.
  */
 export const snapshotEvent = 'edition-snapshot';
 export const changedEvent = 'edition-changed';
@@ -159,9 +170,22 @@ function createSseChannel(options: SseOptions): RealtimeConnect {
         // auditoria e rascunhos da tela de quem tem direito de vê-los.
         if (token()) return;
         try {
-          onSnapshot(JSON.parse(message.data) as FrontendState);
+          // O `as FrontendState` que estava aqui não checava nada em tempo de
+          // execução: um corpo de JSON válido e forma errada virava o estado
+          // inteiro do app, e as telas esvaziavam sem erro nenhum. É a única
+          // porta por onde estado entra sem passar por rota — quem rebusca cai
+          // em `remountEdition`, que recusa pelo mesmo motivo.
+          onSnapshot(toEditionState(JSON.parse(message.data)));
           onConnection?.('online');
-        } catch { /* quadro malformado não derruba o canal */ }
+        } catch {
+          // Quadro recusado não derruba o canal — mas também não passa em
+          // silêncio. Para quem não tem sessão este evento é a única fonte de
+          // estado: recusar e não avisar deixaria a tela parada no dado velho
+          // sem nada na tela dizendo isso, que é exatamente a falha silenciosa
+          // que a recusa existe para evitar. A barra é o lugar onde aparece, e
+          // o próximo quadro válido a devolve para "online".
+          onConnection?.('offline');
+        }
       });
 
       source.addEventListener('error', () => {

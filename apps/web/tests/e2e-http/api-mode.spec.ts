@@ -332,14 +332,33 @@ test('renovação que não recebe resposta não expulsa para o login', async ({ 
   test.skip(!isMock, 'depende do gancho /test/expire-access');
   await page.goto('/');
   await login(page);
-  await request.post(`${api}/test/expire-access`);
+  /**
+   * A carga do operador precisa ter terminado antes de o acesso vencer.
+   *
+   * `login` volta assim que a URL vira `/dashboard`, e nesse instante a
+   * remontagem da edição ainda está no ar. Vencendo o acesso ali, quem toma o
+   * primeiro 401 é a carga do dashboard, e a renovação dela sai antes de a
+   * interceptação existir — por três milissegundos, na corrida que eu medi. Aí o
+   * acesso já foi renovado com sucesso, `/teams` carrega sem nenhum 401, não
+   * sobra nada para abortar, e o cenário reprova por falta do próprio
+   * pressuposto. O título só aparece com a carga concluída — a guarda segura a
+   * tela em "VALIDANDO ACESSO" até lá —, então esperar por ele é esperar a
+   * página ficar quieta.
+   */
+  await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
 
+  // A interceptação é armada **antes** de vencer o acesso, e não depois: em modo
+  // `poll` a página não fica quieta nem com a carga concluída — o canal refaz a
+  // remontagem a cada ciclo, e as ondas dela voltariam a atravessar a janela
+  // entre vencer e interceptar. Armando antes não existe janela.
   let aborted = false;
   await page.route('**/auth/refresh', async (route) => {
     if (aborted) return route.continue();
     aborted = true;
     return route.abort('failed');
   });
+
+  await request.post(`${api}/test/expire-access`);
 
   await page.goto('/teams');
   // A renovação é disparada pelo primeiro 401 da remontagem, que pode chegar

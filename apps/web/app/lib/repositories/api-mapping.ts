@@ -397,8 +397,26 @@ function remountTournaments(payload: EditionPayload, editionId: string) {
 
     const groupsOf = (phaseId: string) => bracket?.phases.find((item) => item.phaseId === phaseId)?.groups ?? [];
     const assignments: Record<string, string> = {};
+    const unknownAssignments: string[] = [];
     for (const phase of bundle.phases) {
-      for (const group of groupsOf(phase.id)) {
+      const groups = groupsOf(phase.id);
+      // O chaveamento monta cada grupo filtrando `phase_standings` pelos
+      // inscritos dele (`public.mapper.ts`, `toGroupPhaseDto`), e essa tabela
+      // só é escrita quando uma partida da fase encerra — é o único gatilho de
+      // recálculo. Antes disso o grupo volta sem ninguém, e a alocação que o
+      // organizador acabou de montar some da tela.
+      //
+      // O que separa "não informado" de "vazio" é a fase, não o grupo: o
+      // recálculo apaga e reescreve a fase inteira, e todo grupo com inscrito
+      // ganha linha na mesma passada. Então nenhuma linha na fase quer dizer
+      // que o recálculo nunca rodou ali; alguma linha quer dizer que ele
+      // rodou, e aí um grupo sem linha está mesmo vazio. A pergunta é feita ao
+      // próprio chaveamento, e não a `/phases/:id/standings`, porque ele tem
+      // cache de 60 s: cruzar as duas rotas leria um grupo recém-preenchido
+      // como grupo vazio durante um minuto.
+      const relatada = groups.some((group) => group.standings.length > 0);
+      for (const group of groups) {
+        if (!relatada) unknownAssignments.push(group.name);
         for (const standing of group.standings) {
           const inscrito = entries.find((entry) => entry.id === standing.entryId);
           if (inscrito) assignments[nameOf(inscrito)] = group.name;
@@ -416,6 +434,7 @@ function remountTournaments(payload: EditionPayload, editionId: string) {
       participants: entries.map(nameOf),
       seeds: Object.fromEntries(entries.filter((entry) => entry.seed !== null).map((entry) => [nameOf(entry), entry.seed as number])),
       assignments,
+      unknownAssignments: unknownAssignments.length ? unknownAssignments : undefined,
       phases: bundle.phases.map((phase): TournamentPhase => ({
         id: phase.id,
         name: phase.name,
@@ -525,4 +544,83 @@ function toStandings(rows: ApiStanding[]): Standing[] {
     points: row.points,
     disciplinary: 0,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// O quadro que o tempo real empurra.
+// ---------------------------------------------------------------------------
+
+/** Objeto, e não lista: um array também é `'object'`, e viraria mapa com índice como chave. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFilledList(value: unknown): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+/**
+ * Que contêiner cada campo do estado é.
+ *
+ * O `satisfies` é o que faz um campo renomeado no contrato quebrar o typecheck
+ * aqui, em vez de sumir da checagem em silêncio.
+ */
+const objectFields = ['teams', 'athletes', 'disciplines', 'tournaments', 'matches', 'staff', 'overallRanking', 'preferences'] as const satisfies readonly (keyof FrontendState)[];
+const listFields = ['competitions', 'editions', 'audit'] as const satisfies readonly (keyof FrontendState)[];
+
+/**
+ * Um corpo empurrado pelo canal vira estado de edição, ou é recusado em voz alta.
+ *
+ * É a metade que `remountEdition` não cobre. O que chega pelo stream não passa
+ * por rota nenhuma e não é remontado de nada: vem pronto, e até aqui virava o
+ * estado inteiro do app por um `as FrontendState`, que não checa nada em tempo
+ * de execução. JSON válido com a forma errada — corpo embrulhado, página de
+ * erro de proxy, quadro de outro assunto — não dava erro em lugar nenhum: as
+ * coleções saíam vazias e as telas diziam "pronto" sobre uma edição que
+ * ninguém carregou.
+ *
+ * A recusa é a mesma de `remountEdition`, pelo mesmo motivo: sem competição e
+ * sem edição não existe o que a tela chame de edição. Depois dela, cada campo
+ * presente precisa ser do tipo de contêiner certo — `teams: []` passaria pelo
+ * `field in payload` do antigo `normalizeSnapshot` e esvaziaria a tela do
+ * mesmo jeito.
+ *
+ * O que **falta** é completado, e isso é tolerância antiga: o servidor pode
+ * omitir coleção vazia, e completar aqui evita `undefined` em 45 telas.
+ * Completar tudo é que seria inventar uma edição — por isso `competitions` e
+ * `editions` são exigidas em vez de caírem no exemplo de `initialFrontendState`,
+ * que traz três edições fictícias.
+ *
+ * O que não é checado é o conteúdo de cada registro. A fronteira é deliberada:
+ * o defeito que este repositório caça é a tela que esvazia sem erro, e ele mora
+ * no contêiner, não no campo de uma equipe.
+ */
+export function toEditionState(payload: unknown): FrontendState {
+  if (!isRecord(payload)) throw new Error('O quadro recebido não é o estado da edição.');
+  const frame = payload as Partial<FrontendState>;
+  if (!isFilledList(frame.competitions) || !isFilledList(frame.editions)) throw new Error('O quadro recebido não traz competição e edição.');
+  for (const field of objectFields) {
+    if (frame[field] !== undefined && !isRecord(frame[field])) throw new Error(`O quadro recebido tem \`${field}\` fora do formato do estado.`);
+  }
+  for (const field of listFields) {
+    if (frame[field] !== undefined && !Array.isArray(frame[field])) throw new Error(`O quadro recebido tem \`${field}\` fora do formato do estado.`);
+  }
+
+  return {
+    ...initialFrontendState,
+    ...frame,
+    teams: frame.teams ?? {},
+    athletes: frame.athletes ?? {},
+    disciplines: frame.disciplines ?? {},
+    tournaments: frame.tournaments ?? {},
+    matches: frame.matches ?? {},
+    staff: frame.staff ?? {},
+    audit: frame.audit ?? [],
+    overallRanking: {
+      metrics: frame.overallRanking?.metrics ?? initialFrontendState.overallRanking.metrics,
+      awards: frame.overallRanking?.awards ?? [],
+      closures: frame.overallRanking?.closures ?? [],
+    },
+    preferences: { ...initialFrontendState.preferences, ...frame.preferences },
+  };
 }

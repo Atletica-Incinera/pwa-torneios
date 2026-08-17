@@ -137,6 +137,8 @@ describe('remontagem da edição', () => {
     expect(categoria.phases[0].qualifiers).toBe(2);
     // O chaveamento é a única rota que diz quem está em qual grupo.
     expect(categoria.assignments).toEqual({ Alcateia: 'Grupo A', Cangaceiros: 'Grupo A' });
+    // Fase relatada: não há grupo cuja composição esteja em dúvida.
+    expect(categoria.unknownAssignments).toBeUndefined();
 
     // A asserção que amarra as duas pontas, e que teria pego o defeito na
     // origem: o que a categoria lista precisa ser o mesmo vocabulário que a
@@ -242,6 +244,60 @@ describe('classificação oficial', () => {
 
     expect(findOfficialStanding(state.tournaments['futsal-m'].standings, 'Alcateia')?.points).toBe(4);
     expect(findOfficialStanding(state.tournaments['futsal-m'].standings, 'Quem não jogou')).toBeUndefined();
+  });
+});
+
+/**
+ * O chaveamento monta cada grupo filtrando a tabela `phase_standings` pelos
+ * inscritos dele, e essa tabela só nasce quando uma partida da fase encerra.
+ * Entre montar os grupos e o primeiro resultado, a rota devolve os grupos
+ * vazios — e a alocação que o organizador acabou de fazer some da tela.
+ */
+describe('alocação nos grupos', () => {
+  /** O mesmo torneio, com o chaveamento respondendo os grupos informados. */
+  const comGrupos = (groups: Array<{ name: string; standings: Array<{ entryId: string; entryName: string }> }>): EditionPayload => ({
+    ...base,
+    tournaments: base.tournaments.map((bundle) => ({
+      ...bundle,
+      bracket: { format: 'GROUP_KNOCKOUT' as const, phases: [{ phaseId: 'fase-grupos', name: 'Fase de grupos', type: 'GROUP' as const, groups }] },
+    })),
+  });
+
+  it('grupo sem linha nenhuma na fase é alocação não informada, não grupo vazio', () => {
+    const { state } = remountEdition(comGrupos([{ name: 'Grupo A', standings: [] }, { name: 'Grupo B', standings: [] }]));
+    const categoria = state.tournaments['futsal-m'];
+
+    // A alocação continua fora do alcance — nenhuma rota a devolve —, mas a
+    // tela para de dizer "distribua as equipes" para quem já distribuiu.
+    expect(categoria.assignments).toEqual({});
+    expect(categoria.unknownAssignments).toEqual(['Grupo A', 'Grupo B']);
+  });
+
+  it('fase já relatada: o grupo sem linha está mesmo vazio', () => {
+    const { state } = remountEdition(comGrupos([
+      { name: 'Grupo A', standings: [{ entryId: 'entry-a', entryName: 'Alcateia' }] },
+      { name: 'Grupo B', standings: [] },
+    ]));
+    const categoria = state.tournaments['futsal-m'];
+
+    // O recálculo apaga e reescreve a fase inteira: se um grupo tem linha, os
+    // outros teriam também se tivessem inscrito. Marcar `Grupo B` como
+    // duvidoso aqui esconderia um grupo genuinamente vazio.
+    expect(categoria.assignments).toEqual({ Alcateia: 'Grupo A' });
+    expect(categoria.unknownAssignments).toBeUndefined();
+  });
+
+  it('torneio sem grupos não tem alocação em dúvida', () => {
+    const semGrupos: EditionPayload = {
+      ...base,
+      tournaments: base.tournaments.map((bundle) => ({
+        ...bundle,
+        bracket: { format: 'SINGLE_ELIMINATION' as const, phases: [{ phaseId: 'fase-mata', name: 'Mata-mata', type: 'KNOCKOUT' as const }] },
+      })),
+    };
+    const { state } = remountEdition(semGrupos);
+
+    expect(state.tournaments['futsal-m'].unknownAssignments).toBeUndefined();
   });
 });
 

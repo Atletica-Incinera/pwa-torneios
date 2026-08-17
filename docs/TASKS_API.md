@@ -191,11 +191,16 @@ Cole no fim do arquivo, mantendo a convenção `- [ ]` / `- [x]`:
 - [ ] TASK-25 — Estado de operação da partida
 - [ ] TASK-26 — Regulamento versionado, congelado e com placar auditável
 - [ ] TASK-27 — Inscrição de push (Web Push / VAPID)
+- [ ] TASK-28 — A composição dos grupos sem depender do recálculo
 ```
 
 TASK-19 a 22 não entram: a arquitetura de snapshot e despachante foi descartada
 em 2026-08-17. Os números ficam vagos de propósito, para não confundir quem
 leia um commit antigo.
+
+A TASK-28 **não** vem do lote antigo: nasceu em 2026-08-17, de uma revisão do
+front depois da virada para REST granular. É a única do documento que não tem
+par nas doze originais.
 
 ---
 
@@ -539,6 +544,83 @@ partida entrega a notificação no aparelho inscrito; e um endpoint que devolve
 
 ---
 
+### TASK-28-EXEC — A composição dos grupos sem depender do recálculo
+
+*Nova. Não estava no lote de 2026-08-09; saiu de uma revisão do front em
+2026-08-17.*
+
+**O sintoma**: entre montar os grupos e a primeira partida encerrada daquela
+fase, **a API não tem como dizer quem está em qual grupo**. O organizador
+distribui as equipes, recarrega a tela para conferir, e vê os grupos vazios —
+no momento exato em que a dúvida "salvou?" aparece. Nada no servidor se perdeu;
+o dado existe em `group_entries` e não sai por rota nenhuma.
+
+**Por que acontece**: `toGroupPhaseDto` (`src/public/public.mapper.ts`) monta
+cada grupo assim —
+
+```ts
+const groupEntryIds = group.entries.map((ge) => ge.entryId);
+const groupStandings = phaseStandings.filter((ps) => groupEntryIds.includes(ps.entryId));
+```
+
+`group.entries` **já vem carregado** do banco (`getBracket`, em
+`src/public/public.service.ts`, inclui `groups.entries.entry.team/athlete`) e é
+usado só como filtro: quem não tem linha em `phase_standings` desaparece do
+grupo. E `phase_standings` só é escrita por `recomputeStandings`
+(`src/standings/standings.service.ts`), cujo **único** gatilho é o evento
+`MATCH_FINISHED`. Grupo montado, nenhuma partida encerrada, `standings: []` —
+composição inteira descartada na saída do mapper.
+
+Não há segunda porta. `GET /tournaments/:id/phases` devolve só os campos da
+fase (`toPhaseResponseDto`, `src/phases/phases.mapper.ts`);
+`GET /tournaments/:id/entries` não tem coluna de grupo
+(`tournament-entries.mapper.ts`); e `Group`/`GroupEntry` só têm `POST` e
+`DELETE` (`src/phases/phases.controller.ts`). O chaveamento também **omite o
+`id` do grupo**, então o `groupId` que `GET /phases/:phaseId/matches` devolve
+não pode ser resolvido para um nome de grupo por cliente nenhum.
+
+**Como implementar** — duas saídas, a primeira quase de graça:
+
+1. **`toGroupPhaseDto` emite a composição além da classificação.** Cada grupo
+   passa a levar `id` e `entries: [{ entryId, entryName, seed }]`, mapeados de
+   `group.entries`, que já está em memória. `standings` não muda de forma, a
+   consulta não muda, o cache não muda. Resolve o sintoma inteiro e devolve o
+   `id` que falta para o `groupId` da partida significar algo.
+2. **`GET /phases/:phaseId/groups`**, a leitura simétrica das três rotas de
+   escrita que já existem, devolvendo `[{ id, name, entries: [...] }]`. Custa um
+   método de controller, não passa pelo cache do chaveamento e dá ao front o
+   `groupId` que `DELETE /groups/:groupId/entries/:entryId` exige — hoje o
+   cliente não tem como descobri-lo.
+
+**Um segundo defeito, independente do primeiro**: `PublicCacheListener`
+(`src/public/public-cache.listener.ts`) invalida o cache do chaveamento apenas
+em `MATCH_FINISHED` e `MATCH_EVENT_CREATED`. **Criar grupo e alocar inscrição
+não invalidam nada.** Mesmo com a composição na resposta, quem acabou de
+distribuir as equipes pode ler o chaveamento velho por até 60 s — e 60 s é a
+diferença entre "salvou" e "sumiu" para quem está olhando a tela. Invalidar
+`getBracketCacheKey(tournamentId)` no fim de `createGroup`, `createGroupEntry` e
+`deleteGroupEntry` (`src/phases/phases.service.ts`) fecha isso.
+
+**Decisões que exigem validação humana**: se vai a (1), a (2) ou as duas; e se
+a composição é pública, como o resto do chaveamento, ou se alocação de grupo
+antes do torneio começar é rascunho e pede sessão — a mesma pergunta que a
+TASK-20 deixou em aberto para rascunho de torneio e elenco.
+
+**Critério de aceite verificável**: criar uma fase com dois grupos, alocar
+inscrições nos dois, **não encerrar partida nenhuma**, e ler a composição
+completa dos dois grupos numa única requisição. Alocar mais uma inscrição e ler
+de novo devolve a inscrição nova sem esperar o TTL.
+
+**O que o front faz enquanto isso não existe**: `remountEdition`
+(`apps/web/app/lib/repositories/api-mapping.ts`) marca em
+`TournamentState.unknownAssignments` os grupos cuja composição o chaveamento não
+relatou, e as telas de classificação, participantes e distribuição trocam o
+texto vazio por um aviso. **É paliativo**: a alocação continua ilegível, e o
+único ganho é o organizador não redistribuir o que já distribuiu achando que
+perdeu.
+
+---
+
 ## O que precisa de decisão humana antes de virar task
 
 Nada abaixo foi decidido por mim, e nenhum deles é derivável do código: são
@@ -568,3 +650,4 @@ escolhas de produto ou de política.
 | TASK-24 | as 7 ações de ranking continuam sem destino | o pódio da edição existe fora do navegador |
 | TASK-26 | mudar a regra reescreve jogo passado; slug novo zera o placar | o regulamento tem história e o placar tem dono |
 | TASK-27 | o aviso só chega com a aba aberta em segundo plano | a notificação chega com o app fechado |
+| TASK-28 | grupo montado aparece vazio até a primeira partida encerrar; o front só consegue avisar que não sabe | a alocação é legível no ato, e o `groupId` da partida vira um nome |

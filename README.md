@@ -4,15 +4,18 @@ Sistema PWA para gestão de torneios independentes, cadastro de equipes e atleta
 
 ## Status do projeto
 
-Projeto em fase inicial de estruturação do MVP.
+Todos os critérios de MVP estão atendidos **em modo `local`**, com o estado no
+navegador. O que falta é rede: o front já lê e escreve na API REST, e a
+integração ponta a ponta está bloqueada pela ausência de banco. Onde exatamente,
+e de quem depende cada pendência, está em
+[`docs/ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md) — é lá que os números
+vivem, e não aqui, para não haver duas contagens discordando.
 
 Backlog oficial:
 
 - [`docs/BACKLOG.md`](docs/BACKLOG.md)
 
-Branch inicial de trabalho:
-
-- `feature/s1-01-estrutura-inicial`
+Branch de trabalho: `integracao-modulos`.
 
 ## Escopo do MVP
 
@@ -51,9 +54,7 @@ A stack técnica definida para o backend e infraestrutura é:
 - **Redis** — pub/sub, cache de estado ao vivo e fila leve com BullMQ.
 - **Pino** — logs estruturados em JSON.
 
-Onde o projeto está agora, o que falta e de quem depende cada pendência:
-[`docs/ESTADO_DO_PROJETO.md`](docs/ESTADO_DO_PROJETO.md). O resto da
-documentação está na tabela mais abaixo.
+O resto da documentação está na tabela mais abaixo.
 
 ## Estrutura do repositório
 
@@ -113,11 +114,3 @@ feature/s1-03-authguard
 ```
 
 Ao finalizar uma tarefa, abrir um Pull Request vinculando a Issue correspondente.
-
-## Primeira entrega técnica
-
-A primeira entrega é a Issue:
-
-- `S1-01 — Configurar estrutura inicial da PWA`
-
-Essa etapa deve criar a base do projeto, organização das pastas, configuração inicial do backend, containers locais e estrutura mínima para evolução do MVP.

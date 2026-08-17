@@ -54,6 +54,7 @@ export function CategoryDetailView({ id }: { id: string }) {
   const setup = state.tournaments[id];
   const advancement = setup?.advancement ?? { ...defaultAdvancement, perGroup: setup?.phases.find((phase) => phase.format === 'Grupos')?.qualifiers ?? defaultAdvancement.perGroup };
   const groupCount = setup?.phases.find((phase) => phase.format === 'Grupos')?.groups.length ?? 0;
+  const unknownGroups = setup?.unknownAssignments ?? [];
   const teams = listTeams(state);
   const teamNames = teams.map((team) => team.name);
 
@@ -116,6 +117,10 @@ export function CategoryDetailView({ id }: { id: string }) {
               </div>
             ))}
           </div> : <EmptyState title="SEM INSCRITOS" copy={canManage ? 'Inscreva as equipes na aba Regras para liberar a agenda desta categoria.' : 'Nenhuma equipe inscrita nesta categoria.'} />}
+          {/* Sem isto o grupo simplesmente não aparece ao lado do seed, e nada
+              na tela distingue "ninguém foi distribuído" de "o servidor ainda
+              não conta quem está onde". */}
+          {unknownGroups.length && setup?.participants.length ? <p className="form-hint">{unknownGroups.length === 1 ? `O servidor ainda não informa quem está no ${unknownGroups[0]}` : `O servidor ainda não informa quem está em ${unknownGroups.join(', ')}`}: a composição só é publicada depois do primeiro resultado encerrado da fase, então daqui não dá para saber se ninguém foi alocado ou se a alocação existe e não aparece.</p> : null}
         </section> : null}
 
         {activeTab === 'regras' && canManage ? <div className="section-block no-top">

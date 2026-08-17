@@ -26,7 +26,33 @@ class FonteFalsa {
 
   close() { this.fechada = true; }
 
-  emitir(type: string) { for (const handler of this.ouvintes.get(type) ?? []) handler(new Event(type)); }
+  /**
+   * Sem `data` o evento é só sinal (`open`, `error`); com `data` ele é um
+   * quadro de verdade, e precisa ser `MessageEvent` para o canal conseguir ler
+   * o corpo e o `lastEventId`.
+   */
+  emitir(type: string, data?: string) {
+    const event = data === undefined ? new Event(type) : new MessageEvent(type, { data, lastEventId: 'evento-1' });
+    for (const handler of this.ouvintes.get(type) ?? []) handler(event);
+  }
+}
+
+/** O menor corpo que ainda é uma edição: uma competição e uma edição. */
+const quadroValido = {
+  competitions: [{ id: 'c1', name: 'InterEng', slug: 'intereng', active: true }],
+  editions: [{ id: 'e1', name: '2026', year: 2026, start: '2026-10-12', end: '2026-10-19', status: 'ONGOING', active: true, competitionId: 'c1' }],
+  teams: { 't1': { name: 'Alcateia' } },
+};
+
+/** Assina como espectador — é quem recebe estado pelo evento de snapshot. */
+function assinarComoEspectador() {
+  const recebidos: FrontendState[] = [];
+  const conexoes: string[] = [];
+  const desligar = createRealtimeChannel({ eventSourceImpl, getToken: () => null })(
+    (estado) => recebidos.push(estado),
+    (conexao) => conexoes.push(conexao),
+  );
+  return { recebidos, conexoes, desligar, fonte: FonteFalsa.abertas.at(-1)! };
 }
 
 const eventSourceImpl = FonteFalsa as unknown as typeof EventSource;
@@ -78,6 +104,52 @@ describe('canal de tempo real por stream', () => {
     vi.advanceTimersByTime(1_500);
     expect(FonteFalsa.abertas).toHaveLength(3);
 
+    desligar();
+  });
+
+  it('quadro de JSON válido e forma errada não vira o estado do app', () => {
+    const { recebidos, conexoes, desligar, fonte } = assinarComoEspectador();
+
+    // Corpo embrulhado, página de erro de proxy, quadro de outro assunto: todos
+    // saem daqui com JSON válido, e nenhum é o estado de uma edição.
+    fonte.emitir('edition-snapshot', JSON.stringify({ data: quadroValido }));
+    fonte.emitir('edition-snapshot', JSON.stringify({ mensagem: 'servico indisponivel' }));
+    fonte.emitir('edition-snapshot', JSON.stringify([]));
+
+    expect(recebidos).toEqual([]);
+    // Recusar em silêncio deixaria o espectador com a tela velha e a barra
+    // dizendo "ao vivo" — a falha silenciosa que a recusa existe para evitar.
+    expect(conexoes).toEqual(['offline', 'offline', 'offline']);
+    desligar();
+  });
+
+  it('quadro com competição e edição, mas coleção no contêiner errado, é recusado', () => {
+    const { recebidos, desligar, fonte } = assinarComoEspectador();
+
+    // A checagem antiga era "tem algum campo do estado", e este corpo tem
+    // todos: passaria por ela e chegaria às telas com `Object.entries(teams)`
+    // devolvendo índice numérico como id de equipe.
+    fonte.emitir('edition-snapshot', JSON.stringify({ ...quadroValido, teams: [], audit: {} }));
+
+    expect(recebidos).toEqual([]);
+    desligar();
+  });
+
+  it('quadro que é a edição é absorvido, com o que faltava completado', () => {
+    const { recebidos, conexoes, desligar, fonte } = assinarComoEspectador();
+
+    fonte.emitir('edition-snapshot', JSON.stringify(quadroValido));
+
+    expect(recebidos).toHaveLength(1);
+    expect(conexoes).toEqual(['online']);
+    expect(recebidos[0].teams).toEqual({ 't1': { name: 'Alcateia' } });
+    // Coleção omitida vira vazia, e não `undefined`, que é o que quebraria as
+    // telas que iteram sem checar.
+    expect(recebidos[0].matches).toEqual({});
+    expect(recebidos[0].audit).toEqual([]);
+    // E o que faltava não veio do exemplo do contrato: completar `editions`
+    // com ele publicaria três edições fictícias como se fossem do servidor.
+    expect(recebidos[0].editions.map((edicao) => edicao.id)).toEqual(['e1']);
     desligar();
   });
 

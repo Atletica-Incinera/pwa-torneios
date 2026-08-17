@@ -23,7 +23,7 @@ saber de onde vem o dado. O que mudou foi tudo atrás dela.
 
 | Antes (o que este documento pedia) | Agora (o que existe) |
 | --- | --- |
-| `GET /editions/:id/snapshot` devolve a edição inteira | ~10 famílias de rota, remontadas em memória por `loadEditionState` |
+| `GET /editions/:id/snapshot` devolve a edição inteira | 14 famílias de rota, remontadas em memória por `loadEditionState` |
 | `POST /editions/:id/actions` aceita 32 ações nomeadas | 9 ações traduzidas para REST; 23 sem rota, com dono nomeado |
 | O id de quem nasce vem do cliente | **O id vem do servidor**; o `createId` do front é ignorado |
 | A API roda `applyAction` do pacote | A API tem regras próprias — placar, desempate, vencedor |
@@ -249,8 +249,8 @@ sem sessão, recebe 401 nas duas e a carga segue com as coleções vazias
 | `GET` \| `POST` | `/tournaments/:tournamentId/entries` | aberta \| GESTOR | `{ teamId?, athleteId?, seed? }`; a regra "exatamente um" está nas estratégias do serviço, e no banco só como comentário |
 | `DELETE` | `/tournaments/:tournamentId/entries/:id` | GESTOR | 204 |
 | `GET` \| `POST` | `/tournaments/:tournamentId/phases` | aberta \| GESTOR | `config` é **obrigatório na prática**: `GROUP` e `LEAGUE` exigem `{ advanceCount, tiebreakers }`, `KNOCKOUT` aceita `{}`; `[tournamentId, order]` único |
-| `POST` | `/phases/:phaseId/groups` | GESTOR | **não há GET de grupos**: grupo só aparece em `/tournaments/:id/bracket` |
-| `POST` \| `DELETE` | `/groups/:groupId/entries[/:entryId]` | GESTOR | o último segmento é o id da alocação, não o da inscrição |
+| `POST` | `/phases/:phaseId/groups` | GESTOR | **não há GET de grupos**: grupo só aparece em `/tournaments/:id/bracket`, e lá **sem o `id`** e só com quem já tem linha de classificação (TASK-28) |
+| `POST` \| `DELETE` | `/groups/:groupId/entries[/:entryId]` | GESTOR | o último segmento é o id da **inscrição** (`TournamentEntry`); a chave no servidor é o par `(groupId, entryId)`, e associação inexistente devolve 404 |
 
 ### Partidas e eventos
 
@@ -280,21 +280,21 @@ classificação. **É o único gatilho de recálculo**: não há rota para forç
 | --- | --- | --- | --- |
 | `GET` | `/editions/:editionId/live` | aberta | só partidas `LIVE`; `entryA`/`entryB` são **nomes**, não objetos; cache 5 s |
 | `GET` | `/editions/:editionId/schedule?date=YYYY-MM-DD` | aberta | `date` obrigatório; **a janela do dia é fixada em UTC**, então a agenda sai deslocada em 3 h para o Brasil |
-| `GET` | `/tournaments/:id/bracket` | aberta | cache 60 s. **Única rota que devolve grupo e a associação grupo↔classificação**. Nas partidas do mata-mata não vem `matchId` |
+| `GET` | `/tournaments/:id/bracket` | aberta | cache 60 s, invalidado só por evento e encerramento de partida — alocar em grupo não invalida. **Única rota que devolve grupo e a associação grupo↔classificação**, e ela filtra os integrantes por `phase_standings`: até a primeira partida encerrar, todo grupo volta vazio (TASK-28). Nas partidas do mata-mata não vem `matchId` |
 
 ## Como o front remonta a edição
 
-`loadEditionState` (`http-adapter.ts:203`) faz quatro ondas encadeadas, com
-`Promise.all` dentro de cada uma. As ondas existem porque a API não deixa
-escolher: não há como pedir os torneios sem saber a edição, nem as partidas sem
-saber as fases.
+`loadEditionState` (`http-adapter.ts:216`) faz quatro ondas encadeadas, com
+`Promise.all` dentro de cada uma, sobre **14 famílias de rota**. As ondas
+existem porque a API não deixa escolher: não há como pedir os torneios sem saber
+a edição, nem as partidas sem saber as fases.
 
 | Onda | Rotas |
 | --- | --- |
 | 1 | `/competitions` (paginada), `/auth/me` |
 | 2 | `/competitions/:id/editions` de cada competição → resolve a edição vigente |
 | 3 | `/editions/:id/disciplines`, `/rosters`, `/tournaments`, `/teams`, `/athletes`, `/staff-roles` |
-| 4 | por torneio: `/entries`, `/phases`, `/bracket`; depois `/phases/:id/matches` de cada fase |
+| 4 | por torneio: `/entries`, `/phases`, `/bracket`; depois `/phases/:id/matches` e `/phases/:id/standings` de cada fase |
 
 **Uma falha derruba a carga.** A primeira rejeição rejeita tudo. Completar a
 coleção que faltou com vazio é indistinguível de "ninguém cadastrou" na tela — e
@@ -333,7 +333,7 @@ fez. É caro (uma escrita = uma releitura) e está registrado como dívida.
 ### As 23 que ainda não
 
 Cada uma tem dono e a rota onde encaixar, no mapa `pendingActions`
-(`http-adapter.ts:123`). A mensagem inteira vai para o toast — o operador
+(`http-adapter.ts:136`). A mensagem inteira vai para o toast — o operador
 também precisa parar de tentar.
 
 | Dono | Ações | Por quê |
@@ -414,11 +414,20 @@ coluna** e não sobrevivem a um recarregamento.
 
 ## Como verificar sem o backend
 
-`apps/web/tests/mock-api/api.ts` é o roteador da API de mentira: 61 rotas sobre
-um store em forma de API, reproduzindo o envelope, o filtro de erro, a
-paginação com `meta`, os guards por papel com herança, as transições de status
-de torneio, o placar recalculado dos eventos e o `whitelist` do corpo.
-`server.ts` é só o fio — porta, CORS, corpo e o SSE por partida.
+`apps/web/tests/mock-api/api.ts` é o roteador da API de mentira: 62 rotas sobre
+um store em forma de API — 57 do contrato mais cinco de `/test/*` —,
+reproduzindo o envelope, o filtro de erro, a paginação com `meta`, os guards por
+papel com herança, as transições de status de torneio, o placar recalculado dos
+eventos e o `whitelist` do corpo. `server.ts` é só o fio — porta, CORS, corpo e
+o SSE por partida.
+
+Dos ganchos, só `reset` tem par na API real, e lá exige
+`ENABLE_TEST_ENDPOINTS=true`. `expire-access`, `unimplemented-action` e
+`standings-lag` são do mock e de mais lugar nenhum — os dois primeiros são a
+razão de quatro cenários de `e2e-http` trazerem `test.skip(!isMock)`: contra a
+API real não há como pedir que ela vença um acesso ou recuse uma rota sob
+encomenda. O terceiro só é usado pelos testes de componente
+(`StateAdapters.test.tsx:34`).
 
 O mock **não roda o reducer do contrato**, de propósito: rodar seria mais fácil
 e seria mentira, porque é a granularidade da API que o adaptador precisa
@@ -426,15 +435,18 @@ enfrentar. E **não serve `/editions/:id/snapshot` nem `/editions/:id/stream`**:
 servi-las manteria os cenários verdes e a integração quebrada.
 
 O mesmo roteador é embrulhado num `fetch` pelos testes de componente
-(`createMockFetch`, `api.ts:1000`), então uma implementação só é exercitada
+(`createMockFetch`, `api.ts:1162`), então uma implementação só é exercitada
 pelo portão rápido e pelo e2e.
 
-> **`apps/web/tests/e2e-http/api-mode.spec.ts` está desatualizado.** Os onze
-> cenários ainda esperam `/editions/active/snapshot`, `/public-snapshot` e
-> `POST /editions/active/actions`, e nenhum passa contra o mock novo. Três deles
-> descrevem coisas que deixaram de existir — snapshot público sem staff, uma
-> conexão e um snapshot por página, mudança chegando pelo stream da edição — e
-> precisam ser repensados, não reapontados.
+`apps/web/tests/e2e-http/api-mode.spec.ts` traz doze cenários contra este
+roteador, e a mesma suíte aponta para a API real com `npm run test:e2e:api`.
+Nenhum menciona mais `/editions/active/snapshot`, `/public-snapshot` ou
+`POST /editions/active/actions`: os três que descreviam o que deixou de existir
+foram repensados, não reapontados. Na configuração padrão — mock, `sse` — onze
+rodam; o que sobra é o da mudança que chega sozinha, parado em `test.fixme`
+(`api-mode.spec.ts:272`) enquanto o canal apontar para uma rota que a API não
+tem. O que cada cenário prova, e por que o que está parado está parado, é
+assunto de [ESTADO_DO_PROJETO.md](ESTADO_DO_PROJETO.md).
 
 ## O que o front continua fazendo sozinho
 
@@ -447,7 +459,7 @@ pelo portão rápido e pelo e2e.
   agenda). As funções `canManageEdition` e companhia são guarda de navegação,
   não segurança — quem decide é o servidor, e onde ele não decide (item 4
   acima) a regra ficou só aqui.
-- O **fuso**. `toScheduledAt`/`fromScheduledAt` (`api-mapping.ts:209,218`) usam
+- O **fuso**. `toScheduledAt`/`fromScheduledAt` (`api-mapping.ts:204,213`) usam
   hora local: "20:00" é vinte horas no ginásio, e operador, ginásio e navegador
   estão no mesmo fuso. Ler o texto como UTC gravaria 17:00 locais no Brasil, e
   o defeito só apareceria no dia do jogo. Preço: quem abrir em outro fuso vê o

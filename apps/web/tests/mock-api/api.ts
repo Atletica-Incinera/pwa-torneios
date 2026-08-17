@@ -736,8 +736,12 @@ export function createMockApi(): MockApi {
   });
 
   route('POST', '/editions/:editionId/rosters', (request, params) => {
+    // O papel vem antes do corpo porque no Nest o guard roda antes do
+    // `ValidationPipe`: quem não tem sessão leva 401 e quem não tem papel leva
+    // 403 mesmo mandando corpo inválido. Validar primeiro trocaria os dois
+    // por 400 e esconderia a recusa que a integração vai devolver.
+    requireRole(request, params.editionId, disciplinaDoCorpo(request));
     const dados = body<{ disciplineId: string; athleteId: string; teamId: string; jerseyNumber?: number }>(request, ['disciplineId', 'athleteId', 'teamId', 'jerseyNumber'], ['disciplineId', 'athleteId', 'teamId']);
-    requireRole(request, params.editionId, dados.disciplineId);
     found(store.athletes.find((item) => item.id === dados.athleteId), 'Atleta', dados.athleteId);
     found(store.teams.find((item) => item.id === dados.teamId), 'Equipe', dados.teamId);
     unique(store.rosters.some((roster) => roster.editionId === params.editionId && roster.disciplineId === dados.disciplineId && roster.athleteId === dados.athleteId), 'athleteId');
@@ -787,8 +791,9 @@ export function createMockApi(): MockApi {
   });
 
   route('POST', '/editions/:editionId/tournaments', (request, params) => {
+    // Papel antes de corpo, como no Nest — a mesma ordem da criação de elenco.
+    requireRole(request, params.editionId, disciplinaDoCorpo(request));
     const dados = body<{ disciplineId: string; name: string; format: string }>(request, ['disciplineId', 'name', 'format'], ['disciplineId', 'name', 'format']);
-    requireRole(request, params.editionId, dados.disciplineId);
     unique(store.tournaments.some((item) => item.editionId === params.editionId && item.disciplineId === dados.disciplineId && item.name === dados.name), 'name');
     const tournament: Tournament = { id: newId('tournament'), editionId: params.editionId, disciplineId: dados.disciplineId, name: dados.name, format: dados.format, status: 'DRAFT' };
     store.tournaments.push(tournament);
@@ -865,15 +870,21 @@ export function createMockApi(): MockApi {
   }, 201);
 
   route('POST', '/groups/:groupId/entries', (request, params) => {
-    found(store.groups.find((item) => item.id === params.groupId), 'Grupo', params.groupId);
+    requireGroupRole(request, params.groupId);
     const { entryId } = body<{ entryId: string }>(request, ['entryId'], ['entryId']);
     const item: GroupEntry = { id: newId('ge'), groupId: params.groupId, entryId };
     store.groupEntries.push(item);
     return item;
   }, 201);
 
-  route('DELETE', '/groups/:groupId/entries/:entryId', (_request, params) => {
-    store.groupEntries = store.groupEntries.filter((item) => item.id !== params.entryId);
+  route('DELETE', '/groups/:groupId/entries/:entryId', (request, params) => {
+    requireGroupRole(request, params.groupId);
+    // O último segmento é o id da **inscrição**, não o da associação: a chave no
+    // servidor é o par `(groupId, entryId)`. Apagar pelo id da associação
+    // deixava o mock aceitar o que a API recusa com 404.
+    const antes = store.groupEntries.length;
+    store.groupEntries = store.groupEntries.filter((item) => !(item.groupId === params.groupId && item.entryId === params.entryId));
+    if (store.groupEntries.length === antes) throw new HttpError(404, 'NOT_FOUND', `Inscrição "${params.entryId}" não está no grupo "${params.groupId}".`);
     return undefined;
   }, 204);
 
@@ -1085,6 +1096,30 @@ export function createMockApi(): MockApi {
     const tournament = torneioDaPartida(match);
     if (!tournament) throw new HttpError(404, 'NOT_FOUND', `Partida com ID "${match.id}" não encontrada.`);
     return requireRole(request, tournament.editionId, tournament.disciplineId);
+  }
+
+  /**
+   * O papel exigido nas rotas de grupo, com o escopo que o `GroupScopeResolver`
+   * resolve na API: grupo → fase → torneio → modalidade da edição. O grupo não
+   * carrega edição nem modalidade, e é por isso que a resolução precisa subir
+   * a cadeia inteira antes de perguntar pelo papel.
+   */
+  function requireGroupRole(request: MockRequest, groupId: string) {
+    const group = found(store.groups.find((item) => item.id === groupId), 'Grupo', groupId);
+    const phase = found(store.phases.find((item) => item.id === group.phaseId), 'Fase', group.phaseId);
+    const tournament = found(store.tournaments.find((item) => item.id === phase.tournamentId), 'Torneio', phase.tournamentId);
+    return requireRole(request, tournament.editionId, tournament.disciplineId);
+  }
+
+  /**
+   * A modalidade como o guard do Nest a lê: do corpo **cru**, antes de qualquer
+   * validação. Valor ausente ou vazio vira `undefined` porque lá o guard recusa
+   * na hora (`if (!disciplineId) return false`) em vez de procurar um papel de
+   * gestor sem modalidade.
+   */
+  function disciplinaDoCorpo(request: MockRequest) {
+    const value = (request.body as { disciplineId?: unknown }).disciplineId;
+    return typeof value === 'string' && value ? value : undefined;
   }
 
   /**

@@ -52,6 +52,11 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   const [view, setView] = useState(availableGroups[0]);
   const activeView = view === 'Chaveamento' || availableGroups.includes(view) ? view : availableGroups[0];
   const groupParticipants = activeView === 'Chaveamento' ? [] : participants.filter((team) => assignments[team] === activeView || availableGroups.length === 1);
+  // Aba vazia porque o servidor não informou quem está no grupo, não porque
+  // ninguém foi distribuído. As duas se parecem na tela, e mandar o organizador
+  // distribuir o que ele já distribuiu é o que faz ele desfazer o próprio
+  // trabalho achando que o perdeu.
+  const alocacaoNaoInformada = (setup?.unknownAssignments ?? []).includes(activeView);
   // A tabela oficial é a do servidor quando o modo `http` trouxe uma para esta
   // aba; sem servidor, é calculada aqui pelo regulamento da modalidade.
   const table = resolveStandings(setup?.standings?.[activeView], groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
@@ -79,7 +84,7 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
           <div className="standings-head"><span>#</span><span>Equipe</span><span>J</span><span>V</span><span>E</span><span>D</span><span>PTS</span></div>
           {table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>Saldo {entry.balance > 0 ? '+' : ''}{entry.balance}{entry.tiebreak ? ` · desempate por ${entry.tiebreak.toLocaleLowerCase('pt-BR')}` : ''}</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}
         </div>
-        {!table.length ? <p className="match-filter-empty">{participants.length ? 'Distribua equipes neste grupo para calcular a classificação.' : 'A tabela aparece depois que as equipes forem inscritas nesta categoria.'}</p> : null}
+        {!table.length ? <p className="match-filter-empty">{alocacaoNaoInformada ? 'O servidor só publica quem está neste grupo depois do primeiro resultado encerrado — daqui não dá para saber se o grupo está vazio ou se a alocação existe e não aparece.' : participants.length ? 'Distribua equipes neste grupo para calcular a classificação.' : 'A tabela aparece depois que as equipes forem inscritas nesta categoria.'}</p> : null}
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Vitória {regulation.standings.win} · empate {regulation.standings.draw} · derrota {regulation.standings.loss}. Desempate: {describeTiebreakers(regulation.standings)}.</p>{setup ? <p>{describeAdvancement(setup.advancement ?? { ...defaultAdvancement, perGroup: qualifierCount ?? defaultAdvancement.perGroup }, availableGroups.length)}</p> : null}</div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>
       </> : <div className="phase-timeline" aria-label="Chaveamento">{knockout.length ? knockout.map((match, index) => <article key={match.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{match.phase ?? 'MATA-MATA'}</small><h3>{match.entryA} × {match.entryB}</h3><p>{isOfficialResult(match.status) ? `${match.scoreA} × ${match.scoreB}` : match.status}</p></div><Trophy size={20} /></article>) : <p className="match-filter-empty">O chaveamento será exibido quando os confrontos eliminatórios forem gerados.</p>}</div>}
     </div>

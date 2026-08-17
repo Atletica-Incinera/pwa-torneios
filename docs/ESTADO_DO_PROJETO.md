@@ -29,12 +29,12 @@ integração com a API resolve.
 | Frente | Situação | Falta |
 | --- | --- | --- |
 | Front — telas e regras | **100%** — 41 rotas, 32 ações nomeadas | — |
-| Front — ler da API REST | **100%** — `loadEditionState` remonta a edição de ~10 famílias de rota em quatro ondas | — |
+| Front — ler da API REST | **100%** — `loadEditionState` remonta a edição de 14 famílias de rota em quatro ondas | — |
 | Front — escrever na API REST | **9 de 32 ações** traduzidas; as 23 restantes têm dono e rota registrados em `pendingActions` | ver a tabela de pendências |
 | Front — sessão | **100%** — a entrada tem duas etapas porque a API tem duas: `POST /auth/login` e `GET /auth/me`, de onde sai o papel; renovação em voo único e 401 já estavam prontos | — |
 | Front — tempo real | **quebrado em modo `http`** — o canal aponta para `/editions/:id/stream`, que a API não tem | decisão sobre a TASK-22 morta |
 | Pacote de contrato | **90%** — 19 módulos, build duplo ESM+CJS, `attw` verde nas quatro resoluções, ensaio de tarball, reexports dissolvidos | publicar a `0.1.0` |
-| Ambiente Docker | **80%** — compose sem API embutida, quatro overrides, contexto na raiz, build args | rodar `docker compose build web` e `up web` |
+| Ambiente Docker | **80%** — compose sem API embutida, três overrides (`api`, `ghcr`, `host-api`), contexto na raiz, build args | rodar `docker compose build web` e `up web` |
 | Pedido à API | **reconciliado** — 8 tasks de pé (2 reescritas), 2 mortas, 2 mortas com pergunta em aberto | colar no repositório da API |
 | API (outro repositório) | REST granular, sem migration versionada; as rotas públicas agregadas estão no ar | 8 tasks, mais as decisões humanas |
 | PWA | **100% do que não depende de servidor** — manifesto com capturas e atalhos, service worker v8, tela offline, atualização sob confirmação, ícones e maskable, splash de iOS, escudos no pré-cache, sons guardados ao serem tocados, handler de `push` | inscrição de push, que é a TASK-27 |
@@ -56,23 +56,40 @@ regras do torneio têm teste.
 
 | Onde | Casos | Como rodam |
 | --- | --- | --- |
-| `packages/intereng-contract/tests/` — regras | 91 | `npm run test:contract` |
-| `packages/intereng-contract/tests/` — empacotamento (ESM, CJS) | 2 | idem |
-| `apps/web/tests/unit/` | 29 | `npm run test:unit` |
-| `apps/web/tests/components/` | 81 | `npm run test:components` |
+| `packages/intereng-contract/tests/` — regras | 96 | `npm run test:contract` |
+| `packages/intereng-contract/tests/` — empacotamento (ESM, CJS) | 3 | idem |
+| `apps/web/tests/unit/` | 36 | `npm run test:unit` |
+| `apps/web/tests/components/` | 121 | `npm run test:components` |
 | `apps/web/tests/e2e/` | 47 cenários | `npm run test:e2e`, em dois projetos (móvel e desktop) |
-| `apps/web/tests/e2e-http/` | 11 cenários, **todos desatualizados** | `npm run test:e2e:http` |
+| `apps/web/tests/e2e-http/` | 12 cenários | `npm run test:e2e:http` |
 
-São 93 casos no pacote e 110 no front. Os 47 cenários e2e rodam duas vezes cada,
-num projeto móvel e num desktop — 94 execuções, 47 cenários; contar execução
-como teste é o tipo de inflação que este documento existe para não fazer.
+São 99 casos no pacote e 157 no front, contados no commit `5d58b22`. Os 47
+cenários e2e rodam duas vezes cada, num projeto móvel e num desktop — 94
+execuções, 47 cenários; contar execução como teste é o tipo de inflação que este
+documento existe para não fazer.
 
-**Os onze cenários de `e2e-http` não passam.** Foram escritos contra
-`/editions/active/snapshot`, `/public-snapshot` e
-`POST /editions/active/actions`, rotas que a API não tem e que a API de mentira
-deixou de servir. Três deles descrevem coisas que deixaram de existir —
-snapshot público sem staff, uma conexão e um snapshot por página, mudança
-chegando pelo stream da edição — e precisam ser **repensados, não reapontados**.
+**Os doze cenários de `e2e-http` passam.** Foram reescritos em `5d58b22`, o
+mesmo commit que virou o front para o REST granular, e falam as rotas que
+existem: `/auth/login`, `/auth/me`, `/editions/:id/rosters`, `POST /teams`,
+`/editions/:id/tournaments`.
+Nada aponta mais para `/editions/active/snapshot`, `/public-snapshot` ou
+`POST /editions/active/actions`. Os três que descreviam o que deixou de existir
+foram **repensados, não reapontados**: o do espectador afirma agora que o
+servidor nega catálogo e papéis a quem não tem sessão e que a área pública fica
+de pé assim mesmo; o da carga única conta remontagens da edição — a primeira
+requisição de toda carga é `GET /competitions`, e só dela — em vez de snapshots;
+e o da mudança que chega sozinha é o que não roda.
+
+Na configuração padrão — mock, transporte `sse` — **onze rodam e um fica de
+fora**. O de fora é "o que outro operador cadastra chega na tela sem
+recarregar", marcado `test.fixme`
+(`apps/web/tests/e2e-http/api-mode.spec.ts:272`) porque em modo `sse` o canal
+aponta para uma rota que a API não tem: ele reprovaria pelo defeito de tempo
+real já registrado acima, e não por regressão. Com `NEXT_PUBLIC_REALTIME=poll`
+ele roda e prova o comportamento. Outros seis cenários têm `test.skip`
+condicional que não dispara aqui — quatro dependem de ganchos do mock e só pulam
+contra a API real (`npm run test:e2e:api`), dois dependem do `sse` e só pulam
+sob `poll`.
 
 Os números acima envelhecem a cada commit. O que não envelhece é onde cada
 suíte mora, e por quê: regra é do pacote, tela é do front, e o que a API
@@ -134,7 +151,7 @@ agora elas dependem do servidor, e a divergência não emite sinal:
 | equipes | 1 | nenhuma task; o catálogo só tem POST e GET |
 
 Cada uma tem dono e a rota onde encaixaria registrados em `pendingActions`
-(`apps/web/app/lib/repositories/http-adapter.ts:123`), e a mensagem inteira vai
+(`apps/web/app/lib/repositories/http-adapter.ts:136`), e a mensagem inteira vai
 para o toast — o operador precisa parar de tentar, não só a tela.
 
 ## As seis lacunas do PWA, fechadas
@@ -174,8 +191,7 @@ servidor** — chave VAPID, rota de inscrição e envio. É a TASK-27.
 | Pendência | Dono | Destrava |
 | --- | --- | --- |
 | Decidir o que o tempo real vira sem stream por edição | **decisão humana** | o selo "Ao vivo"; hoje a barra fica em "Sem conexão" |
-| Apontar `realtime-channel.ts` para o que existir | módulo de tempo real, depois da decisão | o mesmo selo |
-| Reescrever os 11 cenários de `e2e-http` | front | o portão do modo `http` |
+| Apontar `realtime-channel.ts` para o que existir | módulo de tempo real, depois da decisão | o mesmo selo, e o cenário `test.fixme` de `e2e-http` |
 | Traduzir as 23 ações restantes, na ordem em que a API ganhar tabela | os donos em `pendingActions` | o app deixar de ser quase somente leitura |
 | Navegação depois de criar registro (`/teams/<id>`) | módulo de telas | cadastrar sem cair em rota inexistente |
 | Formulário de atleta pedir documento | módulo de equipes e atletas | parar de gravar `sem-documento-<id>` no banco |
