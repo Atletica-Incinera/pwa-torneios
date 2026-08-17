@@ -1,148 +1,162 @@
 # PWA Torneios — InterEng
 
-Sistema PWA para gestão de torneios independentes, cadastro de equipes e atletas, organização de partidas, operação de placar ao vivo e visualização pública de jogos e classificações.
+PWA responsiva para administrar competições, edições, modalidades, equipes, atletas, torneios, partidas, placar ao vivo, ranking geral e a área pública do InterEng. As visualizações originais foram preservadas; o estado persistente vem da API `intereng-api`.
 
-## Status do projeto
+## Arquitetura integrada
 
-Projeto em fase inicial de estruturação do MVP.
+- **Next.js 16 + React 19 + TypeScript** em `apps/web`;
+- **API REST NestJS** no repositório irmão `backend`;
+- **PostgreSQL** como fonte de verdade;
+- **Redis + SSE** para invalidar snapshots em tempo real;
+- **MinIO/S3** para logotipos de equipes;
+- **Traefik** para expor web e API no ambiente local;
+- **Service Worker** com fallback offline somente para dados públicos.
 
-Backlog oficial:
+O frontend usa `NEXT_PUBLIC_DATA_SOURCE=http` por padrão. O adaptador `local` permanece disponível apenas quando uma suíte legada o solicita explicitamente; a aplicação integrada não faz fallback silencioso para dados do navegador.
 
-- [`docs/BACKLOG.md`](docs/BACKLOG.md)
+## Requisitos
 
-Branch inicial de trabalho:
+- Docker Desktop com Docker Compose;
+- Node.js 22+ e npm para desenvolvimento fora dos containers;
+- os repositórios em diretórios irmãos:
 
-- `feature/s1-01-estrutura-inicial`
+```text
+intereng/
+├── frontend/
+└── backend/
+```
 
-## Contrato de integração congelado
+## Executar a stack completa
 
-A integração com `intereng-api` preserva as páginas e os requisitos atuais. O contrato de compatibilidade do frontend é formado por:
+No PowerShell, a partir deste repositório:
 
-- `apps/web/app/lib/frontend-state.ts`: formato do snapshot consumido pelas telas;
-- `apps/web/app/lib/repositories/actions.ts`: as 32 mutações aceitas pelo servidor;
-- `apps/web/app/lib/repositories/auth-adapter.ts`: sessão usada pelas guardas de navegação;
-- `apps/web/app/lib/repositories/state-adapter.ts`: fronteira entre as telas e a fonte de dados.
+```powershell
+Copy-Item .env.example .env
+docker compose up --build -d
+docker compose ps
+```
 
-O frontend trata toda resposta JSON da API no envelope `{ "data": T, "meta"?: object }`. Erros usam `{ "error": { "code": string, "message": string, "details"?: unknown, "requestId"?: string } }`. O identificador `active` é aceito no lugar do ID para resolver a edição ativa.
+O container da API executa `prisma migrate deploy` antes de iniciar. Os volumes de PostgreSQL, Redis e MinIO são persistentes.
 
-| Método | Rota | Contrato |
-| --- | --- | --- |
-| `POST` | `/api/v1/auth/login` | recebe e-mail/senha; devolve `{ token, expiresAt, user }` e cria cookie HttpOnly de refresh |
-| `POST` | `/api/v1/auth/refresh` | rotaciona o cookie e devolve uma nova sessão |
-| `POST` | `/api/v1/auth/logout` | revoga a sessão e limpa o cookie |
-| `GET` | `/api/v1/auth/me` | devolve usuário, papel e escopo atuais |
-| `GET` | `/api/v1/editions/:id/snapshot` | snapshot privado no formato `FrontendState`; `meta.revision` é obrigatório |
-| `GET` | `/api/v1/editions/:id/public-snapshot` | snapshot público sem `staff`, `audit` ou dados pessoais |
-| `POST` | `/api/v1/editions/:id/actions` | recebe uma `Action`, aplica de forma atômica e devolve o snapshot confirmado |
-| `GET` | `/api/v1/editions/:id/stream` | SSE de invalidação com `{ editionId, revision }` |
-| `GET` | `/api/v1/editions/:id/live` | visão pública resumida das partidas ao vivo |
-| `GET` | `/api/v1/tournaments/:id/bracket` | chaveamento público do torneio |
-| `GET` | `/api/v1/audit-logs` | auditoria paginada para super administrador |
-| `GET` | `/api/v1/editions/:id/audit-logs` | auditoria paginada e escopada à edição |
-| `POST` | `/api/v1/teams/:id/logo-upload-url` | URL pré-assinada para upload direto de WebP; persiste-se apenas `fileKey` |
+Para carregar a demonstração em um ambiente local vazio, depois que a stack estiver saudável:
 
-As mutações congeladas são:
+```powershell
+docker compose run --rm -e NODE_ENV=development -e SEED_DEMO_DATA=true api npm run prisma:seed
+```
 
-| Domínio | Tipos aceitos |
+O seed é idempotente, recusa `NODE_ENV=production` e só roda com `SEED_DEMO_DATA=true`. Ele não deve ser usado para sobrescrever dados reais.
+
+Serviços locais:
+
+| Serviço | Endereço |
 | --- | --- |
-| Partida | `match/schedule`, `match/update`, `match/start`, `match/updateClock`, `match/registerEvent`, `match/claimOperator`, `match/releaseOperator`, `match/undoEvent`, `match/finish`, `match/correctResult` |
-| Categoria | `category/create`, `category/update`, `category/generateMatches` |
-| Modalidade | `discipline/update` |
-| Equipe | `team/create`, `team/update` |
-| Atleta | `athlete/create`, `athlete/update` |
-| Ranking | `ranking/addMetric`, `ranking/updateMetric`, `ranking/removeMetric`, `ranking/addAwards`, `ranking/revokeAward`, `ranking/close`, `ranking/reopen` |
-| Competição | `competition/create`, `competition/rename`, `competition/activate` |
-| Edição | `edition/create`, `edition/update`, `edition/activate` |
-| Staff | `staff/upsert` |
+| PWA | `http://app.localhost` ou `http://localhost:3001` |
+| API | `http://api.localhost/api/v1` ou `http://localhost:3000/api/v1` |
+| Health check | `http://api.localhost/api/v1/health` |
+| MinIO API | `http://localhost:9000` |
+| MinIO Console | `http://localhost:9001` |
+| Traefik | `http://localhost:8080` |
 
-Regras de compatibilidade:
+Para encerrar os containers sem apagar os dados:
 
-- o servidor é a fonte de verdade; não há atualização otimista no modo HTTP;
-- IDs enviados pelo cliente são validados e preservados para manter navegação e referências;
-- cada ação leva `Idempotency-Key`, é transacional e incrementa a revisão uma única vez;
-- classificação, chaveamento, auditoria e snapshot já estão consistentes quando a ação responde;
-- preferências de dispositivo continuam locais e podem ser omitidas pelo snapshot;
-- o modo local e a API simulada só serão removidos depois da validação integral do backend real.
+```powershell
+docker compose down
+```
 
-### Baseline antes da integração
+## Credenciais da demonstração
 
-Em 2026-08-16, `apps/web` passou em 87 testes unitários e 11 testes de componentes. Esse resultado é a referência mínima para todas as fases seguintes.
+Estas credenciais são criadas apenas pelo seed local e podem ser substituídas pelas variáveis `SEED_*_PASSWORD` do backend.
 
-## Escopo do MVP
+| Papel | E-mail | Senha | Escopo |
+| --- | --- | --- | --- |
+| Super administrador | `super@intereng.com` | `super2026` | global |
+| Admin da edição | `ana@ufpe.br` | `intereng2026` | InterEng 2026 |
+| Gestor de modalidade | `bruno@ufpe.br` | `futsal2026` | Futsal |
 
-O MVP contempla:
+Novos membros convidados recebem, no ambiente local, a senha definida em `STAFF_INVITE_PASSWORD` (`intereng2026` no exemplo). Use um valor secreto próprio fora do desenvolvimento.
 
-- autenticação de usuários administrativos;
-- perfis Super Admin e Staff;
-- competições e edições;
-- modalidades por edição;
-- equipes;
-- atletas cadastrados dentro da equipe;
-- torneios;
-- equipes inscritas no torneio;
-- fases, grupos e partidas;
-- placar ao vivo;
-- eventos de partida;
-- classificação;
-- área pública para visitantes;
-- auditoria básica.
+## Variáveis principais
 
-Fora do MVP inicial:
+O arquivo `.env.example` contém toda a configuração do Compose. As variáveis mais relevantes para o frontend são:
 
-- módulo separado de atletas;
-- aprovação/reprovação/suspensão de elenco;
-- autoinscrição pública;
-- relatórios avançados;
-- observabilidade completa com ELK/Loki em produção.
+```env
+NEXT_PUBLIC_DATA_SOURCE=http
+NEXT_PUBLIC_API_URL=http://api.localhost/api/v1
+API_HOST=api.localhost
+WEB_HOST=app.localhost
+STAFF_INVITE_PASSWORD=intereng2026
+```
 
-## Stack oficial
+`NEXT_PUBLIC_*` é incorporada durante o build. Refaça a imagem do serviço `web` quando alterar esses valores.
 
-A stack técnica definida para o backend e infraestrutura é:
+O upload usa POST pré-assinado diretamente para o MinIO/S3. `S3_PRESIGN_ENDPOINT` precisa ser acessível pelo navegador, `S3_ENDPOINT` pela API e `MINIO_API_CORS_ALLOW_ORIGIN` deve incluir a origem da PWA.
 
-- **Traefik** — proxy reverso, TLS, roteamento e suporte a múltiplas réplicas.
-- **NestJS** — API REST e WebSocket Gateway com Socket.IO.
-- **PostgreSQL** — banco relacional principal e fonte de verdade.
-- **Redis** — pub/sub, cache de estado ao vivo e fila leve com BullMQ.
-- **Pino** — logs estruturados em JSON.
+## Desenvolvimento do frontend
 
-Detalhes completos da arquitetura:
+Com a infraestrutura e a API disponíveis, execute:
 
-- [`docs/STACK.md`](docs/STACK.md)
-- [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+```powershell
+Set-Location apps/web
+npm ci
+$env:NEXT_PUBLIC_DATA_SOURCE='http'
+$env:NEXT_PUBLIC_API_URL='http://api.localhost/api/v1'
+npm run dev
+```
 
-## Estrutura planejada do repositório
+Comandos de qualidade:
 
-```txt
+```powershell
+npm run typecheck
+npm run build
+```
+
+O modo local é reservado à compatibilidade das suítes legadas:
+
+```powershell
+$env:NEXT_PUBLIC_DATA_SOURCE='local'
+```
+
+Não use esse valor para homologar a integração.
+
+## Contrato de dados
+
+- `apps/web/app/lib/frontend-state.ts`: snapshot consumido pelas telas;
+- `apps/web/app/lib/repositories/actions.ts`: 32 operações de escrita;
+- `apps/web/app/lib/repositories/http-adapter.ts`: snapshots, ações idempotentes e gate monotônico de revisão;
+- `apps/web/app/lib/repositories/http-auth-adapter.ts`: login, refresh, logout e restauração da sessão;
+- `apps/web/app/lib/repositories/realtime-channel.ts`: canal SSE compartilhado;
+- `apps/web/app/lib/repositories/logo-upload.ts`: upload direto e associação do `fileKey`.
+
+Cada ação envia `Idempotency-Key`. O servidor devolve o snapshot confirmado; não há atualização otimista no modo HTTP. Revisões SSE provocam um novo GET e nunca transportam dados privados.
+
+## Comportamento offline
+
+- snapshots públicos usam rede primeiro e o cache somente como fallback;
+- snapshots privados, sessão e mutações não são armazenados pelo Service Worker;
+- escritas exigem conexão;
+- ao recuperar a rede, a aplicação busca a revisão mais recente;
+- o canal `/active` acompanha a troca de edição ativa sem precisar recarregar a página.
+
+## Checklist de homologação
+
+1. Entrar com cada um dos três papéis e conferir o respectivo escopo.
+2. Criar ou editar competição, edição, modalidade, equipe, atleta e torneio.
+3. Gerar partidas, operar placar, pausar/retomar, desfazer evento, encerrar e corrigir resultado.
+4. Conferir classificação, chaveamento, ranking geral e auditoria.
+5. Enviar um logotipo WebP e confirmar a URL pública do objeto.
+6. Abrir duas abas e confirmar atualização em tempo real após uma mutação.
+7. Abrir a área pública sem sessão e verificar que ela não expõe staff, auditoria ou documentos.
+8. Simular indisponibilidade da rede e confirmar o fallback apenas nas páginas públicas.
+9. Verificar console e rede do navegador sem erros inesperados.
+
+## Estrutura do repositório
+
+```text
 .
 ├── apps/
-│   └── api/                 # Backend NestJS
-├── docs/
-│   ├── BACKLOG.md           # Backlog do MVP
-│   ├── STACK.md             # Stack e decisões técnicas
-│   └── DEVELOPMENT.md       # Fluxo de desenvolvimento
-├── infra/
-│   └── traefik/             # Configuração do Traefik
-├── docker-compose.yml       # Serviços locais
-├── .env.example             # Variáveis de ambiente de exemplo
+│   └── web/                 # aplicação Next.js
+├── docs/                    # decisões e histórico do produto
+├── docker-compose.yml       # stack integrada com o backend irmão
+├── .env.example             # configuração local de referência
 └── README.md
 ```
-
-## Fluxo de desenvolvimento
-
-Cada tarefa do backlog deve seguir este padrão:
-
-```txt
-feature/s1-01-estrutura-inicial
-feature/s1-02-login
-feature/s1-03-authguard
-```
-
-Ao finalizar uma tarefa, abrir um Pull Request vinculando a Issue correspondente.
-
-## Primeira entrega técnica
-
-A primeira entrega é a Issue:
-
-- `S1-01 — Configurar estrutura inicial da PWA`
-
-Essa etapa deve criar a base do projeto, organização das pastas, configuração inicial do backend, containers locais e estrutura mínima para evolução do MVP.
