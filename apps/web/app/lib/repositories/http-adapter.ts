@@ -1,15 +1,56 @@
-import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
-import { apiRequest } from './api-client.ts';
-import { readSessionToken } from './session-storage.ts';
+import { getActiveEdition, initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import { createId } from '../create-id.ts';
+import type { AxiosAdapter } from 'axios';
+import { apiRequestEnvelope, type ApiEnvelope } from './api-client.ts';
+import { readSelectedEditionDisciplineId, readSelectedEditionRole, readSessionToken } from './session-storage.ts';
+import { getOperatorDeviceId } from './operator-device.ts';
 import type { Action } from './actions.ts';
 import type { ConnectionState, StateAdapter } from './state-adapter.ts';
+
+const snapshotRevisions = new WeakMap<FrontendState, number>();
+const snapshotEditions = new WeakMap<FrontendState, string>();
+const pendingSnapshotRequests = new Map<
+  string,
+  Promise<ApiEnvelope<Partial<FrontendState>>>
+>();
+
+function sharePendingSnapshotRequest(
+  key: string,
+  request: () => Promise<ApiEnvelope<Partial<FrontendState>>>,
+): Promise<ApiEnvelope<Partial<FrontendState>>> {
+  const current = pendingSnapshotRequests.get(key);
+  if (current) return current;
+
+  const pending = request().finally(() => {
+    if (pendingSnapshotRequests.get(key) === pending) pendingSnapshotRequests.delete(key);
+  });
+  pendingSnapshotRequests.set(key, pending);
+  return pending;
+}
+
+function envelopeRevision(meta: unknown): number | undefined {
+  if (!meta || typeof meta !== 'object' || Array.isArray(meta)) return undefined;
+  const revision = (meta as { revision?: unknown }).revision;
+  return typeof revision === 'number' && Number.isInteger(revision) && revision >= 0
+    ? revision
+    : undefined;
+}
+
+/** Metadado técnico não enumerável: nunca entra no estado persistido ou no payload. */
+export function snapshotRevision(snapshot: FrontendState): number | undefined {
+  return snapshotRevisions.get(snapshot);
+}
+
+export function snapshotEdition(snapshot: FrontendState): string | undefined {
+  return snapshotEditions.get(snapshot);
+}
 
 /**
  * O snapshot que o servidor devolve tem o mesmo formato do estado local, mas
  * pode omitir coleções vazias. Completar aqui evita `undefined` em 45 telas.
  */
-export function normalizeSnapshot(payload: Partial<FrontendState>): FrontendState {
-  return {
+export function normalizeSnapshot(payload: Partial<FrontendState>, revision?: number): FrontendState {
+  const normalized: FrontendState = {
     ...initialFrontendState,
     ...payload,
     teams: payload.teams ?? {},
@@ -26,16 +67,25 @@ export function normalizeSnapshot(payload: Partial<FrontendState>): FrontendStat
     },
     preferences: { ...initialFrontendState.preferences, ...payload.preferences },
   };
+  if (revision !== undefined) snapshotRevisions.set(normalized, revision);
+  return normalized;
 }
 
-/** Conexão de tempo real. Recebe o snapshot novo e devolve como se desligar. */
-export type RealtimeConnect = (onSnapshot: (next: FrontendState) => void, onConnection?: (state: ConnectionState) => void) => () => void;
+/** Invalidação pública emitida pelo SSE; nenhum dado da edição viaja no evento. */
+export type EditionRevision = { editionId: string; revision: number };
+
+/** Conexão de tempo real. Recebe revisões e devolve como se desligar. */
+export type RealtimeConnect = (
+  edition: string,
+  onRevision: (event: EditionRevision) => void,
+  onConnection?: (state: ConnectionState) => void,
+) => () => void;
 
 export type HttpAdapterOptions = {
   /** Edição a carregar. `active` deixa o servidor resolver qual é a vigente. */
   edition?: string;
   getToken?: () => string | null;
-  fetchImpl?: typeof fetch;
+  adapter?: AxiosAdapter;
   connect?: RealtimeConnect;
 };
 
@@ -51,26 +101,255 @@ export type HttpAdapterOptions = {
 export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateAdapter {
   const edition = options.edition ?? 'active';
   const token = () => (options.getToken ?? readSessionToken)();
-  const request = <T>(path: string, method: 'GET' | 'POST', body?: unknown) =>
-    apiRequest<T>({ path, method, body, token: token(), fetchImpl: options.fetchImpl });
+  const request = <T>(
+    path: string,
+    method: 'GET' | 'POST',
+    body?: unknown,
+    headers?: Record<string, string>,
+  ) => apiRequestEnvelope<T>({
+    path,
+    method,
+    body,
+    headers,
+    token: token(),
+    adapter: options.adapter,
+  });
+  let latestSnapshot: FrontendState | undefined;
+  let latestRevision = -1;
+  let latestRequestSequence = -1;
+  let latestEditionId: string | undefined;
+  let requestSequence = 0;
+
+  const acceptSnapshot = (
+    envelope: ApiEnvelope<Partial<FrontendState>>,
+    sequence: number,
+  ): FrontendState => {
+    const revision = envelopeRevision(envelope.meta);
+    const normalized = normalizeSnapshot(envelope.data, revision);
+    const snapshotEditionId = edition === 'active'
+      ? getActiveEdition(normalized)?.id
+      : edition;
+
+    if (latestSnapshot) {
+      if (snapshotEditionId !== latestEditionId && sequence < latestRequestSequence) {
+        return latestSnapshot;
+      }
+      if (snapshotEditionId === latestEditionId) {
+        if (revision === undefined && (latestRevision >= 0 || sequence < latestRequestSequence)) {
+          return latestSnapshot;
+        }
+        if (
+          revision !== undefined
+          && (revision < latestRevision || (revision === latestRevision && sequence < latestRequestSequence))
+        ) {
+          return latestSnapshot;
+        }
+      }
+    }
+
+    latestSnapshot = normalized;
+    latestRevision = revision ?? -1;
+    latestRequestSequence = sequence;
+    latestEditionId = snapshotEditionId;
+    if (snapshotEditionId) snapshotEditions.set(normalized, snapshotEditionId);
+    return normalized;
+  };
+
+  const loadSnapshot = async () => {
+    // Sem sessão, o app é o do espectador: o servidor devolve a versão
+    // pública, sem staff, sem auditoria e sem categoria em rascunho. Filtrar
+    // isso só na tela deixaria o dado sair do servidor mesmo assim.
+    const authenticated = Boolean(token());
+    const path = authenticated ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
+    const sequence = ++requestSequence;
+    const selectedEditionRole = authenticated ? readSelectedEditionRole() : null;
+    const selectedEditionDisciplineId = selectedEditionRole === 'DISCIPLINE_MANAGER'
+      ? readSelectedEditionDisciplineId()
+      : null;
+    const operatorDeviceId = authenticated ? getOperatorDeviceId() : null;
+    const headers = selectedEditionRole ? {
+      'X-Edition-Role': selectedEditionRole,
+      'X-Operator-Id': operatorDeviceId as string,
+      ...(selectedEditionDisciplineId
+        ? { 'X-Edition-Discipline-Id': selectedEditionDisciplineId }
+        : {}),
+    } : operatorDeviceId ? { 'X-Operator-Id': operatorDeviceId } : undefined;
+    const requestSnapshot = () => request<Partial<FrontendState>>(
+      path,
+      'GET',
+      undefined,
+      headers,
+    );
+    const requestKey = JSON.stringify([
+      path,
+      token(),
+      selectedEditionRole,
+      selectedEditionDisciplineId,
+      operatorDeviceId,
+    ]);
+    const envelope = options.adapter
+      ? await requestSnapshot()
+      : await sharePendingSnapshotRequest(requestKey, requestSnapshot);
+    return acceptSnapshot(envelope, sequence);
+  };
 
   return {
-    async load() {
-      // Sem sessão, o app é o do espectador: o servidor devolve a versão
-      // pública, sem staff, sem auditoria e sem categoria em rascunho. Filtrar
-      // isso só na tela deixaria o dado sair do servidor mesmo assim.
-      const path = token() ? `/editions/${edition}/snapshot` : `/editions/${edition}/public-snapshot`;
-      return normalizeSnapshot(await request<Partial<FrontendState>>(path, 'GET'));
-    },
+    load: loadSnapshot,
 
     async apply(action: Action) {
-      return normalizeSnapshot(await request<Partial<FrontendState>>(`/editions/${edition}/actions`, 'POST', action));
+      const idempotencyKey = createId('mutation');
+      const selectedEditionRole = readSelectedEditionRole();
+      const selectedEditionDisciplineId = selectedEditionRole === 'DISCIPLINE_MANAGER'
+        ? readSelectedEditionDisciplineId()
+        : null;
+      const sequence = ++requestSequence;
+      const envelope = await request<Partial<FrontendState>>(
+        `/editions/${edition}/actions`,
+        'POST',
+        action,
+        {
+          'Idempotency-Key': idempotencyKey,
+          'X-Operator-Id': getOperatorDeviceId(),
+          ...(selectedEditionRole ? { 'X-Edition-Role': selectedEditionRole } : {}),
+          ...(selectedEditionDisciplineId
+            ? { 'X-Edition-Discipline-Id': selectedEditionDisciplineId }
+            : {}),
+        },
+      );
+      return acceptSnapshot(envelope, sequence);
     },
 
     subscribe(onRemoteChange, onConnection) {
       // Sem canal configurado o app continua funcionando: cada operação já
       // devolve o estado novo; o que falta é ver a mudança dos outros.
-      return options.connect?.((next) => onRemoteChange(next), onConnection) ?? (() => {});
+      let closed = false;
+      let loading = false;
+      let refreshRequested = false;
+      let pending: EditionRevision | undefined;
+      let appliedEditionId: string | undefined;
+      let appliedRevision = -1;
+      let reconnectRequested = false;
+      let disconnectStream: () => void = () => undefined;
+      let retryTimer: ReturnType<typeof setTimeout> | undefined;
+      let retryDelayMilliseconds = 500;
+
+      const clearRetryTimer = () => {
+        if (retryTimer !== undefined) clearTimeout(retryTimer);
+        retryTimer = undefined;
+      };
+
+      const resetRetryBackoff = () => {
+        clearRetryTimer();
+        retryDelayMilliseconds = 500;
+      };
+
+      const queueRevision = (event: EditionRevision) => {
+        if (pending?.editionId === event.editionId) {
+          pending = { ...event, revision: Math.max(pending.revision, event.revision) };
+          return;
+        }
+        pending = event;
+      };
+
+      const refreshFromServer = async () => {
+        if (closed || loading) return;
+        clearRetryTimer();
+        loading = true;
+        let target: EditionRevision | undefined;
+        let refreshFailed = false;
+        try {
+          while (!closed && (refreshRequested || pending)) {
+            refreshRequested = false;
+            target = pending;
+            pending = undefined;
+            const next = await loadSnapshot();
+            if (closed) return;
+            onRemoteChange(next);
+            const returnedEditionId = snapshotEdition(next);
+            const returnedRevision = snapshotRevision(next);
+            const previousAppliedEditionId = appliedEditionId;
+            if (returnedEditionId && returnedRevision !== undefined) {
+              appliedEditionId = returnedEditionId;
+              appliedRevision = returnedRevision;
+            }
+            onConnection?.('online');
+
+            if (target) {
+              const reachedTarget = returnedEditionId === target.editionId
+                && returnedRevision !== undefined
+                && returnedRevision >= target.revision;
+              const activeEditionChanged = edition === 'active'
+                && returnedEditionId !== undefined
+                && returnedEditionId !== target.editionId
+                && returnedEditionId !== previousAppliedEditionId;
+              if (activeEditionChanged) reconnectRequested = true;
+              if (!reachedTarget && !activeEditionChanged) {
+                // Cache offline ou réplica atrasada: guarda a invalidação sem
+                // repetir em loop. O próximo open/online/evento tenta de novo.
+                queueRevision(target);
+                refreshFailed = true;
+                break;
+              }
+            }
+            resetRetryBackoff();
+            target = undefined;
+          }
+        } catch {
+          if (target) queueRevision(target);
+          else refreshRequested = true;
+          refreshFailed = true;
+          // O stream continua reconectando. Uma próxima revisão ou o evento
+          // `online` do navegador tentará carregar novamente pelo adapter.
+          onConnection?.('offline');
+        } finally {
+          loading = false;
+          if (reconnectRequested && !closed) {
+            reconnectRequested = false;
+            connectStream();
+          }
+          if (refreshFailed && !closed && (pending || refreshRequested)) scheduleRetry();
+        }
+      };
+
+      const scheduleRetry = () => {
+        if (closed || retryTimer !== undefined || (!pending && !refreshRequested)) return;
+        const delay = retryDelayMilliseconds;
+        retryDelayMilliseconds = Math.min(retryDelayMilliseconds * 2, 8_000);
+        retryTimer = setTimeout(() => {
+          retryTimer = undefined;
+          if (!closed && (pending || refreshRequested)) void refreshFromServer();
+        }, delay);
+      };
+
+      const receiveRevision = (event: EditionRevision) => {
+        if (event.editionId === appliedEditionId && event.revision <= appliedRevision) return;
+        queueRevision(event);
+        void refreshFromServer();
+      };
+      const updateConnection = (state: ConnectionState) => {
+        onConnection?.(state);
+        if (state === 'online') {
+          // O primeiro `open` e todo reconnect fecham a janela entre o GET
+          // inicial e a assinatura do stream, mesmo sem revisão pendente.
+          refreshRequested = true;
+          void refreshFromServer();
+        }
+      };
+      const connectStream = () => {
+        disconnectStream();
+        disconnectStream = options.connect?.(
+          edition,
+          receiveRevision,
+          updateConnection,
+        ) ?? (() => undefined);
+      };
+      connectStream();
+
+      return () => {
+        closed = true;
+        clearRetryTimer();
+        disconnectStream();
+      };
     },
   };
 }

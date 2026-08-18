@@ -5,7 +5,11 @@ const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '/intereng';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // De `front-end`: o app é servido sob /intereng no proxy da VM.
   basePath: basePath === '/' ? '' : basePath,
+  // Do PR de integração: runtime standalone, que reduz a imagem de 1,23 GB
+  // para 349 MB. O Dockerfile do runner depende disto.
+  output: 'standalone',
   // `NEXT_PUBLIC_DATA_SOURCE` é embutido na compilação, então cada origem de
   // dados precisa da sua build. Separar a pasta deixa as duas conviverem: a
   // suíte local não derruba a do HTTP nem o contrário.

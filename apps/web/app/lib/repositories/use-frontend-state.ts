@@ -8,14 +8,14 @@ import { createLocalStateAdapter } from './local-adapter.ts';
 import { createHttpStateAdapter } from './http-adapter.ts';
 import { createRealtimeChannel } from './realtime-channel.ts';
 import { UnauthorizedError } from './auth-adapter.ts';
-import { expireStoredSession } from './session-storage.ts';
+import { expireStoredSession, sessionChangeEvent } from './session-storage.ts';
 import { resolveDataSource, type ConnectionState, type StateAdapter } from './state-adapter.ts';
 
 export type StateStatus = 'loading' | 'ready' | 'error';
 export type DispatchResult = { ok: boolean; error?: string };
 
 function createAdapter(): StateAdapter {
-  // A origem é escolhida por ambiente: os e2e continuam no adaptador local.
+  // O adaptador local só é usado quando a suíte legada o solicita explicitamente.
   if (resolveDataSource() === 'http') return createHttpStateAdapter({ connect: createRealtimeChannel() });
   return createLocalStateAdapter();
 }
@@ -74,6 +74,13 @@ export function useFrontendState() {
     window.addEventListener(preferencesChangeEvent, sync);
     return () => window.removeEventListener(preferencesChangeEvent, sync);
   }, []);
+
+  useEffect(() => {
+    if (source !== 'http') return;
+    const syncScope = () => { void refresh(); };
+    window.addEventListener(sessionChangeEvent, syncScope);
+    return () => window.removeEventListener(sessionChangeEvent, syncScope);
+  }, [refresh, source]);
 
   useEffect(() => {
     // Conexão é obrigatória para ver em tempo real: quando ela volta, recarrega.

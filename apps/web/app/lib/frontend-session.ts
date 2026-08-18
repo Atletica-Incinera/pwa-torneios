@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthError, type AuthAdapter, type FrontendRole, type FrontendSession } from './repositories/auth-adapter';
 import { createLocalAuthAdapter, demoUsers } from './repositories/local-auth-adapter';
 import { createHttpAuthAdapter } from './repositories/http-auth-adapter';
-import { clearStoredSession, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
+import { clearStoredSession, handleSessionStorageEvent, readStoredSession, sessionChangeEvent, writeStoredSession } from './repositories/session-storage';
 import { resolveDataSource } from './repositories/state-adapter';
 
 export type { FrontendRole, FrontendSession };
@@ -44,6 +44,26 @@ export function clearFrontendSession() {
   clearStoredSession();
 }
 
+/** Seleciona explicitamente uma atribuição de papel realmente concedida ao staff. */
+export function selectEditionRole(roleAssignmentId: string): boolean {
+  const current = readStoredSession();
+  if (!current) return false;
+  const selected = current.editionRoles.find((role) => role.roleAssignmentId === roleAssignmentId);
+  if (!selected) return false;
+  if (selected.role === 'DISCIPLINE_MANAGER' && (!selected.editionDisciplineId || !selected.disciplineName)) return false;
+  writeStoredSession({
+    ...current,
+    role: selected.role,
+    scope: selected.role === 'DISCIPLINE_MANAGER' ? selected.disciplineName ?? undefined : undefined,
+    selectedRoleAssignmentId: selected.roleAssignmentId,
+    selectedEditionId: selected.editionId,
+    selectedEditionDisciplineId: selected.role === 'DISCIPLINE_MANAGER'
+      ? selected.editionDisciplineId ?? undefined
+      : undefined,
+  });
+  return true;
+}
+
 export function useFrontendSession() {
   const [session, setSession] = useState<FrontendSession | null>(null);
   const [expired, setExpired] = useState(false);
@@ -60,10 +80,11 @@ export function useFrontendSession() {
         setHydrated(true);
       });
     };
+    const syncStorage = (event: StorageEvent) => { handleSessionStorageEvent(event); sync(); };
     sync();
     window.addEventListener(sessionChangeEvent, sync);
-    window.addEventListener('storage', sync);
-    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+    window.addEventListener('storage', syncStorage);
+    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', syncStorage); };
   }, []);
   const logout = useCallback(() => { void adapter.signOut(); }, []);
   return { session, hydrated, expired, logout };

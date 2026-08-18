@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { StatusBadge } from './AppShell';
-import { calculateStandings, TournamentMatch } from '../lib/tournament-engine';
+import { calculateStandings, type Standing, type TournamentMatch } from '../lib/tournament-engine';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { describeTiebreakers, resolveRegulation } from '../lib/regulation';
 import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
@@ -56,9 +56,28 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   const [view, setView] = useState(availableGroups[0]);
   const activeView = view === 'Chaveamento' || availableGroups.includes(view) ? view : availableGroups[0];
   const groupParticipants = activeView === 'Chaveamento' ? [] : participants.filter((team) => assignments[team] === activeView || availableGroups.length === 1);
-  const table = calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
-  const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
   const classificationPhase = phases.find((phase) => phase.format !== 'Mata-mata' && (phase.format === 'Liga' || phase.groups.includes(activeView))) ?? phases.find((phase) => phase.format !== 'Mata-mata');
+  const officialEntries = classificationPhase?.standings
+    ?.filter((entry) => availableGroups.length === 1 || groupParticipants.includes(entry.entryName));
+  const officialTable: Standing[] | undefined = officialEntries?.length
+    ? officialEntries
+    .sort((left, right) => (left.rank ?? Number.MAX_SAFE_INTEGER) - (right.rank ?? Number.MAX_SAFE_INTEGER))
+    .map((entry, index) => ({
+      rank: entry.rank ?? index + 1,
+      name: entry.entryName,
+      played: entry.played,
+      won: entry.won,
+      drawn: entry.drawn,
+      lost: entry.lost,
+      goalsFor: entry.scoreFor,
+      goalsAgainst: entry.scoreAgainst,
+      balance: entry.scoreFor - entry.scoreAgainst,
+      points: entry.points,
+      disciplinary: 0,
+    }))
+    : undefined;
+  const table = officialTable ?? calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
+  const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
   const qualifierCount = classificationPhase?.qualifiers;
   const advancementLabel = qualifierCount ? `${qualifierCount} ${qualifierCount === 1 ? 'equipe avança' : 'equipes avançam'}` : 'Avanço ainda não configurado';
   const phaseIndex = classificationPhase ? phases.findIndex((phase) => phase.id === classificationPhase.id) : -1;

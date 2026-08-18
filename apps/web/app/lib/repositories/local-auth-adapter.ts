@@ -28,10 +28,23 @@ export function createLocalAuthAdapter(): AuthAdapter {
       const user = demo ?? invited;
       if (!user) throw new AuthError('E-mail ou senha inválidos.');
       const session: FrontendSession = {
+        id: `local:${user.email}`,
         email: user.email,
         name: user.name,
         role: user.role,
         scope: 'scope' in user ? user.scope : undefined,
+        editionRoles: user.role === 'SUPER_ADMIN' ? [] : [{
+          roleAssignmentId: `local-role:${user.email}:${user.role}`,
+          editionId: 'intereng-2026',
+          editionName: '2026',
+          editionDisciplineId: user.role === 'DISCIPLINE_MANAGER' ? `local:${user.scope}` : null,
+          disciplineId: user.role === 'DISCIPLINE_MANAGER' ? `local:${user.scope}` : null,
+          disciplineName: user.role === 'DISCIPLINE_MANAGER' ? user.scope : null,
+          role: user.role,
+        }],
+        selectedRoleAssignmentId: user.role === 'SUPER_ADMIN' ? undefined : `local-role:${user.email}:${user.role}`,
+        selectedEditionId: user.role === 'SUPER_ADMIN' ? undefined : 'intereng-2026',
+        selectedEditionDisciplineId: user.role === 'DISCIPLINE_MANAGER' ? `local:${user.scope}` : undefined,
         remembered,
         token: createId('local-token'),
         expiresAt: new Date(Date.now() + sessionDurationMs).toISOString(),

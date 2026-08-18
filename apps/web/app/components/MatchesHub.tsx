@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from './AppShell';
-import { DisciplineSelector } from './DisciplineSelector';
+import { allDisciplinesOption, DisciplineSelector } from './DisciplineSelector';
 import { MatchSchedule } from './MatchSchedule';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
+import { useFrontendSession } from '../lib/frontend-session';
 import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
 
 /**
@@ -14,28 +15,44 @@ import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
  */
 export function MatchesHub() {
   const searchParams = useSearchParams();
-  const { state } = useFrontendState();
+  const { state, refresh } = useFrontendState();
+  const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
   const disciplines = listDisciplines(state, activeEdition?.id).filter((item) => item.enabled);
-  const options = disciplines.map((item) => item.name);
+  const editionRoles = session?.editionRoles.filter((role) => role.editionId === activeEdition?.id) ?? [];
+  const scopedDisciplines = editionRoles
+    .filter((role) => role.role === 'DISCIPLINE_MANAGER' && role.editionId === activeEdition?.id)
+    .map((role) => role.disciplineName)
+    .filter((name): name is string => Boolean(name));
+  const mixedAccess = session?.role !== 'SUPER_ADMIN' && editionRoles.some((role) => role.role === 'EDITION_ADMIN') && scopedDisciplines.length > 0;
+  const options = mixedAccess
+    ? [allDisciplinesOption, ...new Set([...disciplines.map((item) => item.name), ...scopedDisciplines])]
+    : [...new Set([...disciplines.map((item) => item.name), ...scopedDisciplines])];
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
-  const selected = options.includes(requested) ? requested : options.includes(preferred) ? preferred : options[0] ?? 'Futsal';
+  const selected = session?.role === 'EDITION_ADMIN' && options.includes(requested) && requested !== allDisciplinesOption
+    ? requested
+    : session?.role === 'EDITION_ADMIN' && mixedAccess
+      ? allDisciplinesOption
+      : session?.role === 'DISCIPLINE_MANAGER' && session.scope && options.includes(session.scope)
+        ? session.scope
+        : options.includes(requested) ? requested : options.includes(preferred) ? preferred : options[0] ?? 'Futsal';
+  const showingAll = selected === allDisciplinesOption;
 
   return (
     <AppShell
       active="matches"
-      eyebrow={`AGENDA · ${selected.toUpperCase()}`}
+      eyebrow={`AGENDA · ${showingAll ? 'TODAS' : selected.toUpperCase()}`}
       title="JOGOS"
-      subtitle={`Jogos e resultados somente de ${selected}`}
-      actionHref={`/matches/new?modalidade=${encodeURIComponent(selected)}`}
-      actionLabel={`Agendar jogo de ${selected}`}
+      subtitle={showingAll ? 'Jogos e resultados de todas as modalidades' : `Jogos e resultados somente de ${selected}`}
+      actionHref={showingAll ? '/matches/new' : `/matches/new?modalidade=${encodeURIComponent(selected)}`}
+      actionLabel={showingAll ? 'Agendar jogo' : `Agendar jogo de ${selected}`}
       actionPermission="discipline"
       actionDiscipline={selected}
     >
-      <DisciplineSelector options={options} />
-      <MatchSchedule discipline={selected} />
-      <Link href={disciplineHref(selected)} className="wide-action">VER TABELA E CATEGORIAS DE {selected.toUpperCase()} <span>›</span></Link>
+      <DisciplineSelector options={options} onScopeChange={refresh} />
+      <MatchSchedule discipline={showingAll ? '' : selected} />
+      <Link href={showingAll ? '/disciplines' : disciplineHref(selected)} className="wide-action">{showingAll ? 'VER MODALIDADES' : `VER TABELA E CATEGORIAS DE ${selected.toUpperCase()}`} <span>›</span></Link>
     </AppShell>
   );
 }

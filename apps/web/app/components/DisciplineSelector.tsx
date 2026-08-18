@@ -1,25 +1,52 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useFrontendState } from '../lib/repositories/browser-repository';
+import { selectEditionRole, useFrontendSession } from '../lib/frontend-session';
+import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 
 type DisciplineSelectorProps = {
   options: readonly string[];
+  onScopeChange?: () => void | Promise<void>;
 };
 
-export function DisciplineSelector({ options }: DisciplineSelectorProps) {
+export const allDisciplinesOption = 'Todas as modalidades';
+
+export function DisciplineSelector({ options, onScopeChange }: DisciplineSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { state, setPreference } = useFrontendState();
+  const { session } = useFrontendSession();
+  const activeEdition = getActiveEdition(state);
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
-  const selected = options.includes(requested) ? requested : options.includes(preferred) ? preferred : (options[0] ?? '');
+  const selected = session?.role === 'EDITION_ADMIN' && options.includes(requested) && requested !== allDisciplinesOption
+    ? requested
+    : session?.role === 'EDITION_ADMIN' && options.includes(allDisciplinesOption)
+      ? allDisciplinesOption
+      : session?.role === 'DISCIPLINE_MANAGER' && session.scope && options.includes(session.scope)
+        ? session.scope
+        : options.includes(requested) ? requested : options.includes(preferred) ? preferred : (options[0] ?? '');
 
   function handleChange(value: string) {
-    void setPreference({ selectedDiscipline: value });
+    const adminRole = session?.editionRoles.find((role) => role.role === 'EDITION_ADMIN' && role.editionId === activeEdition?.id);
+    const editionRole = session?.editionRoles.find((role) => (
+      role.role === 'DISCIPLINE_MANAGER'
+      && role.editionId === activeEdition?.id
+      && role.disciplineName === value
+    ));
+    if (value === allDisciplinesOption) {
+      if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;
+    } else if (editionRole && session?.role !== 'SUPER_ADMIN') {
+      if (!selectEditionRole(editionRole.roleAssignmentId)) return;
+    } else if (session?.role === 'DISCIPLINE_MANAGER') {
+      if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;
+    }
+    void onScopeChange?.();
+    if (value !== allDisciplinesOption) void setPreference({ selectedDiscipline: value });
     const params = new URLSearchParams(searchParams.toString());
-    params.set('modalidade', value);
+    if (value === allDisciplinesOption) params.delete('modalidade');
+    else params.set('modalidade', value);
     const query = params.toString();
     router.push(query ? `${pathname}?${query}` : pathname);
   }
