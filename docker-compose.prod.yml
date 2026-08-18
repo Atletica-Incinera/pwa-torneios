@@ -4,14 +4,20 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      # As NEXT_PUBLIC_* são embutidas no bundle do navegador durante o build.
+      # Como `environment:` elas só existiriam no processo do servidor e nunca
+      # chegariam ao código de cliente — o `apiBaseUrl()` cairia no fallback
+      # '/api' e toda chamada daria 404 em produção.
+      args:
+        NEXT_PUBLIC_DATA_SOURCE: http
+        NEXT_PUBLIC_API_URL: /intereng-api
+        NEXT_PUBLIC_BASE_PATH: /intereng
     restart: always
     expose:
       - "3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - NEXT_PUBLIC_BASE_PATH=/intereng
-      - NEXT_PUBLIC_API_URL=/intereng-api
     networks:
       - incinera-network
     deploy:

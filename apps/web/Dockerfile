@@ -5,10 +5,17 @@ RUN npm ci
 
 FROM node:22-alpine AS builder
 WORKDIR /app
-ARG NEXT_PUBLIC_DATA_SOURCE=http
-ARG NEXT_PUBLIC_API_URL=http://api.localhost/api/v1
+# Estas três são embutidas no bundle do navegador durante o `npm run build`, e
+# por isso PRECISAM ser build args. Passá-las como `environment:` no compose não
+# tem efeito nenhum sobre o código de cliente. Sem default: um valor errado aqui
+# só aparece em produção, então é melhor a build falhar do que assar o endereço
+# errado no bundle.
+ARG NEXT_PUBLIC_DATA_SOURCE
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_DATA_SOURCE=$NEXT_PUBLIC_DATA_SOURCE
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

@@ -1,7 +1,11 @@
 import type { NextConfig } from 'next';
 import path from 'node:path';
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '/intereng';
+// Sem prefixo por padrão: é o que vale em desenvolvimento e nos testes. Só o
+// deploy que serve o app atrás de um caminho (produção, sob /intereng) declara
+// NEXT_PUBLIC_BASE_PATH. O padrão anterior era '/intereng', o que fazia a stack
+// de desenvolvimento servir tudo sob esse prefixo e devolver 404 na raiz.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
