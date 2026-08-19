@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
-import { canReadAudit, clearFrontendSession, mustChangePassword, useFrontendSession } from '../lib/frontend-session';
+import { canReadAudit, clearFrontendSession, isSuperAdmin, mustChangePassword, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { ErrorScreen } from './ErrorScreen';
 import { PasswordChangeScreen } from './PasswordChangeForm';
@@ -12,6 +12,11 @@ import { PasswordChangeScreen } from './PasswordChangeForm';
 // Fica de fora o que pertence à edição inteira: contexto, cadastro de equipe e
 // atleta, staff e a criação de uma nova modalidade.
 const editionAdminPrefixes = ['/competitions', '/disciplines/new', '/staff', '/athletes', '/teams/new'];
+// Super admin é flag global da conta, sem escopo de edição — nem o admin da
+// edição concede. O backend já recusa (staff/promoteSuperAdmin é ação
+// global), mas sem bloquear aqui a pessoa preenche o formulário inteiro só
+// para receber um erro genérico no fim.
+const superAdminOnlyPrefixes = ['/staff/promote'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, status, error, refresh } = useFrontendState();
   const matchingStaffRoles = session?.email ? Object.values(state.staff).filter((member) => (
@@ -22,7 +27,8 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const rosterCreation = /^\/teams\/[^/]+\/athletes\/new$/.test(pathname);
   const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && (rosterCreation || editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix))))
     // A auditoria é do super admin: nem o organizador entra.
-    || (pathname.startsWith('/audit') && Boolean(session) && !canReadAudit(session));
+    || (pathname.startsWith('/audit') && Boolean(session) && !canReadAudit(session))
+    || (superAdminOnlyPrefixes.some((prefix) => pathname.startsWith(prefix)) && Boolean(session) && !isSuperAdmin(session));
   // Quem decide o acesso é a sessão, e ela não depende dos dados chegarem: uma
   // sessão vencida precisa levar ao login mesmo que a edição não tenha carregado
   // — foi justamente ela que fez o servidor recusar a requisição.

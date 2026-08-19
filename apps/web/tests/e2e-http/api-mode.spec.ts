@@ -191,6 +191,30 @@ test('o endpoint de bootstrap recusa quando já existe alguma competição', asy
   expect(response.status()).toBe(409);
 });
 
+test('super admin concede super admin a outra conta', async ({ page }) => {
+  await login(page, 'super@intereng.com', 'super2026');
+  await page.goto('/staff');
+  await page.getByRole('link', { name: 'Conceder super admin' }).click();
+  await page.waitForURL(/\/staff\/promote/);
+
+  const action = page.waitForRequest((item) => item.url().includes('/editions/active/actions') && item.method() === 'POST');
+  await page.getByLabel('Nome').fill('Novo Super Admin');
+  await page.getByLabel('E-mail').fill('novo-super@intereng.com');
+  await page.getByRole('button', { name: 'Conceder super admin' }).click();
+  expect(JSON.parse((await action).postData() ?? '{}').type).toBe('staff/promoteSuperAdmin');
+
+  await page.waitForURL(/\/staff$/);
+});
+
+test('admin da edição não alcança a concessão de super admin', async ({ page }) => {
+  // staff/promoteSuperAdmin é ação global (só super admin) do lado da API;
+  // sem bloquear a rota também no front, a pessoa preenche o formulário
+  // inteiro só para receber um erro genérico no fim.
+  await login(page);
+  await page.goto('/staff/promote');
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+});
+
 test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {
   await login(page);
   // A API de mentira não tem socket: a ligação de tempo real não sobe.

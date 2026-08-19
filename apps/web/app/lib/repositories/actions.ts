@@ -96,7 +96,12 @@ export type EditionAction =
  * staff vem semeada da edição e ainda não existe no estado quando é alterada.
  */
 export type StaffAction =
-  WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState } };
+  | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState } })
+  /**
+   * Super admin não é um papel de edição — é a flag global da conta, sem
+   * escopo nem modalidade. Cria a conta se o e-mail ainda não existir.
+   */
+  | (WithAudit & { type: 'staff/promoteSuperAdmin'; payload: { email: string; name: string } });
 
 /**
  * Toda mutação que o app sabe fazer. Todo payload é serializável: esta união é,
