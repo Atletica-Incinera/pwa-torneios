@@ -42,15 +42,25 @@ const users = [
   {
     id: 'staff-ana', email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora',
     role: 'EDITION_ADMIN' as const, editionRoles: [editionRole('papel-ana', 'EDITION_ADMIN')],
+    mustChangePassword: false,
   },
   {
     id: 'staff-super', email: 'super@intereng.com', password: 'super2026', name: 'Super Admin',
     role: 'SUPER_ADMIN' as const, editionRoles: [],
+    mustChangePassword: false,
   },
   {
     id: 'staff-bruno', email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins',
     role: 'DISCIPLINE_MANAGER' as const, scope: 'Futsal',
     editionRoles: [editionRole('papel-bruno', 'DISCIPLINE_MANAGER', 'Futsal')],
+    mustChangePassword: false,
+  },
+  // Recém-convidada: entrou com a senha comum a todos os convites e ainda não
+  // escolheu a sua. É este o estado em que a API recusa tudo menos a troca.
+  {
+    id: 'staff-nova', email: 'nova@ufpe.br', password: 'intereng2026', name: 'Nova Convidada',
+    role: 'EDITION_ADMIN' as const, editionRoles: [editionRole('papel-nova', 'EDITION_ADMIN')],
+    mustChangePassword: true,
   },
 ];
 
@@ -63,7 +73,24 @@ function sessionUser(user: (typeof users)[number]) {
     role: user.role,
     scope: 'scope' in user ? user.scope : undefined,
     editionRoles: user.editionRoles,
+    mustChangePassword: user.mustChangePassword,
   };
+}
+
+/** Credenciais originais: a troca de senha muda o usuário em memória. */
+const initialCredentials = users.map((user) => ({
+  email: user.email,
+  password: user.password,
+  mustChangePassword: user.mustChangePassword,
+}));
+
+function restoreUsers() {
+  for (const original of initialCredentials) {
+    const user = users.find((item) => item.email === original.email);
+    if (!user) continue;
+    user.password = original.password;
+    user.mustChangePassword = original.mustChangePassword;
+  }
 }
 
 let snapshot: FrontendState = seededFrontendState;
@@ -137,8 +164,9 @@ createServer(async (request, response) => {
 
   if (request.method === 'OPTIONS') return reply(204);
 
-  // Gancho de teste: cada cenário começa da mesma edição.
-  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); return reply(204); }
+  // Gancho de teste: cada cenário começa da mesma edição — e das mesmas
+  // credenciais, já que a troca de senha altera o usuário em memória.
+  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); restoreUsers(); return reply(204); }
 
   if (url.pathname === '/auth/login' && request.method === 'POST') {
     const { email, password } = await readBody(request) as { email?: string; password?: string };
@@ -175,6 +203,30 @@ createServer(async (request, response) => {
   }
 
   if (url.pathname === '/auth/logout') { if (session) sessions.delete((request.headers.authorization ?? '').replace('Bearer ', '')); return reply(204); }
+
+  if (url.pathname.endsWith('/auth/change-password') && request.method === 'POST') {
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
+    const user = users.find((item) => item.email === session.email);
+    if (!user) return reply(401, { message: 'Sessão inválida.' });
+    const { currentPassword, newPassword } = await readBody(request) as { currentPassword?: string; newPassword?: string };
+    if (currentPassword !== user.password) return reply(401, { message: 'A senha atual está incorreta.' });
+    if (!newPassword || newPassword.length < 12) return reply(400, { message: 'newPassword deve ter ao menos 12 caracteres' });
+    if (newPassword === currentPassword) return reply(400, { message: 'A nova senha deve ser diferente da atual.' });
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    // Como na API real: a troca revoga todas as sessões e emite outra.
+    sessions.clear();
+    const token = `token-${user.email}-${newPassword.length}`;
+    sessions.set(token, { email: user.email, name: user.name });
+    return reply(200, { token, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: sessionUser(user) });
+  }
+
+  // Espelha a guarda da API: enquanto a senha inicial estiver de pé, nada além
+  // das rotas de sessão responde. É o que faz o app cair na tela de troca em vez
+  // de tentar carregar a edição.
+  if (session && users.find((item) => item.email === session.email)?.mustChangePassword) {
+    return reply(403, { message: 'É necessário trocar a senha inicial antes de usar o sistema.' });
+  }
 
   if (url.pathname.endsWith('/public-snapshot')) return reply(200, publicSnapshot(snapshot));
 

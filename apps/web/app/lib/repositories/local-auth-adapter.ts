@@ -57,6 +57,12 @@ export function createLocalAuthAdapter(): AuthAdapter {
       clearStoredSession();
     },
 
+    async changePassword() {
+      // No modo local a senha é a constante escrita neste arquivo: não existe
+      // onde gravar outra. A tela só oferece a troca quando a origem é a API.
+      throw new AuthError('A troca de senha exige a API — o modo local usa acessos de demonstração.');
+    },
+
     async restore() {
       const session = readStoredSession();
       if (!session) return null;

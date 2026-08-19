@@ -73,5 +73,34 @@ export function createHttpAuthAdapter(adapter?: AxiosAdapter): AuthAdapter {
       }
       try { return await refreshApiSession(adapter); } catch { return null; }
     },
+
+    async changePassword(currentPassword, newPassword) {
+      const current = readStoredSession();
+      if (!current?.token) throw new UnauthorizedError();
+      let payload: AuthSessionResponse;
+      try {
+        payload = await apiRequest<AuthSessionResponse>({
+          path: '/auth/change-password',
+          method: 'POST',
+          body: { currentPassword, newPassword },
+          token: current.token,
+          adapter,
+          // Sem renovação automática: um 401 aqui é senha atual errada, não
+          // sessão vencida, e renovar transformaria o erro em queda para o login.
+          skipAuthRefresh: true,
+        });
+      } catch (caught) {
+        if (caught instanceof UnauthorizedError) throw new AuthError('A senha atual está incorreta.');
+        throw new AuthError(caught instanceof Error ? caught.message : 'Não foi possível trocar a senha.');
+      }
+      const session: FrontendSession = {
+        ...normalizeSessionUser(payload.user, current),
+        remembered: current.remembered,
+        token: payload.token,
+        expiresAt: payload.expiresAt,
+      };
+      writeStoredSession(session);
+      return session;
+    },
   };
 }

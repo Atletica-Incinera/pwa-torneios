@@ -89,6 +89,28 @@ test('token recusado pela API devolve ao login com aviso', async ({ page }) => {
   await expect(page.getByRole('status')).toContainText(/sessão expirou/i);
 });
 
+test('conta com a senha inicial só alcança a troca de senha', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('nova@ufpe.br');
+  await page.locator('input[aria-label="Senha"]').fill('intereng2026');
+  await page.getByRole('button', { name: 'ENTRAR' }).click();
+
+  // A edição nem chega a carregar: com a marca de pé a API recusa o snapshot
+  // com 403, e é a tela de troca que ocupa o lugar do app.
+  await expect(page.getByRole('heading', { name: 'TROQUE SUA SENHA' })).toBeVisible();
+  // Digitar outra rota não escapa da exigência.
+  await page.goto('/teams');
+  await expect(page.getByRole('heading', { name: 'TROQUE SUA SENHA' })).toBeVisible();
+
+  await page.getByLabel('Senha atual').fill('intereng2026');
+  await page.getByLabel('Nova senha', { exact: true }).fill('senhaEscolhida1');
+  await page.getByLabel('Repita a nova senha').fill('senhaEscolhida1');
+  await page.getByRole('button', { name: 'Trocar e entrar' }).click();
+
+  // Com a senha trocada e a sessão nova em mãos, a mesma rota carrega.
+  await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
+});
+
 test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {
   await login(page);
   // A API de mentira não tem socket: a ligação de tempo real não sobe.

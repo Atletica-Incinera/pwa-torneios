@@ -20,6 +20,12 @@ export type FrontendSessionUser = {
   selectedRoleAssignmentId?: string;
   selectedEditionId?: string;
   selectedEditionDisciplineId?: string;
+  /**
+   * A conta ainda está com a senha inicial — a do convite, igual para todos os
+   * convidados, ou a que veio do ambiente no primeiro super administrador. Com
+   * ela ligada a API recusa tudo menos a troca, então o app leva direto para lá.
+   */
+  mustChangePassword?: boolean;
 };
 
 export type AuthSessionResponse = {
@@ -55,6 +61,7 @@ export function normalizeSessionUser(
   return {
     ...user,
     editionRoles,
+    mustChangePassword: user.mustChangePassword === true,
     role: selectedRole?.role ?? user.role,
     scope: selectedRole?.role === 'DISCIPLINE_MANAGER'
       ? selectedRole.disciplineName ?? user.scope
@@ -93,6 +100,12 @@ export type AuthAdapter = {
   signOut(): Promise<void>;
   /** Sessão guardada, ou `null` quando não existe ou já expirou. */
   restore(): Promise<FrontendSession | null>;
+  /**
+   * Troca a senha da própria conta e devolve a sessão que substitui a atual — o
+   * servidor revoga todas as anteriores, então continuar com a antiga em mãos
+   * significaria cair no login no próximo request.
+   */
+  changePassword(currentPassword: string, newPassword: string): Promise<FrontendSession>;
 };
 
 /** Erro de credencial: a tela de login mostra a mensagem como está. */

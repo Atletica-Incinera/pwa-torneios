@@ -44,6 +44,27 @@ export function clearFrontendSession() {
   clearStoredSession();
 }
 
+/**
+ * Troca a senha da própria conta.
+ *
+ * A sessão devolvida substitui a atual: o servidor revoga todas as anteriores
+ * na troca, inclusive a de quem pediu, e emite outra no mesmo passo.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ session?: FrontendSession; error?: string }> {
+  try {
+    return { session: await adapter.changePassword(currentPassword, newPassword) };
+  } catch (caught) {
+    if (caught instanceof AuthError) return { error: caught.message };
+    return { error: 'Não foi possível trocar a senha. Tente novamente.' };
+  }
+}
+
+/** Só há senha para trocar quando quem autentica é a API. */
+export function passwordChangeAvailable() { return resolveDataSource() === 'http'; }
+
+/** A conta ainda está com a senha inicial e não alcança o resto do sistema. */
+export function mustChangePassword(session: FrontendSession | null) { return session?.mustChangePassword === true; }
+
 /** Seleciona explicitamente uma atribuição de papel realmente concedida ao staff. */
 export function selectEditionRole(roleAssignmentId: string): boolean {
   const current = readStoredSession();

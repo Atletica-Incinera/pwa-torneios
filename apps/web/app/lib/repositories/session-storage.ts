@@ -42,6 +42,10 @@ export function readStoredSession(): FrontendSession | null {
       selectedRoleAssignmentId: parsed.selectedRoleAssignmentId,
       selectedEditionId: parsed.selectedEditionId,
       selectedEditionDisciplineId: parsed.selectedEditionDisciplineId,
+      // A leitura remonta campo a campo, então o que não estiver aqui se perde
+      // na primeira releitura — e a exigência de troca de senha valeria só até
+      // a próxima renderização.
+      mustChangePassword: parsed.mustChangePassword === true,
       remembered: parsed.remembered ?? Boolean(local),
       token: parsed.token ?? '',
       // Sessão gravada antes de existir prazo vale até o próximo login.
