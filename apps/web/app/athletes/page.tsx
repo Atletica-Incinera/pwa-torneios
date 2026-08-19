@@ -10,6 +10,7 @@ import { findTeam, listAthletes } from '../lib/edition-catalog';
 export default function AthletesPage() {
   const [query, setQuery] = useState('');
   const { state } = useFrontendState();
+  const total = useMemo(() => listAthletes(state).length, [state]);
   const filteredAthletes = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('pt-BR');
     return listAthletes(state).filter((athlete) => {
@@ -30,7 +31,14 @@ export default function AthletesPage() {
             <span className="athlete-open" aria-hidden="true">→</span>
           </Link>
         })}
-        {!filteredAthletes.length ? <EmptyState title="NENHUM ATLETA" copy="Não há atletas correspondentes à busca." /> : null}
+        {!filteredAthletes.length && total ? <EmptyState title="NENHUM ATLETA ENCONTRADO" copy="Não há atletas correspondentes à busca." /> : null}
+        {/* O atleta é cadastrado dentro da equipe, não aqui: sem dizer isso, a
+            tela vazia sugere que o cadastro deveria existir nela. */}
+        {!total ? <div className="empty-state">
+          <strong>NENHUM ATLETA CADASTRADO</strong>
+          <p>Os atletas são cadastrados no elenco de cada equipe. Abra uma equipe para montar o elenco dela.</p>
+          <Link href="/teams" className="secondary-button">Ir para equipes</Link>
+        </div> : null}
       </section>
     </AppShell>
   );

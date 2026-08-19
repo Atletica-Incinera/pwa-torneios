@@ -20,9 +20,12 @@ export function DisciplineSelector({ options, onScopeChange }: DisciplineSelecto
   const activeEdition = getActiveEdition(state);
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
-  const selected = session?.role === 'EDITION_ADMIN' && options.includes(requested) && requested !== allDisciplinesOption
+  // Super admin enxerga a edição inteira, como o admin dela: os dois têm a
+  // opção "Todas as modalidades" e nenhum fica preso a um escopo.
+  const seesEveryDiscipline = session?.role === 'EDITION_ADMIN' || session?.role === 'SUPER_ADMIN';
+  const selected = seesEveryDiscipline && options.includes(requested) && requested !== allDisciplinesOption
     ? requested
-    : session?.role === 'EDITION_ADMIN' && options.includes(allDisciplinesOption)
+    : seesEveryDiscipline && options.includes(allDisciplinesOption)
       ? allDisciplinesOption
       : session?.role === 'DISCIPLINE_MANAGER' && session.scope && options.includes(session.scope)
         ? session.scope
@@ -35,9 +38,14 @@ export function DisciplineSelector({ options, onScopeChange }: DisciplineSelecto
       && role.editionId === activeEdition?.id
       && role.disciplineName === value
     ));
-    if (value === allDisciplinesOption) {
+    // Super admin não seleciona papel de edição: ele já enxerga tudo. Sem esta
+    // guarda o ramo abaixo abortava a navegação dele (ele normalmente não tem
+    // atribuição de edição nenhuma, então `adminRole` é undefined e o botão
+    // simplesmente não fazia nada).
+    if (session?.role === 'SUPER_ADMIN') { /* segue direto */ }
+    else if (value === allDisciplinesOption) {
       if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;
-    } else if (editionRole && session?.role !== 'SUPER_ADMIN') {
+    } else if (editionRole) {
       if (!selectEditionRole(editionRole.roleAssignmentId)) return;
     } else if (session?.role === 'DISCIPLINE_MANAGER') {
       if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;

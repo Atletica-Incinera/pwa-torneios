@@ -101,8 +101,12 @@ export function useFrontendState() {
       return { ok: true };
     } catch (caught) {
       handleUnauthorized(caught);
-      const message = caught instanceof Error ? caught.message : 'Não foi possível salvar. Tente novamente.';
-      toast('Não foi possível salvar. Tente novamente.', 'error');
+      // O servidor manda o motivo em português ("O ranking geral está fechado",
+      // "Somente o super administrador…"). Trocá-lo pelo texto genérico
+      // transformava toda regra de negócio recusada num "tente novamente" que
+      // nunca ia dar certo — e ninguém descobria o porquê.
+      const message = caught instanceof Error && caught.message ? caught.message : 'Não foi possível salvar. Tente novamente.';
+      toast(message, 'error');
       return { ok: false, error: message };
     }
   }, [absorb, adapter]);

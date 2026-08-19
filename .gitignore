@@ -8,6 +8,7 @@ build
 coverage
 .next/
 .next-http/
+.next-local/
 /package-lock.json
 playwright-report/
 test-results/

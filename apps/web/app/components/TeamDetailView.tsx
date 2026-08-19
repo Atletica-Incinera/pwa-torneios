@@ -10,7 +10,10 @@ import { findTeam, listDisciplines } from '../lib/edition-catalog';
 export function TeamDetailView({ id }: { id: string }) {
   const { state } = useFrontendState();
   const team = findTeam(state, id);
-  const disciplines = listDisciplines(state, getActiveEdition(state)?.id).filter((item) => item.enabled).map((item) => item.name);
+  const activeEdition = getActiveEdition(state);
+  const disciplines = listDisciplines(state, activeEdition?.id).filter((item) => item.enabled).map((item) => item.name);
   if (!team) return <AppShell active="teams" eyebrow="EQUIPE" title="CARREGANDO" subtitle="Buscando dados locais"><EmptyState title="EQUIPE NÃO ENCONTRADA" copy="Volte à lista e selecione uma equipe cadastrada." /></AppShell>;
-  return <AppShell active="teams" eyebrow="EQUIPE PARTICIPANTE" title={team.name.toUpperCase()} subtitle="Modalidades, classificação e elencos da InterEng 2026" actionHref={`/teams/${id}/athletes/new`} actionLabel={`Cadastrar atleta em ${team.name}`}><TeamManager team={team} /><TeamPerformance teamId={id} teamName={team.name} /><section className="section-block team-modalities-section"><SectionTitle eyebrow="MODALIDADES" title="ELENCOS" /><TeamRosterManager teamId={id} disciplines={disciplines} /></section></AppShell>;
+  // O ano vinha escrito no código: a tela dizia "InterEng 2026" em qualquer
+  // edição, e continuaria dizendo depois da virada do ano.
+  return <AppShell active="teams" eyebrow="EQUIPE PARTICIPANTE" title={team.name.toUpperCase()} subtitle={`Modalidades, classificação e elencos da edição ${activeEdition?.year ?? ''}`.trim()} actionHref={`/teams/${id}/athletes/new`} actionLabel={`Cadastrar atleta em ${team.name}`} actionShortLabel="Cadastrar atleta"><TeamManager team={team} /><TeamPerformance teamId={id} teamName={team.name} /><section className="section-block team-modalities-section"><SectionTitle eyebrow="MODALIDADES" title="ELENCOS" /><TeamRosterManager teamId={id} disciplines={disciplines} /></section></AppShell>;
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
 import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
+import { superAdminGrantAvailable } from '../lib/frontend-session';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
 /**
@@ -35,8 +36,14 @@ export function PromoteSuperAdminForm() {
     if (saved.ok) router.push('/staff'); else { setError(saved.error ?? 'Não foi possível conceder o acesso.'); setSubmitting(false); }
   }
 
+  if (!superAdminGrantAvailable()) {
+    return <AppShell active="profile" eyebrow="ACESSO GLOBAL" title="NOVO SUPER ADMIN" subtitle="Indisponível nesta origem de dados">
+      <div className="info-banner"><ShieldAlert size={20} /><p>A concessão de super administrador é gravada na conta pelo servidor. Nesta compilação o app roda com dados locais, sem contas para promover.</p></div>
+    </AppShell>;
+  }
+
   return <AppShell active="profile" eyebrow="ACESSO GLOBAL" title="NOVO SUPER ADMIN" subtitle="Concede acesso irrestrito, sem escopo de edição">
-    <div className="info-banner"><ShieldAlert size={20} /><p>Super admin enxerga e administra qualquer competição, sem restrição de modalidade. Se o e-mail já tem conta, ela é promovida — o nome cadastrado não muda.</p></div>
+    <div className="info-banner"><ShieldAlert size={20} /><p>Super admin enxerga e administra qualquer competição, sem restrição de modalidade. Se o e-mail já tem conta, ela é promovida — o nome cadastrado não muda. Quem for promovido precisa entrar de novo para o acesso valer.</p></div>
     <form className="entity-form" onSubmit={(event) => void submit(event)} noValidate>
       <label><span>Nome</span><input value={name} onChange={(event) => { setName(event.target.value); setError(''); }} placeholder="Nome de quem vai administrar" autoFocus required /></label>
       <label><span>E-mail</span><input type="email" value={email} onChange={(event) => { setEmail(event.target.value); setError(''); }} placeholder="pessoa@dominio.com" required /></label>

@@ -18,12 +18,18 @@ type AppShellProps = {
   subtitle: string;
   actionHref?: string;
   actionLabel?: string;
+  /**
+   * Texto que aparece no botão quando o `actionLabel` é longo ou dinâmico
+   * ("Agendar jogo de Futsal"). O rótulo completo continua sendo o nome
+   * acessível; este é só o que cabe no cabeçalho.
+   */
+  actionShortLabel?: string;
   actionPermission?: 'edition' | 'discipline';
   actionDiscipline?: string;
   children: React.ReactNode;
 };
 
-export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
+export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionShortLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
   const { state, source, connection } = useFrontendState();
   const { session } = useFrontendSession();
   // Alcançável desde que o snapshot passou a tratar "sem competição ativa"
@@ -54,8 +60,12 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
+        {/* Este botão é a única porta de criação de equipe, staff e torneio. Um
+            "+" mudo no canto do cabeçalho não se apresenta: o estado vazio do
+            elenco chegava a escrever "cadastre pelo botão superior" porque o
+            botão não dizia o que era. O rótulo volta a ficar visível. */}
         {actionHref && actionLabel && canUseAction ? (
-          <Link href={actionHref} className="header-action" aria-label={actionLabel}><Plus size={23} /></Link>
+          <Link href={actionHref} className="header-action header-action-labeled" aria-label={actionLabel} title={actionLabel}><Plus size={20} aria-hidden="true" /><span className="header-action-text">{actionShortLabel ?? actionLabel}</span></Link>
         ) : null}
       </header>
 
@@ -66,7 +76,7 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
 }
 
 const routeLabels: Record<string, string> = {
-  athletes: 'Atletas', audit: 'Auditoria', competitions: 'Competições', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Modalidades', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
+  athletes: 'Atletas', audit: 'Auditoria', competitions: 'Torneios', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Categorias', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
 };
 
 /**

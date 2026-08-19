@@ -23,7 +23,10 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     member.email === session.email
     && (session.role === 'DISCIPLINE_MANAGER' ? member.role === 'Gestor de modalidade' && member.scope === session.scope : member.role === 'Admin da edição')
   )) : [];
-  const revoked = matchingStaffRoles.length > 0 && matchingStaffRoles.every((member) => member.revoked);
+  // Revogação é estado de papel de edição e não alcança a flag global da conta:
+  // um super admin que também tem um card "Admin da edição" revogado era
+  // expulso do app inteiro por ele.
+  const revoked = !isSuperAdmin(session) && matchingStaffRoles.length > 0 && matchingStaffRoles.every((member) => member.revoked);
   const rosterCreation = /^\/teams\/[^/]+\/athletes\/new$/.test(pathname);
   const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && (rosterCreation || editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix))))
     // A auditoria é do super admin: nem o organizador entra.

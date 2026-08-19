@@ -23,8 +23,13 @@ test('as listas leem só do estado: o que não está no snapshot não aparece', 
 });
 
 test('categoria sem inscritos não inventa total e a partida herda os defaults', () => {
-  const [categoria] = listCategories(seededFrontendState, editionId);
-  assert.equal(categoria.entries, null);
+  // A semente só deixa sem inscritos a categoria em rascunho: publicada ou em
+  // andamento sem ninguém inscrito é estado que o servidor recusa.
+  const categorias = listCategories(seededFrontendState, editionId);
+  const semInscritos = categorias.find((item) => item.status === 'Rascunho');
+  assert.ok(semInscritos, 'a semente precisa manter uma categoria em rascunho');
+  assert.equal(semInscritos.entries, null);
+  assert.ok(categorias.filter((item) => item.status !== 'Rascunho').every((item) => (item.entries ?? 0) >= 2));
 
   const parcial = { ...seededFrontendState, matches: { avulsa: { editionId } } };
   const [match] = listMatches(parcial, editionId);

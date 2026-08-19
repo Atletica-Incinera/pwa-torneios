@@ -1,19 +1,26 @@
-const VERSION = 'intereng-v8';
+const VERSION = 'intereng-v9';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const PUBLIC_DATA_CACHE = `${VERSION}-public-data`;
-const OFFLINE_PAGE = '/offline';
+// Em produção o app é servido sob /intereng. O escopo do próprio registro é a
+// única fonte desse prefixo que não exige injetá-lo na compilação, e sem ele
+// todo caminho aqui apontava para a raiz do domínio: o pré-cache falhava
+// inteiro (uma URL ausente derruba o `addAll`) e a página pública nunca era
+// reconhecida como pública.
+const SCOPE = new URL(self.registration.scope).pathname.replace(/\/$/, '');
+const app = (path) => `${SCOPE}${path}`;
+const OFFLINE_PAGE = app('/offline');
 const PRE_CACHE = [
   OFFLINE_PAGE,
-  '/public',
-  '/public/teams',
-  '/public/tournaments',
-  '/public/standings/general',
-  '/icon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-512.png',
-  '/apple-touch-icon.png',
+  app('/public'),
+  app('/public/teams'),
+  app('/public/tournaments'),
+  app('/public/standings/general'),
+  app('/icon.svg'),
+  app('/icon-192.png'),
+  app('/icon-512.png'),
+  app('/icon-maskable-512.png'),
+  app('/apple-touch-icon.png'),
 ];
 
 self.addEventListener('install', (event) => {
@@ -32,12 +39,20 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
+function appRoute(pathname) {
+  return SCOPE && pathname.startsWith(SCOPE) ? pathname.slice(SCOPE.length) || '/' : pathname;
+}
+
 function isPublicPage(pathname) {
-  return pathname === '/public' || pathname.startsWith('/public/');
+  const route = appRoute(pathname);
+  return route === '/public' || route.startsWith('/public/');
 }
 
 function isPublicSnapshot(pathname) {
-  return /^\/api(?:\/v1)?\/editions\/[^/]+\/public-snapshot$/.test(pathname);
+  // Sem âncora no início: em produção a API vive sob outro prefixo do mesmo
+  // domínio (/intereng-api/api/v1), e a versão ancorada nunca casava — o
+  // snapshot público simplesmente não era guardado para o modo offline.
+  return /\/api(?:\/v1)?\/editions\/[^/]+\/public-snapshot$/.test(pathname);
 }
 
 function canStore(request, response) {
@@ -117,7 +132,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   // Chunks do Next/HMR nunca entram no cache do PWA para não sobreviver a builds.
-  if (url.pathname.startsWith('/_next/')) return;
+  if (appRoute(url.pathname).startsWith('/_next/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith(

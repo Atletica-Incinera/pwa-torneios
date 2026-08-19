@@ -21,6 +21,76 @@ test('valida, confirma descarte e cadastra uma equipe sem duplicar ações', asy
   expect(team?.name).toBe('Aurora E2E');
 });
 
+test('aceitar o descarte navega de verdade, sem recarregar o app', async ({ page }) => {
+  // Só o ramo "Cancelar" era exercitado. O ramo aceito reconstruía a URL a
+  // partir do DOM e o `basePath` entrava duas vezes: em produção isso virava
+  // uma rota inexistente, o Next desistia da navegação por RSC e caía numa
+  // navegação dura para o 404 — com o `beforeunload` ainda armado, que era o
+  // segundo "quer mesmo sair?" antes de o app inteiro se perder.
+  await loginAs(page);
+  await page.goto('/teams/new');
+  await page.getByLabel('Nome da equipe').fill('Descartada E2E');
+  // Marca de vida do documento: sobrevive a navegação do router e some em
+  // qualquer recarga. É o que distingue as duas — `framenavigated` não serve,
+  // porque também dispara em navegação de mesmo documento.
+  await page.evaluate(() => { (window as unknown as { __spa: boolean }).__spa = true; });
+
+  await page.getByRole('link', { name: 'Cancelar' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Descartar' }).click();
+
+  await expect(page).toHaveURL(/\/teams$/);
+  await expect(page.getByRole('heading', { name: 'EQUIPES' })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
+});
+
+test('cadastro de equipe guarda o registro', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/teams/new');
+  await page.getByLabel('Nome da equipe').fill('Aurora E2E');
+  await page.getByLabel('Sigla').fill('AUR');
+  await page.getByLabel('Responsável').fill('Pessoa Responsável');
+  await page.getByRole('button', { name: 'Cadastrar equipe' }).click();
+  await expect(page).toHaveURL(/\/teams\/aurora-e2e/);
+  const team = await page.evaluate(() => JSON.parse(localStorage.getItem('intereng:app-state:v1') ?? '{}').teams?.['aurora-e2e']);
+  expect(team?.name).toBe('Aurora E2E');
+});
+
+test('publicar libera a agenda antes de os confrontos existirem', async ({ page }) => {
+  // A ordem estava invertida: publicar exigia confrontos já gerados, e a agenda
+  // só enxerga categoria publicada. Quem quisesse montar os jogos à mão era
+  // obrigado a passar pela chave automática primeiro.
+  await loginAs(page);
+  await page.goto('/tournaments/new?modalidade=Futsal');
+  await page.getByLabel('Nome da categoria').fill('Futsal Ordem E2E');
+  await page.getByRole('button', { name: 'Criar categoria' }).click();
+  await page.waitForURL(/\?aba=regras/);
+
+  const participantes = page.locator('.participant-selector input[type="checkbox"]');
+  await participantes.nth(0).check();
+  await participantes.nth(1).check();
+
+  await page.getByLabel('Situação da categoria').selectOption('Publicado');
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Confirmar' }).click();
+  await expect(page.getByLabel('Situação da categoria')).toHaveValue('Publicado');
+
+  await page.goto('/matches/new?modalidade=Futsal');
+  await expect(page.getByLabel('Modalidade')).toHaveValue('Futsal');
+  await expect(page.getByLabel('Categoria / chave do InterEng')).toContainText('Futsal Ordem E2E');
+});
+
+test('modalidade sem categoria publicada aparece no dropdown, com o motivo', async ({ page }) => {
+  // O relato: "mesmo tendo a modalidade ativa, não dá pra selecionar uma
+  // modalidade no dropdown". A lista vinha das categorias publicadas, então a
+  // modalidade sumia — sem nenhuma pista de que faltava publicar.
+  await loginAs(page);
+  await page.goto('/matches/new');
+  await page.getByLabel('Modalidade').selectOption('Handebol');
+  await expect(page.getByRole('link', { name: 'Crie uma categoria' })).toBeVisible();
+
+  await page.getByLabel('Modalidade').selectOption('Xadrez');
+  await expect(page.getByRole('link', { name: 'Publique a categoria' })).toBeVisible();
+});
+
 test('adicionar modalidade carrega e salva o regulamento padrão', async ({ page }) => {
   await loginAs(page);
   await page.goto('/disciplines/new');
@@ -128,6 +198,15 @@ test('renomeia categoria e torneio, e a correção aparece nas listas', async ({
   await page.goto('/disciplines/futsal');
   await expect(page.getByText('Futsal Masculino A')).toBeVisible();
 
+  // Renomear o torneio é ação global no servidor (competition/rename está em
+  // GLOBAL_ACTIONS): o admin da edição via a tela inteira e cada botão dela
+  // terminava em 403 com aviso genérico. Agora a tela é legível para ele e
+  // editável só para quem o servidor deixa editar.
+  await page.goto('/competitions');
+  await expect(page.getByRole('button', { name: /Renomear InterEng/i })).toHaveCount(0);
+  await expect(page.getByText(/definidos pelo super administrador/i)).toBeVisible();
+
+  await loginAs(page, 'super@intereng.com', 'super2026');
   await page.goto('/competitions');
   await page.getByRole('button', { name: /Renomear InterEng/i }).click();
   await page.getByLabel('Nome do torneio').fill('InterEng UFPE');
@@ -152,8 +231,14 @@ test('gestor fica restrito à própria modalidade', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
   await page.goto('/teams/alcateia/athletes/new');
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  // Pedir a agenda de outra modalidade não leva o gestor para fora do escopo:
+  // a tela volta para a modalidade dele, e o agendamento oferecido é o dela.
+  // (A asserção anterior exigia zero links "agendar jogo" aqui e já falhava —
+  // o botão do cabeçalho sempre teve nome acessível e sempre foi o de Futsal.)
   await page.goto('/matches?modalidade=V%C3%B4lei');
-  await expect(page.getByRole('link', { name: /agendar jogo/i })).toHaveCount(0);
+  await expect(page.getByText('Jogos e resultados somente de Futsal')).toBeVisible();
+  await expect(page.getByRole('link', { name: /agendar jogo de vôlei/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Agendar jogo de Futsal' })).toBeVisible();
   await page.goto('/matches/new?modalidade=V%C3%B4lei');
   await expect(page.getByLabel('Modalidade').locator('option')).toHaveText(['Selecione a modalidade', 'Futsal']);
 });

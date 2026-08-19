@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, TeamMark } from './AppShell';
@@ -171,8 +172,8 @@ export function TeamCreationForm() {
         {pendingLogo ? (
           <div className="logo-preview-row">
             <TeamMark initial={(initials || name || 'E')[0]} tone="blue" logo={pendingLogo.previewUrl} />
-            <button type="button" className="text-button" onClick={removeLogo}>
-              Remover logotipo
+            <button type="button" className="danger-button danger-button-inline" onClick={removeLogo}>
+              <Trash2 size={16} aria-hidden="true" /> Remover logotipo
             </button>
           </div>
         ) : null}

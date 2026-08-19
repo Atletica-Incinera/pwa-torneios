@@ -2,6 +2,7 @@
 
 import { Download, RefreshCw, WifiOff, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { appPath } from '../lib/base-path';
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 const installDismissedKey = 'intereng:pwa-install-dismissed';
@@ -27,7 +28,11 @@ export function PwaRegistration() {
     navigator.serviceWorker?.addEventListener('controllerchange', onControllerChange);
 
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
+      // O escopo é declarado junto: sem ele o service worker registrado em
+      // `/intereng/sw.js` só controlaria esse diretório por acaso, e sem o
+      // prefixo o navegador pediria `/sw.js` na raiz do domínio — que em
+      // produção é de outro site.
+      navigator.serviceWorker.register(appPath('/sw.js'), { scope: appPath('/') }).then((registration) => {
         if (registration.waiting) setUpdateWorker(registration.waiting);
         registration.addEventListener('updatefound', () => {
           const worker = registration.installing;

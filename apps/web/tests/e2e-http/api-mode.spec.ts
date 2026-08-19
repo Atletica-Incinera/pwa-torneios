@@ -80,6 +80,8 @@ test('o espectador usa o snapshot público, sem staff nem auditoria', async ({ p
   const { data: payload } = await (await publicSnapshot).json();
 
   expect(payload.staff).toEqual({});
+  // Acesso global é dado de administração: não pode vazar junto do resto.
+  expect(payload.superAdmins).toEqual([]);
   expect(payload.audit).toEqual([]);
   expect(Object.keys(payload.tournaments)).not.toContain('xadrez');
 
@@ -146,13 +148,13 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   await request.post(`${api}/test/no-active-edition`);
   await login(page, 'super@intereng.com', 'super2026');
 
-  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+  await expect(page.getByText('Nenhum torneio cadastrado')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'DADOS INDISPONÍVEIS' })).toHaveCount(0);
 
   await page.goto('/competitions');
-  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+  await expect(page.getByText('Nenhum torneio cadastrado')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Criar competição' }).first().click();
+  await page.getByRole('link', { name: 'Criar torneio' }).first().click();
   await page.waitForURL(/\/competitions\/new/);
   await page.getByLabel('Nome do torneio').fill('InterEng');
   await page.getByLabel('Ano da primeira edição').fill('2027');
@@ -166,11 +168,11 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   // dados de verdade.
   await page.waitForURL(/\/competitions/);
   await expect(page.getByRole('button', { name: 'InterEng', exact: true })).toBeVisible();
-  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+  await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
-  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+  await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 });
 
 test('o endpoint de bootstrap recusa quando já existe alguma competição', async ({ request }) => {
@@ -191,7 +193,7 @@ test('o endpoint de bootstrap recusa quando já existe alguma competição', asy
   expect(response.status()).toBe(409);
 });
 
-test('super admin concede super admin a outra conta', async ({ page }) => {
+test('super admin concede super admin a outra conta, e a concessão aparece', async ({ page }) => {
   await login(page, 'super@intereng.com', 'super2026');
   await page.goto('/staff');
   await page.getByRole('link', { name: 'Conceder super admin' }).click();
@@ -204,6 +206,12 @@ test('super admin concede super admin a outra conta', async ({ page }) => {
   expect(JSON.parse((await action).postData() ?? '{}').type).toBe('staff/promoteSuperAdmin');
 
   await page.waitForURL(/\/staff$/);
+  // Achado em produção: a concessão gravava a flag no servidor e a tela ficava
+  // idêntica, porque a lista de staff é montada só das atribuições de edição —
+  // e super admin não tem nenhuma. Do ponto de vista de quem concedeu, a função
+  // não funcionava.
+  await expect(page.getByRole('heading', { name: 'SUPER ADMINISTRADORES' })).toBeVisible();
+  await expect(page.getByText('novo-super@intereng.com')).toBeVisible();
 });
 
 test('admin da edição não alcança a concessão de super admin', async ({ page }) => {

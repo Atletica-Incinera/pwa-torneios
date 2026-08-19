@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Brackets, CalendarPlus, Flag, Users } from 'lucide-react';
+import { Brackets, CalendarPlus, Flag, Trophy, Users } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AppShell, EmptyState, SectionTitle, StatusBadge, TeamMark } from './AppShell';
@@ -10,18 +10,23 @@ import { TournamentClassification } from './TournamentClassification';
 import { TournamentManager } from './TournamentManager';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { findCategory, disciplineHref, listTeams } from '../lib/edition-catalog';
-import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
+import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { isTournamentDecided } from '../lib/status';
 import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
 type Tab = 'tabela' | 'jogos' | 'fases' | 'participantes' | 'regras';
 
+// A aba `regras` é onde moram inscrição, fases, geração de confrontos e
+// publicação — gestão, não regulamento (esse é da modalidade). O rótulo dizia
+// "Regras" e mandava o organizador procurar no lugar errado; o parâmetro da URL
+// continua `regras` para não quebrar links já compartilhados.
 const tabs: Array<{ id: Tab; label: string; adminOnly?: boolean }> = [
   { id: 'tabela', label: 'Tabela' },
   { id: 'jogos', label: 'Jogos' },
   { id: 'fases', label: 'Fases' },
   { id: 'participantes', label: 'Participantes' },
-  { id: 'regras', label: 'Regras', adminOnly: true },
+  { id: 'regras', label: 'Gestão', adminOnly: true },
 ];
 
 export function CategoryDetailView({ id }: { id: string }) {
@@ -65,6 +70,7 @@ export function CategoryDetailView({ id }: { id: string }) {
       subtitle={`${category.entries === null ? 'Inscrição pendente' : `${category.entries} inscritas`} · ${category.status}`}
       actionHref={`/matches/new?modalidade=${encodeURIComponent(category.discipline)}`}
       actionLabel={`Agendar jogo de ${category.discipline}`}
+      actionShortLabel="Agendar jogo"
       actionPermission="discipline"
       actionDiscipline={category.discipline}
     >
@@ -102,7 +108,7 @@ export function CategoryDetailView({ id }: { id: string }) {
               ))}
             </div>
             <p className="form-hint">{describeAdvancement(advancement, groupCount || 1)}</p>
-          </> : <EmptyState title="FASES NÃO CONFIGURADAS" copy={canManage ? 'Defina as fases na aba Regras para gerar os confrontos.' : 'As fases desta categoria ainda não foram publicadas.'} />}
+          </> : <EmptyState title="FASES NÃO CONFIGURADAS" copy={canManage ? 'Defina as fases na aba Gestão para gerar os confrontos.' : 'As fases desta categoria ainda não foram publicadas.'} />}
         </section> : null}
 
         {activeTab === 'participantes' ? <section className="section-block no-top">
@@ -115,13 +121,21 @@ export function CategoryDetailView({ id }: { id: string }) {
                 <span>Seed {setup.seeds[team] ?? '—'}{setup.assignments[team] ? ` · ${setup.assignments[team]}` : ''}</span>
               </div>
             ))}
-          </div> : <EmptyState title="SEM INSCRITOS" copy={canManage ? 'Inscreva as equipes na aba Regras para liberar a agenda desta categoria.' : 'Nenhuma equipe inscrita nesta categoria.'} />}
+          </div> : <EmptyState title="SEM INSCRITOS" copy={canManage ? 'Inscreva as equipes na aba Gestão para liberar a agenda desta categoria.' : 'Nenhuma equipe inscrita nesta categoria.'} />}
         </section> : null}
 
         {activeTab === 'regras' && canManage ? <div className="section-block no-top">
           <TournamentManager id={id} name={category.name} discipline={category.discipline} initialStatus={category.status} teamNames={teamNames} />
         </div> : null}
       </div>
+
+      {/* O passo seguinte a encerrar uma categoria é lançar as bonificações do
+          pódio no ranking geral, e não havia daqui nenhum caminho até lá — o
+          espectador se orientava melhor que o organizador. */}
+      {canManageEdition(session) ? <div className="public-secondary-actions">
+        {isTournamentDecided(category.status) ? <p className="form-hint">Categoria encerrada. Lance as bonificações do pódio no ranking geral da edição.</p> : null}
+        <Link href="/standings" className="wide-action"><Trophy size={18} aria-hidden="true" /> CLASSIFICAÇÃO GERAL <span aria-hidden="true">›</span></Link>
+      </div> : null}
     </AppShell>
   );
 }

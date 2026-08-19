@@ -3,7 +3,14 @@ import type { DisciplineRule, DisciplineState } from './frontend-state.ts';
 /** Ação que altera o placar. `points` é o quanto cada toque soma. */
 export type ScoringAction = { id: string; label: string; points: number };
 
-/** Ação registrada na partida. `scorePoints` permite eventos que também pontuam. */
+/**
+ * Ação registrada na partida sem alterar o placar — falta, cartão, tempo.
+ *
+ * `scorePoints` está declarado e nunca é lido: nenhum caminho do placar o soma.
+ * Fica só porque estados já gravados o carregam; um evento que também pontua
+ * deve ser declarado na lista de ações de placar, que é quem move o resultado.
+ * @deprecated não consumido — não configure esperando efeito.
+ */
 export type SecondaryAction = { id: string; label: string; requiresSide: boolean; allowedWhenStopped: boolean; scorePoints: number; fairPlayPoints: number };
 
 /**
@@ -215,7 +222,10 @@ export function setTarget(regulation: Regulation, period: number) {
 export function describeCompletion(regulation: Regulation) {
   const { completion } = regulation;
   if (completion.mode === 'sets') return `Melhor de ${completion.setsToWin * 2 - 1} sets · ${completion.pointsToWinSet} pontos (${completion.pointsToWinDecidingSet} no decisivo) com ${completion.minAdvantage} de vantagem`;
-  if (completion.mode === 'board') return `Resultado por ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} · vitória ${completion.winPoints} / empate ${completion.drawPoints}`;
+  // "vitória 1 / empate 0.5" solto aparecia a dois centímetros dos campos de
+  // pontuação da tabela e reintroduzia a mesma ambiguidade que o formulário
+  // acabou de desfazer: aqui o número é o placar da súmula, não a pontuação.
+  if (completion.mode === 'board') return `Resultado por ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} · placar ${completion.winPoints} para o vencedor / ${completion.drawPoints} no empate`;
   if (completion.mode === 'result') return `Resultado único da ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')}`;
   const overtime = completion.overtimePeriods > 0 ? ` · prorrogação de ${completion.overtimePeriods} × ${completion.overtimeDurationMinutes} min` : '';
   return `${regulation.base.periodCount} ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')}s${completion.allowDraw ? ' · empate permitido' : ' · não admite empate'}${overtime}`;
