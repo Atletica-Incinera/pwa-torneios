@@ -76,7 +76,7 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
 }
 
 const routeLabels: Record<string, string> = {
-  athletes: 'Atletas', audit: 'Auditoria', competitions: 'Competições', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Modalidades', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
+  athletes: 'Atletas', audit: 'Auditoria', competitions: 'Torneios', disciplines: 'Modalidades', matches: 'Jogos', more: 'Mais', profile: 'Perfil', public: 'Início', standings: 'Classificação', general: 'Geral', staff: 'Staff', teams: 'Equipes', tournaments: 'Categorias', new: 'Novo', manage: 'Gestão', live: 'Ao vivo', phases: 'Fases', results: 'Resultados',
 };
 
 /**

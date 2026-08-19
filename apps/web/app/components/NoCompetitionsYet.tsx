@@ -18,10 +18,10 @@ export function NoCompetitionsYet({ canCreate }: { canCreate: boolean }) {
     <div className="profile-hero">
       <Trophy size={28} />
       <span>
-        <h2>Nenhuma competição cadastrada</h2>
-        <p>{canCreate ? 'Crie a primeira competição e a edição inicial para liberar o resto do app.' : 'Aguardando o super administrador criar a primeira competição.'}</p>
+        <h2>Nenhum torneio cadastrado</h2>
+        <p>{canCreate ? 'Crie o primeiro torneio e a edição inicial para liberar o resto do app.' : 'Aguardando o super administrador criar o primeiro torneio.'}</p>
       </span>
     </div>
-    {canCreate ? <Link href="/competitions/new" className="primary-button">Criar competição</Link> : null}
+    {canCreate ? <Link href="/competitions/new" className="primary-button">Criar torneio</Link> : null}
   </section>;
 }

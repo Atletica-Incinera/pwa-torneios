@@ -148,13 +148,13 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   await request.post(`${api}/test/no-active-edition`);
   await login(page, 'super@intereng.com', 'super2026');
 
-  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+  await expect(page.getByText('Nenhum torneio cadastrado')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'DADOS INDISPONÍVEIS' })).toHaveCount(0);
 
   await page.goto('/competitions');
-  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+  await expect(page.getByText('Nenhum torneio cadastrado')).toBeVisible();
 
-  await page.getByRole('link', { name: 'Criar competição' }).first().click();
+  await page.getByRole('link', { name: 'Criar torneio' }).first().click();
   await page.waitForURL(/\/competitions\/new/);
   await page.getByLabel('Nome do torneio').fill('InterEng');
   await page.getByLabel('Ano da primeira edição').fill('2027');
@@ -168,11 +168,11 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   // dados de verdade.
   await page.waitForURL(/\/competitions/);
   await expect(page.getByRole('button', { name: 'InterEng', exact: true })).toBeVisible();
-  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+  await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 
   await page.goto('/dashboard');
   await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
-  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+  await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 });
 
 test('o endpoint de bootstrap recusa quando já existe alguma competição', async ({ request }) => {

@@ -67,11 +67,19 @@ test('espectador navega por três destinos e vê as abas da categoria', async ({
 });
 
 test('cards mostram inscrição pendente em vez de número inventado', async ({ page }) => {
+  // A semente publicada nasce com inscritos — sem eles a API recusa agendar, e
+  // "Em andamento" ainda travaria a estrutura sem caminho de conserto. Quem
+  // exercita o caso "sem ninguém inscrito" é a categoria em rascunho, que só a
+  // área administrativa enxerga.
+  await loginAs(page);
+  await page.goto('/disciplines/xadrez');
+  const rascunho = page.locator('.tournament-card').filter({ hasText: 'Xadrez Individual' });
+  await expect(rascunho).toContainText('Inscrição pendente');
+  await expect(rascunho).not.toContainText('inscritas');
+
   await page.goto('/public/tournaments');
-  const card = page.locator('.tournament-card').filter({ hasText: 'Futsal Masculino' });
-  // Sem participantes configurados, o card não finge um total.
-  await expect(card).toContainText('Inscrição pendente');
-  await expect(card).not.toContainText('8 inscritos');
+  const publicada = page.locator('.tournament-card').filter({ hasText: 'Futsal Masculino' });
+  await expect(publicada).toContainText('4 inscritas');
 });
 
 test('as rotas públicas antigas levam para modalidades', async ({ page }) => {

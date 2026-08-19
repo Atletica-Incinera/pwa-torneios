@@ -3,7 +3,14 @@ import type { DisciplineRule, DisciplineState } from './frontend-state.ts';
 /** Ação que altera o placar. `points` é o quanto cada toque soma. */
 export type ScoringAction = { id: string; label: string; points: number };
 
-/** Ação registrada na partida. `scorePoints` permite eventos que também pontuam. */
+/**
+ * Ação registrada na partida sem alterar o placar — falta, cartão, tempo.
+ *
+ * `scorePoints` está declarado e nunca é lido: nenhum caminho do placar o soma.
+ * Fica só porque estados já gravados o carregam; um evento que também pontua
+ * deve ser declarado na lista de ações de placar, que é quem move o resultado.
+ * @deprecated não consumido — não configure esperando efeito.
+ */
 export type SecondaryAction = { id: string; label: string; requiresSide: boolean; allowedWhenStopped: boolean; scorePoints: number; fairPlayPoints: number };
 
 /**

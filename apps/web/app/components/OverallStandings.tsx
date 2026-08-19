@@ -10,12 +10,18 @@ import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { listDisciplines, listTeams } from '../lib/edition-catalog';
 import { createId } from '../lib/create-id';
 
+/** Como a métrica fica registrada na auditoria: pontos e origem, legíveis. */
+function describeMetric(metric: OverallMetricState) {
+  return `${metric.name} · ${metric.defaultPoints} pts · ${metric.position ? `automática (${positionLabels[metric.position]})` : 'lançamento manual'}`;
+}
+
 export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   const { state, dispatch } = useFrontendState();
   const { confirm, prompt, toast } = useUi();
   const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
   const [metricDraft, setMetricDraft] = useState({ name: '', points: '1', position: '' as OverallPosition | '' });
+  const [metricDrafts, setMetricDrafts] = useState<Record<string, string>>({});
   const [awardDraft, setAwardDraft] = useState({ teamId: '', discipline: state.preferences.selectedDiscipline, metricId: state.overallRanking.metrics[0]?.id ?? '', points: String(state.overallRanking.metrics[0]?.defaultPoints ?? 1), note: '' });
 
   const teams = useMemo(() => listTeams(state), [state]);
@@ -49,8 +55,27 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   // importa: `undefined` some do JSON e chegava ao servidor como ausente, então
   // a métrica continuava bonificando o pódio automaticamente depois de o
   // operador tê-la posto em Manual — e a tela mostrava sucesso.
-  function updateMetric(metricId: string, patch: Partial<Omit<OverallMetricState, 'position'>> & { position?: OverallPosition | null }) {
-    void dispatch({ type: 'ranking/updateMetric', payload: { metricId, patch } });
+  function updateMetric(metric: OverallMetricState, patch: Partial<Omit<OverallMetricState, 'position'>> & { position?: OverallPosition | null }, action: string) {
+    void dispatch({
+      type: 'ranking/updateMetric',
+      payload: { metricId: metric.id, patch },
+      audit: { action, entity: metric.name, before: describeMetric(metric), after: describeMetric({ ...metric, ...patch, position: patch.position === null ? undefined : patch.position ?? metric.position }) },
+    });
+  }
+
+  /**
+   * O rascunho vive na tela e só sobe quando o campo perde o foco.
+   *
+   * Cada tecla disparava uma gravação: além do volume, um nome de um caractere
+   * — estado inevitável ao apagar para reescrever — é recusado pela API com 400,
+   * e a pessoa via um erro no meio da própria digitação.
+   */
+  function commitMetricName(metric: OverallMetricState) {
+    const next = (metricDrafts[metric.id] ?? metric.name).trim();
+    setMetricDrafts((current) => { const { [metric.id]: _removed, ...rest } = current; return rest; });
+    if (!next || next === metric.name) return;
+    if (next.length < 2) { toast('O nome da métrica precisa de ao menos 2 caracteres.', 'error'); return; }
+    updateMetric(metric, { name: next }, 'Métrica do ranking renomeada');
   }
 
   async function removeMetric(metric: OverallMetricState) {
@@ -132,13 +157,13 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
         <SectionTitle eyebrow="REGULAMENTO" title="MÉTRICAS DE PONTUAÇÃO" />
         <div className="ranking-metric-list">{state.overallRanking.metrics.map((metric) => <article key={metric.id}>
           <div className="ranking-metric-name-row">
-            <SlidersHorizontal size={18} />
-            <input aria-label={`Nome da métrica ${metric.name}`} value={metric.name} onChange={(event) => updateMetric(metric.id, { name: event.target.value })} />
+            <SlidersHorizontal size={18} aria-hidden="true" />
+            <input aria-label={`Nome da métrica ${metric.name}`} value={metricDrafts[metric.id] ?? metric.name} onChange={(event) => setMetricDrafts((current) => ({ ...current, [metric.id]: event.target.value }))} onBlur={() => commitMetricName(metric)} />
           </div>
           <div className="ranking-metric-fields-row">
-            <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => updateMetric(metric.id, { defaultPoints: Number(event.target.value) })} /></label>
-            <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric.id, { position: (event.target.value || null) as OverallPosition | null })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`}><Trash2 size={17} /></button>
+            <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => { const points = Number(event.target.value); if (Number.isFinite(points)) updateMetric(metric, { defaultPoints: points }, 'Pontos da métrica alterados'); }} /></label>
+            <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric, { position: (event.target.value || null) as OverallPosition | null }, 'Origem da métrica alterada')}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`} title="Remover métrica"><Trash2 size={17} aria-hidden="true" /></button>
           </div>
         </article>)}</div>
         <form className="ranking-inline-form" onSubmit={addMetric}><input aria-label="Nome da nova métrica" value={metricDraft.name} onChange={(event) => setMetricDraft({ ...metricDraft, name: event.target.value })} placeholder="Ex.: Campeão geral" /><input aria-label="Pontos da nova métrica" type="number" value={metricDraft.points} onChange={(event) => setMetricDraft({ ...metricDraft, points: event.target.value })} /><select aria-label="Origem da nova métrica" value={metricDraft.position} onChange={(event) => setMetricDraft({ ...metricDraft, position: event.target.value as OverallPosition | '' })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button type="submit"><Plus size={17} /> Adicionar métrica</button></form>

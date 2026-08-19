@@ -30,8 +30,9 @@ test('aceitar o descarte navega de verdade, sem recarregar o app', async ({ page
   await loginAs(page);
   await page.goto('/teams/new');
   await page.getByLabel('Nome da equipe').fill('Descartada E2E');
-  let recarregou = false;
-  page.on('framenavigated', (frame) => { if (frame === page.mainFrame()) recarregou = true; });
+  // Marca de vida do documento: sobrevive a navegação do router e some em
+  // qualquer recarga. É o que distingue as duas — `framenavigated` não serve,
+  // porque também dispara em navegação de mesmo documento.
   await page.evaluate(() => { (window as unknown as { __spa: boolean }).__spa = true; });
 
   await page.getByRole('link', { name: 'Cancelar' }).click();
@@ -39,9 +40,7 @@ test('aceitar o descarte navega de verdade, sem recarregar o app', async ({ page
 
   await expect(page).toHaveURL(/\/teams$/);
   await expect(page.getByRole('heading', { name: 'EQUIPES' })).toBeVisible();
-  // A marca sobrevive: foi navegação do router, não recarga do documento.
   expect(await page.evaluate(() => (window as unknown as { __spa?: boolean }).__spa)).toBe(true);
-  expect(recarregou).toBe(false);
 });
 
 test('cadastro de equipe guarda o registro', async ({ page }) => {
@@ -199,6 +198,15 @@ test('renomeia categoria e torneio, e a correção aparece nas listas', async ({
   await page.goto('/disciplines/futsal');
   await expect(page.getByText('Futsal Masculino A')).toBeVisible();
 
+  // Renomear o torneio é ação global no servidor (competition/rename está em
+  // GLOBAL_ACTIONS): o admin da edição via a tela inteira e cada botão dela
+  // terminava em 403 com aviso genérico. Agora a tela é legível para ele e
+  // editável só para quem o servidor deixa editar.
+  await page.goto('/competitions');
+  await expect(page.getByRole('button', { name: /Renomear InterEng/i })).toHaveCount(0);
+  await expect(page.getByText(/definidos pelo super administrador/i)).toBeVisible();
+
+  await loginAs(page, 'super@intereng.com', 'super2026');
   await page.goto('/competitions');
   await page.getByRole('button', { name: /Renomear InterEng/i }).click();
   await page.getByLabel('Nome do torneio').fill('InterEng UFPE');
@@ -223,8 +231,14 @@ test('gestor fica restrito à própria modalidade', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
   await page.goto('/teams/alcateia/athletes/new');
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  // Pedir a agenda de outra modalidade não leva o gestor para fora do escopo:
+  // a tela volta para a modalidade dele, e o agendamento oferecido é o dela.
+  // (A asserção anterior exigia zero links "agendar jogo" aqui e já falhava —
+  // o botão do cabeçalho sempre teve nome acessível e sempre foi o de Futsal.)
   await page.goto('/matches?modalidade=V%C3%B4lei');
-  await expect(page.getByRole('link', { name: /agendar jogo/i })).toHaveCount(0);
+  await expect(page.getByText('Jogos e resultados somente de Futsal')).toBeVisible();
+  await expect(page.getByRole('link', { name: /agendar jogo de vôlei/i })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Agendar jogo de Futsal' })).toBeVisible();
   await page.goto('/matches/new?modalidade=V%C3%B4lei');
   await expect(page.getByLabel('Modalidade').locator('option')).toHaveText(['Selecione a modalidade', 'Futsal']);
 });

@@ -3591,6 +3591,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .edition-status-field span { display: block; font-size: var(--type-caption); color: var(--text-secondary); }
 
 .roster-remove-button, .roster-associate-button { min-width: 44px; min-height: 44px; }
+.ranking-metric-list button, .ranking-award-history button { width: auto; height: auto; min-width: 44px; min-height: 44px; }
 .regulation-row button, .tiebreaker-list button { min-width: 44px; min-height: 44px; cursor: pointer; }
 .regulation-row button:last-child:not(:disabled), .tiebreaker-list button:last-child { border-color: var(--pink); color: var(--pink); }
 .regulation-row button:last-child:not(:disabled):hover, .tiebreaker-list button:last-child:hover { background: var(--pink); color: var(--white); }

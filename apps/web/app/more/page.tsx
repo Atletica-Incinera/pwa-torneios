@@ -6,7 +6,7 @@ import { AppShell, SectionTitle } from '../components/AppShell';
 import { canManageEdition, canReadAudit, useFrontendSession } from '../lib/frontend-session';
 
 const sections = [
-  { href: '/competitions', label: 'Competições e edições', meta: 'Contexto ativo e histórico', icon: Trophy },
+  { href: '/competitions', label: 'Torneios e edições', meta: 'Contexto ativo e histórico', icon: Trophy },
   { href: '/standings', label: 'Classificação geral', meta: 'Métricas e pontos por equipe', icon: ListOrdered },
   { href: '/staff', label: 'Staff e permissões', meta: 'Papéis por edição', icon: ShieldCheck },
   { href: '/athletes', label: 'Consulta de atletas', meta: 'Busca global e histórico', icon: Users },
