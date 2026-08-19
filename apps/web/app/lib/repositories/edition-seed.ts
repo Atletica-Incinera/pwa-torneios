@@ -49,14 +49,30 @@ const defaultPhases: TournamentPhase[] = [
   { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 },
 ];
 
-function category(name: string, discipline: string, status: TournamentState['status'], tone: TournamentState['tone']): TournamentState {
-  // Sem participantes inscritos: quem inscreve é o admin, e o card diz isso.
-  return { editionId, name, discipline, status, tone, participants: [], seeds: {}, assignments: {}, phases: defaultPhases.map((phase) => ({ ...phase })), generated: false };
+function category(name: string, discipline: string, status: TournamentState['status'], tone: TournamentState['tone'], participants: string[] = []): TournamentState {
+  const groups = defaultPhases.find((phase) => phase.format === 'Grupos')?.groups ?? [];
+  return {
+    editionId, name, discipline, status, tone,
+    participants,
+    seeds: Object.fromEntries(participants.map((team, index) => [team, index + 1])),
+    assignments: Object.fromEntries(participants.map((team, index) => [team, groups[index % Math.max(1, groups.length)]])),
+    phases: defaultPhases.map((phase) => ({ ...phase })),
+    generated: false,
+  };
 }
 
+/**
+ * Categoria publicada ou em andamento nasce com inscritos.
+ *
+ * Sem eles a semente ensinava um fluxo que o servidor recusa: a API resolve o
+ * confronto pela inscrição na categoria e devolve 404 para quem não está
+ * inscrito. Pior no caso de "Em andamento", que trava a estrutura — não havia
+ * caminho na interface para consertar. Rascunho continua vazio de propósito: é
+ * o estado em que ninguém inscreveu ninguém ainda.
+ */
 export const seedTournaments: Record<string, TournamentState> = {
-  'futsal-m': category('Futsal Masculino', 'Futsal', 'Em andamento', 'blue'),
-  'volei-f': category('Vôlei Feminino', 'Vôlei', 'Publicado', 'pink'),
+  'futsal-m': category('Futsal Masculino', 'Futsal', 'Em andamento', 'blue', ['Alcateia', 'Cangaceiros', 'Engenhosa', 'Incinera']),
+  'volei-f': category('Vôlei Feminino', 'Vôlei', 'Publicado', 'pink', ['Caótica', 'Energizada', 'Invasora', 'Invocados']),
   xadrez: category('Xadrez Individual', 'Xadrez', 'Rascunho', 'orange'),
 };
 

@@ -59,6 +59,7 @@ export function normalizeSnapshot(payload: Partial<FrontendState>, revision?: nu
     tournaments: payload.tournaments ?? {},
     matches: payload.matches ?? {},
     staff: payload.staff ?? {},
+    superAdmins: payload.superAdmins ?? [],
     audit: payload.audit ?? [],
     overallRanking: {
       metrics: payload.overallRanking?.metrics ?? initialFrontendState.overallRanking.metrics,

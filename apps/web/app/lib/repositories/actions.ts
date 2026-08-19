@@ -1,4 +1,4 @@
-import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, MatchCorrectionState, MatchEventState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
+import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, MatchCorrectionState, MatchEventState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, OverallPosition, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
 
 /** O que a auditoria registra sobre a operação. Autor e horário entram no reducer. */
 export type ActionAudit = Omit<AuditState, 'id' | 'at' | 'actor'>;
@@ -65,7 +65,12 @@ export type AthleteAction =
  */
 export type RankingAction =
   | (WithAudit & { type: 'ranking/addMetric'; payload: { metric: OverallMetricState } })
-  | (WithAudit & { type: 'ranking/updateMetric'; payload: { metricId: string; patch: Partial<OverallMetricState> } })
+  /**
+   * `position: null` limpa a coluna — voltar a métrica para "Manual". Ausente
+   * preserva o que estava lá: `JSON.stringify` descarta chaves `undefined`, e
+   * mandar undefined chegava ao servidor como "não mexa", nunca como "limpe".
+   */
+  | (WithAudit & { type: 'ranking/updateMetric'; payload: { metricId: string; patch: Partial<Omit<OverallMetricState, 'position'>> & { position?: OverallPosition | null } } })
   | (WithAudit & { type: 'ranking/removeMetric'; payload: { metricId: string } })
   /** Um lançamento manual ou o lote vindo dos pódios oficiais. */
   | (WithAudit & { type: 'ranking/addAwards'; payload: { awards: OverallAwardState[] } })

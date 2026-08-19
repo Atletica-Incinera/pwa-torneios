@@ -46,6 +46,25 @@ export function normalizeSessionUser(
   previous?: FrontendSession | null,
 ): FrontendSessionUser {
   const editionRoles = Array.isArray(user.editionRoles) ? user.editionRoles : [];
+  // Super admin é flag global da conta, não uma atribuição de edição — e não
+  // pode ser rebaixado por uma. Quem já era Admin da edição e foi promovido
+  // continuava com a atribuição antiga fixada em `selectedRoleAssignmentId`, e
+  // ela vencia o SUPER_ADMIN vindo da API a cada renovação: no navegador a
+  // pessoa seguia como EDITION_ADMIN até um logout completo, sem nada dizer.
+  // Os recortes vão zerados junto: para super admin eles são preferência de
+  // visualização, não papel.
+  if (user.role === 'SUPER_ADMIN') {
+    return {
+      ...user,
+      editionRoles,
+      mustChangePassword: user.mustChangePassword === true,
+      role: 'SUPER_ADMIN',
+      scope: undefined,
+      selectedRoleAssignmentId: undefined,
+      selectedEditionId: undefined,
+      selectedEditionDisciplineId: undefined,
+    };
+  }
   const requestedRoleAssignmentId = previous?.selectedRoleAssignmentId
     ?? user.selectedRoleAssignmentId;
   const requestedRole = requestedRoleAssignmentId

@@ -7,14 +7,16 @@ import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
 import { listDisciplines } from '../lib/edition-catalog';
 import { useUi } from '../components/UiProvider';
-import { canGrantRole, isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
+import { canGrantRole, isSuperAdmin, superAdminGrantAvailable, useFrontendSession } from '../lib/frontend-session';
 
 export default function StaffPage() {
   const { state, dispatch } = useFrontendState();
   const { confirm, toast } = useUi();
   const { session } = useFrontendSession();
-  // Só o super admin mexe em quem é (ou vira) Admin da edição.
-  const canEdit = (member: StaffState) => canGrantRole(session, member.role);
+  // Só o super admin mexe em quem é (ou vira) Admin da edição. E ninguém edita
+  // papel de edição de um super admin por aqui: o acesso dele não é da edição, e
+  // gravar um papel criaria uma atribuição fantasma.
+  const canEdit = (member: StaffState) => !member.superAdmin && canGrantRole(session, member.role);
   const [editing, setEditing] = useState<string | null>(null);
   const members = useMemo(() => Object.entries(state.staff)
     .filter(([, member]) => member.email)
@@ -42,7 +44,17 @@ export default function StaffPage() {
 
   return <AppShell active="profile" eyebrow="ACESSO" title="STAFF" subtitle="Papéis e permissões da edição" actionHref="/staff/new" actionLabel="Convidar membro">
     <div className="info-banner"><ShieldCheck size={20} /><p>Administradores controlam a edição. Gestores atuam somente na modalidade atribuída.</p></div>
-    {isSuperAdmin(session) ? <Link href="/staff/promote" className="secondary-button"><ShieldAlert size={17} aria-hidden="true" /> Conceder super admin</Link> : null}
+    {isSuperAdmin(session) && superAdminGrantAvailable() ? <Link href="/staff/promote" className="secondary-button"><ShieldAlert size={17} aria-hidden="true" /> Conceder super admin</Link> : null}
+    {/* Super admin não tem atribuição de edição, então não aparecia em lugar
+        nenhum da lista: depois de conceder, a tela ficava idêntica e a pessoa
+        concluía que a função não tinha funcionado. */}
+    {state.superAdmins.length ? <section className="section-block"><SectionTitle eyebrow="ACESSO GLOBAL" title="SUPER ADMINISTRADORES" /><div className="staff-list">
+      {state.superAdmins.map((admin, index) => <article className="staff-card is-global" key={admin.id}>
+        <span className={`avatar-frame avatar-${index % 3}`}>{admin.initials}</span>
+        <div><h2>{admin.name}</h2><p><Mail size={14} /> {admin.email}</p><div className="staff-role"><StatusBadge tone="orange">Super administrador</StatusBadge><span>Todas as competições</span></div></div>
+        <span className="staff-locked" title="Acesso global: não é papel desta edição"><ShieldCheck size={16} /></span>
+      </article>)}
+    </div></section> : null}
     <section className="section-block no-top"><SectionTitle eyebrow="EQUIPE" title="ACESSOS" /><div className="staff-list">
       {members.map(({ key, member }, index) => <article className={`staff-card${member.revoked ? ' is-revoked' : ''}`} key={key}>
         <span className={`avatar-frame avatar-${index % 3}`}>{member.initials}</span>

@@ -50,7 +50,16 @@ export type StaffState = {
   role: 'Admin da edição' | 'Gestor de modalidade';
   scope: string;
   revoked?: boolean;
+  /**
+   * A mesma pessoa também é super administrador do app. Marca, e não um valor
+   * de `role`: super admin é flag global da conta, e entrar na união de papéis
+   * contaminaria toda a checagem de permissão de edição.
+   */
+  superAdmin?: boolean;
 };
+
+/** Conta com acesso global ao app, fora de qualquer edição. */
+export type SuperAdminState = { id: string; name: string; email: string; initials: string };
 export type AuditState = { id: string; at: string; actor: string; action: string; entity: string; before?: string; after?: string; reason?: string };
 
 export type FrontendState = {
@@ -63,6 +72,12 @@ export type FrontendState = {
   matches: Record<string, MatchState>;
   overallRanking: OverallRankingState;
   staff: Record<string, StaffState>;
+  /**
+   * Super administradores do app. Vem em campo próprio porque não pertencem à
+   * edição: sem isso, conceder super admin não mudava nada na tela — a lista de
+   * staff é montada só das atribuições de edição, e a promoção ficava invisível.
+   */
+  superAdmins: SuperAdminState[];
   audit: AuditState[];
   preferences: { selectedDiscipline: string; notifications: boolean; soundEffects: boolean };
 };
@@ -84,6 +99,7 @@ export const initialFrontendState: FrontendState = {
   disciplines: {},
   tournaments: {},
   matches: {},
+  superAdmins: [],
   overallRanking: {
     metrics: [
       { id: 'metric-champion', name: 'Campeão da modalidade', defaultPoints: 10, position: 'campeao' },
@@ -163,6 +179,9 @@ function parseState(value: string | null): FrontendState {
         closures: parsed.overallRanking?.closures ?? [],
       },
       staff: { ...seededFrontendState.staff, ...parsed.staff },
+      // Acesso global é da conta, não do estado gravado neste navegador: quem
+      // manda é sempre o servidor, e no modo local a lista fica vazia.
+      superAdmins: [],
       audit: parsed.audit ?? [],
       preferences: { ...seededFrontendState.preferences, ...parsed.preferences },
     };

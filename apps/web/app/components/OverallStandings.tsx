@@ -45,7 +45,11 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
     setMetricDraft({ name: '', points: '1', position: '' });
   }
 
-  function updateMetric(metricId: string, patch: Partial<OverallMetricState>) {
+  // `position: null` é "voltar para Manual"; ausente é "não mexa". A distinção
+  // importa: `undefined` some do JSON e chegava ao servidor como ausente, então
+  // a métrica continuava bonificando o pódio automaticamente depois de o
+  // operador tê-la posto em Manual — e a tela mostrava sucesso.
+  function updateMetric(metricId: string, patch: Partial<Omit<OverallMetricState, 'position'>> & { position?: OverallPosition | null }) {
     void dispatch({ type: 'ranking/updateMetric', payload: { metricId, patch } });
   }
 
@@ -133,7 +137,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
           </div>
           <div className="ranking-metric-fields-row">
             <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => updateMetric(metric.id, { defaultPoints: Number(event.target.value) })} /></label>
-            <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric.id, { position: (event.target.value || undefined) as OverallPosition | undefined })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric.id, { position: (event.target.value || null) as OverallPosition | null })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`}><Trash2 size={17} /></button>
           </div>
         </article>)}</div>

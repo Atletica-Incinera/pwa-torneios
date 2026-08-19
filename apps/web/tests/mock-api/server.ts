@@ -93,18 +93,31 @@ function restoreUsers() {
   }
 }
 
-let snapshot: FrontendState = seededFrontendState;
+/** Iniciais como a API as deriva para os cards de staff. */
+function initialsOf(name: string) {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toLocaleUpperCase('pt-BR');
+}
+
+/**
+ * O acesso global e da conta, nao da edicao: a API o emite num campo proprio do
+ * snapshot. Aqui ele nasce dos usuarios com papel SUPER_ADMIN, para o e2e poder
+ * cobrar que conceder super admin muda alguma coisa na tela.
+ */
+const seededSuperAdmins = users.filter((user) => user.role === 'SUPER_ADMIN')
+  .map((user) => ({ id: user.id, name: user.name, email: user.email, initials: initialsOf(user.name) }));
+
+let snapshot: FrontendState = { ...seededFrontendState, superAdmins: seededSuperAdmins };
 const sessions = new Map<string, { email: string; name: string }>();
 
 /** Cenário de teste: sistema recém-migrado, nenhuma competição criada ainda. */
 let noActiveEdition = false;
-const emptySnapshot: FrontendState = { ...seededFrontendState, competitions: [], editions: [] };
+const emptySnapshot: FrontendState = { ...seededFrontendState, superAdmins: seededSuperAdmins, competitions: [], editions: [] };
 
 /** O payload do espectador: sem staff, sem auditoria, sem rascunho. */
 function publicSnapshot(state: FrontendState) {
   const tournaments = Object.fromEntries(Object.entries(state.tournaments).filter(([, item]) => !privateTournamentStatuses.includes(item.status)));
   const matches = Object.fromEntries(Object.entries(state.matches).filter(([, item]) => !item.tournamentId || tournaments[item.tournamentId]));
-  return { ...state, tournaments, matches, staff: {}, audit: [] };
+  return { ...state, tournaments, matches, staff: {}, superAdmins: [], audit: [] };
 }
 
 /**
@@ -304,6 +317,17 @@ createServer(async (request, response) => {
     const action = await readBody(request) as Action;
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
+    // O reducer do front é no-op para esta ação de propósito: quem grava a flag
+    // global é o servidor. Sem espelhar isso aqui, o e2e nunca veria a promoção.
+    if (action.type === 'staff/promoteSuperAdmin') {
+      const { email, name } = action.payload;
+      const already = snapshot.superAdmins.some((item) => item.email === email);
+      const promoted = snapshot.superAdmins.map((item) => item.email === email ? { ...item, email } : item);
+      snapshot = {
+        ...snapshot,
+        superAdmins: already ? promoted : [...promoted, { id: `staff-${email}`, name, email, initials: initialsOf(name) }],
+      };
+    }
     // A partir da primeira competição ativa, "active" volta a resolver — como
     // na API real, que consulta o banco de novo a cada requisição.
     if (noActiveEdition && snapshot.competitions.some((item) => item.active)) {

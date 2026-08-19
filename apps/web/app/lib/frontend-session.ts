@@ -62,6 +62,13 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** Só há senha para trocar quando quem autentica é a API. */
 export function passwordChangeAvailable() { return resolveDataSource() === 'http'; }
 
+/**
+ * Conceder super admin exige o servidor: a flag é da conta, e o modo local não
+ * tem conta para promover — o reducer é um no-op deliberado. Sem esta guarda a
+ * tela mostrava aviso de sucesso e redirecionava sem ter feito nada.
+ */
+export function superAdminGrantAvailable() { return resolveDataSource() === 'http'; }
+
 /** A conta ainda está com a senha inicial e não alcança o resto do sistema. */
 export function mustChangePassword(session: FrontendSession | null) { return session?.mustChangePassword === true; }
 
@@ -69,6 +76,10 @@ export function mustChangePassword(session: FrontendSession | null) { return ses
 export function selectEditionRole(roleAssignmentId: string): boolean {
   const current = readStoredSession();
   if (!current) return false;
+  // Esta função grava `role` direto no storage, sem passar por
+  // `normalizeSessionUser`: sem a guarda, um clique no seletor de modalidade
+  // rebaixava o super admin promovido de volta a EDITION_ADMIN.
+  if (current.role === 'SUPER_ADMIN') return false;
   const selected = current.editionRoles.find((role) => role.roleAssignmentId === roleAssignmentId);
   if (!selected) return false;
   if (selected.role === 'DISCIPLINE_MANAGER' && (!selected.editionDisciplineId || !selected.disciplineName)) return false;

@@ -114,7 +114,12 @@ function reduce(current: FrontendState, action: Action): FrontendState {
 
     case 'ranking/updateMetric': {
       const { metricId, patch } = action.payload;
-      return { ...current, overallRanking: { ...current.overallRanking, metrics: current.overallRanking.metrics.map((metric) => metric.id === metricId ? { ...metric, ...patch } : metric) } };
+      // `position: null` é o único jeito de LIMPAR a coluna, e o servidor a
+      // distingue de ausente. Aqui `{ ...metric, ...patch }` gravaria o próprio
+      // null, que não é um `OverallPosition` — a limpeza vira `undefined`.
+      const { position, ...rest } = patch;
+      const applied = position === null ? { ...rest, position: undefined } : { ...rest, ...(position === undefined ? {} : { position }) };
+      return { ...current, overallRanking: { ...current.overallRanking, metrics: current.overallRanking.metrics.map((metric) => metric.id === metricId ? { ...metric, ...applied } : metric) } };
     }
 
     case 'ranking/removeMetric':
