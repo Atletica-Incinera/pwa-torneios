@@ -24,7 +24,9 @@ export default function StaffPage() {
   function save(member: StaffState, patch: Partial<StaffState>, action = 'Permissão alterada') {
     const next = { ...member, ...patch };
     if (!canEdit(member) || !canGrantRole(session, next.role)) { toast('Somente o super administrador do app altera acessos de admin da edição.', 'error'); return; }
-    if (next.role === 'Admin da edição') next.scope = 'InterEng 2026';
+    // O escopo do admin é a edição em que ele foi promovido, não um texto fixo:
+    // gravado à mão, ele congelava "InterEng 2026" em qualquer edição futura.
+    if (next.role === 'Admin da edição') next.scope = getActiveEdition(state)?.name ?? 'Edição ativa';
     void dispatch({
       type: 'staff/upsert',
       payload: { email: member.email, member: next },
@@ -47,7 +49,7 @@ export default function StaffPage() {
         <div><h2>{member.name}</h2><p><Mail size={14} /> {member.email}</p><div className="staff-role"><StatusBadge tone={member.revoked ? 'pink' : index === 0 ? 'orange' : 'blue'}>{member.revoked ? 'Revogado' : member.role}</StatusBadge><span>{member.scope}</span></div>
           {editing === key ? <div className="inline-role-editor"><select value={member.role} onChange={(event) => save(member, { role: event.target.value as StaffState['role'] })}>{isSuperAdmin(session) ? <option>Admin da edição</option> : null}<option>Gestor de modalidade</option></select>{member.role === 'Gestor de modalidade' ? <select value={member.scope} onChange={(event) => save(member, { scope: event.target.value })}>{disciplines.map((item) => <option key={item.name}>{item.name}</option>)}</select> : null}<button type="button" onClick={() => setEditing(null)}>Concluir</button></div> : null}
         </div>
-        <div className="staff-card-actions">{canEdit(member) ? <><button type="button" onClick={() => setEditing(editing === key ? null : key)} aria-label={`Editar acesso de ${member.name}`}><KeyRound size={18} /></button><button type="button" onClick={() => toggleRevoked(member)} aria-label={`${member.revoked ? 'Restaurar' : 'Revogar'} acesso de ${member.name}`}>{member.revoked ? <UserCheck size={18} /> : <UserX size={18} />}</button></> : <span className="staff-locked" title="Somente o super administrador do app"><ShieldCheck size={16} /></span>}</div>
+        <div className="staff-card-actions">{canEdit(member) ? <><button type="button" onClick={() => setEditing(editing === key ? null : key)} aria-label={`Editar acesso de ${member.name}`} title="Editar papel e escopo" aria-expanded={editing === key}><KeyRound size={18} aria-hidden="true" /></button><button type="button" className={member.revoked ? undefined : 'staff-revoke-button'} onClick={() => toggleRevoked(member)} aria-label={`${member.revoked ? 'Restaurar' : 'Revogar'} acesso de ${member.name}`} title={member.revoked ? 'Restaurar acesso' : 'Revogar acesso'}>{member.revoked ? <UserCheck size={18} aria-hidden="true" /> : <UserX size={18} aria-hidden="true" />}</button></> : <span className="staff-locked" title="Somente o super administrador do app"><ShieldCheck size={16} /></span>}</div>
       </article>)}
     </div></section>
   </AppShell>;

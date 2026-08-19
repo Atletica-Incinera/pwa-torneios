@@ -1,11 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { getActiveEdition, TournamentAdvancement, TournamentPhase, TournamentState, useFrontendState } from '../lib/repositories/browser-repository';
 import { distributeGroups, generateRoundRobin } from '../lib/tournament-engine';
 import { useUi } from './UiProvider';
-import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
+import { listMatches } from '../lib/edition-catalog';
+import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { resolveDisciplineRule } from '../lib/discipline-rules';
 import { resolveRegulation } from '../lib/regulation';
 import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
@@ -19,7 +21,10 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   const { confirm, prompt, toast } = useUi();
   const { session } = useFrontendSession();
   const regulation = useMemo(() => resolveRegulation(discipline, state.disciplines[discipline]), [discipline, state.disciplines]);
-  const fallback = useMemo<TournamentState>(() => ({ status: initialStatus === 'Em andamento' ? 'Em andamento' : initialStatus === 'Rascunho' ? 'Rascunho' : 'Publicado', editionId: activeEdition?.id, participants: [], seeds: {}, phases: [{ id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups: ['Grupo A', 'Grupo B'], qualifiers: 2 }, { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 }], assignments: {}, generated: false }), [activeEdition?.id, initialStatus]);
+  // `name` e `discipline` entram no fallback porque toda gravação manda o setup
+  // inteiro de volta: sem eles a primeira alteração de uma categoria ainda não
+  // materializada no estado sobe sem identificação e a API recusa com 400.
+  const fallback = useMemo<TournamentState>(() => ({ name, discipline, status: initialStatus === 'Em andamento' ? 'Em andamento' : initialStatus === 'Rascunho' ? 'Rascunho' : 'Publicado', editionId: activeEdition?.id, participants: [], seeds: {}, phases: [{ id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups: ['Grupo A', 'Grupo B'], qualifiers: 2 }, { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 }], assignments: {}, generated: false }), [activeEdition?.id, discipline, initialStatus, name]);
   const setup = state.tournaments[id] ?? fallback;
   const [phaseName, setPhaseName] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -33,6 +38,9 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   // simplesmente substituídos: exigem anulação explícita e auditada.
   const generatedMatches = useMemo(() => Object.entries(state.matches).filter(([matchId]) => matchId.startsWith(`${id}-generated-`)), [id, state.matches]);
   const generatedWithResults = generatedMatches.filter(([, item]) => (item.status ?? matchStatus.scheduled) !== matchStatus.scheduled);
+  // A tabela pronta é medida pelos jogos que existem de fato, não pelo flag da
+  // chave automática: um confronto agendado à mão conta igual.
+  const categoryMatches = useMemo(() => listMatches(state, activeEdition?.id, { tournamentId: id }), [activeEdition?.id, id, state]);
   const rosterIssues = useMemo(() => setup.participants.map((team) => {
     const ref = findTeamByName(state, team);
     const check = checkRoster(regulation, ref ? eligibleAthletes(state, ref.id, discipline).length : 0);
@@ -64,7 +72,7 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     const participants = setup.participants.includes(team) ? setup.participants.filter((item) => item !== team) : [...setup.participants, team];
     const seeds = Object.fromEntries(participants.map((item, index) => [item, setup.seeds[item] ?? index + 1]));
     const assignments = Object.fromEntries(Object.entries(setup.assignments).filter(([item]) => participants.includes(item)));
-    update({ ...setup, participants, seeds, assignments, generated: false }, 'Participantes da disputa alterados', undefined, `${participants.length} participantes`);
+    update({ ...setup, participants, seeds, assignments, generated: false }, 'Participantes da categoria alterados', undefined, `${participants.length} participantes`);
   }
 
   function addPhase(event: FormEvent) {
@@ -95,20 +103,48 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
 
   const statusOrder: TournamentState['status'][] = [tournamentStatus.draft, tournamentStatus.published, tournamentStatus.running, tournamentStatus.closed, tournamentStatus.archived];
 
+  /**
+   * O que falta para a categoria alcançar um estado — na ordem em que o
+   * organizador precisa resolver. Vazio significa que a transição está liberada.
+   *
+   * Publicar não exige tabela: publicar é tornar a categoria visível com a
+   * estrutura que ela já tem, e é justamente o que libera o agendamento de jogos
+   * (a agenda só enxerga categoria publicada). Exigir confrontos antes invertia
+   * a ordem do produto — obrigava a chave automática mesmo para quem monta a
+   * tabela à mão, e bloqueava de novo a cada seed corrigido, porque quase toda
+   * alteração de estrutura zera `generated`.
+   */
+  function pendingFor(status: TournamentState['status']): string[] {
+    const step = statusOrder.indexOf(status);
+    const pending: string[] = [];
+    if (step >= statusOrder.indexOf(tournamentStatus.published)) {
+      if (setup.participants.length < 2) pending.push('inscreva ao menos 2 participantes na Etapa 1');
+      if (!setup.phases.length) pending.push('configure ao menos uma fase na Etapa 2');
+    }
+    if (step >= statusOrder.indexOf(tournamentStatus.running)) {
+      if (!categoryMatches.length) pending.push('gere os confrontos ou agende ao menos um jogo');
+      // Chave automática obsoleta: a estrutura mudou depois de gerar, e começar
+      // assim deixaria a tabela discordando dos grupos configurados.
+      else if (generatedMatches.length && !setup.generated) pending.push('a estrutura mudou depois da geração: regere os confrontos na Etapa 4');
+    }
+    return pending;
+  }
+
   async function setStatus(status: TournamentState['status']) {
     if (status === setup.status) return;
-    if (statusOrder.indexOf(status) < statusOrder.indexOf(setup.status)) { toast('A disputa não pode voltar para uma etapa anterior.', 'error'); return; }
-    if (status !== 'Rascunho' && (setup.participants.length < 2 || !setup.phases.length || !setup.generated)) { toast('Gere os confrontos antes de publicar a disputa.', 'error'); return; }
-    // Elenco incompleto é aviso: não impede a disputa de começar.
-    if (status === 'Em andamento' && rosterIssues.length) toast(`${rosterIssues.length} equipe(s) com elenco fora do regulamento.`, 'info');
+    if (statusOrder.indexOf(status) < statusOrder.indexOf(setup.status)) { toast('A categoria não pode voltar para uma etapa anterior.', 'error'); return; }
+    const pending = pendingFor(status);
+    if (pending.length) { toast(`Para mudar para ${status}: ${pending.join('; ')}.`, 'error'); return; }
+    // Elenco incompleto é aviso: não impede a categoria de começar.
+    if (status === tournamentStatus.running && rosterIssues.length) toast(`${rosterIssues.length} equipe(s) com elenco fora do regulamento.`, 'info');
     const messages: Record<string, string> = {
-      Publicado: 'A disputa passa a aparecer na área pública com a estrutura atual.',
+      Publicado: 'A categoria passa a aparecer na área pública e a aceitar jogos na agenda. Participantes e fases continuam editáveis.',
       'Em andamento': 'Participantes, seeds e fases ficarão bloqueados após o início.',
       Encerrado: 'A estrutura e as partidas serão bloqueadas para edição.',
-      Arquivado: 'A disputa sai das listagens ativas e fica apenas no histórico.',
+      Arquivado: 'A categoria sai das listagens ativas e fica apenas no histórico.',
     };
-    if (status !== 'Rascunho' && !(await confirm({ title: `Mudar para ${status}?`, message: messages[status], confirmLabel: 'Confirmar', danger: ['Encerrado', 'Arquivado'].includes(status) }))) return;
-    update({ ...setup, status }, 'Status da disputa alterado', setup.status, status);
+    if (status !== tournamentStatus.draft && !(await confirm({ title: `Mudar para ${status}?`, message: messages[status], confirmLabel: 'Confirmar', danger: ['Encerrado', 'Arquivado'].includes(status) }))) return;
+    update({ ...setup, status }, 'Status da categoria alterado', setup.status, status);
   }
 
   async function generateConfrontations() {
@@ -134,7 +170,7 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     const buckets = groupOptions.length ? groupOptions.map((group) => ({ name: group, teams: ordered.filter((team) => assignments[team] === group) })) : [{ name: setup.phases[0]?.name ?? 'Fase inicial', teams: ordered }];
     const classificationPhase = setup.phases.find((phase) => phase.format !== 'Mata-mata');
     if (classificationPhase && buckets.some((bucket) => classificationPhase.qualifiers > bucket.teams.length)) {
-      window.dispatchEvent(new CustomEvent('intereng:toast', { detail: { message: 'A quantidade de classificados não pode ser maior que as equipes do grupo.', tone: 'error' } }));
+      toast('A quantidade de classificados não pode ser maior que as equipes do grupo.', 'error');
       setGenerating(false);
       generationLock.current = false;
       return;
@@ -147,17 +183,25 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     await dispatch({
       type: 'category/generateMatches',
       payload: { id, setup: next, matches: createdMatches },
-      audit: { action: setup.generated ? 'Confrontos regerados' : 'Confrontos gerados', entity: name, before: setup.generated ? `${generatedMatches.length} partidas` : undefined, after: `${pairs.length} partidas`, reason: annulmentReason },
+      // A contagem entra no rótulo porque é ele que vira o aviso de sucesso na
+      // tela: sem isso a ação mais pesada do app termina em silêncio.
+      audit: { action: setup.generated ? `Confrontos regerados (${pairs.length})` : `Confrontos gerados (${pairs.length})`, entity: name, before: setup.generated ? `${generatedMatches.length} partidas` : undefined, after: `${pairs.length} partidas`, reason: annulmentReason },
     });
     setGenerating(false);
     generationLock.current = false;
   }
 
-  if (!allowed) return <div className="info-banner"><p>Seu perfil não pode configurar disputas de {discipline}.</p></div>;
+  if (!allowed) return <div className="info-banner"><p>Seu perfil não pode configurar categorias de {discipline}.</p></div>;
 
-  return <div className="tournament-manager"><section className="management-panel" id="publication"><div className="management-panel-head"><div><small>SITUAÇÃO</small><h2>PUBLICAÇÃO</h2></div><select value={setup.status} onChange={(event) => setStatus(event.target.value as TournamentState['status'])}>{statusOrder.map((item) => <option key={item}>{item}</option>)}</select></div><p>{locked ? 'A estrutura está bloqueada porque a disputa já começou.' : 'Participantes e fases podem ser alterados antes do início.'}</p>{renaming === null ? <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setRenaming(name)}><Pencil size={16} /> Renomear categoria</button></div> : <form className="entity-form inline-management-form" onSubmit={renameCategory}><label><span>Nome da categoria</span><input value={renaming} onChange={(event) => setRenaming(event.target.value)} autoFocus required /></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setRenaming(null)}>Cancelar</button><button type="submit" className="primary-button">Salvar nome</button></div></form>}{rosterIssues.length ? <ul className="form-feedback" role="status">{rosterIssues.map((item) => <li key={item}>{item}</li>)}</ul> : null}</section>
-    <section className="management-panel" id="participants"><div className="management-panel-head"><div><small>ETAPA 1</small><h2>PARTICIPANTES E SEEDS</h2></div><strong>{setup.participants.length}</strong></div><div className="participant-selector">{teamNames.map((team) => <label key={team}><input type="checkbox" checked={setup.participants.includes(team)} onChange={() => toggleParticipant(team)} disabled={locked} /><span>{team}</span>{setup.participants.includes(team) ? <input type="number" min="1" value={setup.seeds[team] ?? 1} onChange={(event) => update({ ...setup, seeds: { ...setup.seeds, [team]: Number(event.target.value) }, generated: false }, 'Seed alterado', team, event.target.value)} disabled={locked} aria-label={`Seed de ${team}`} /> : null}</label>)}</div></section>
-    <section className="management-panel" id="phases"><div className="management-panel-head"><div><small>ETAPA 2</small><h2>FASES E GRUPOS</h2></div><strong>{setup.phases.length}</strong></div><div className="phase-editor-list">{setup.phases.map((phase, index) => <article key={phase.id}><span className="phase-order">{String(index + 1).padStart(2, '0')}</span><div><input value={phase.name} onChange={(event) => updatePhase(phase.id, { name: event.target.value })} disabled={locked} aria-label="Nome da fase" /><div className="phase-fields"><label><span>Formato</span><select value={phase.format} onChange={(event) => updatePhase(phase.id, { format: event.target.value as TournamentPhase['format'] })} disabled={locked}><option>Grupos</option><option>Mata-mata</option><option>Liga</option></select></label><label><span>{phase.format === 'Mata-mata' ? 'Avançam por jogo' : 'Classificados'}</span><input type="number" min="1" max={Math.max(1, setup.participants.length)} value={phase.qualifiers} onChange={(event) => updatePhase(phase.id, { qualifiers: Math.max(1, Number(event.target.value)) })} disabled={locked || phase.format === 'Mata-mata'} aria-label="Quantidade de classificados" /></label>{phase.format === 'Grupos' ? <label><span>Grupos</span><input value={phase.groups.join(', ')} onChange={(event) => updatePhase(phase.id, { groups: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} disabled={locked} aria-label="Grupos separados por vírgula" /></label> : null}</div></div><div className="phase-editor-actions"><button type="button" onClick={() => movePhase(index, -1)} disabled={locked || index === 0}><ArrowUp size={15} /></button><button type="button" onClick={() => movePhase(index, 1)} disabled={locked || index === setup.phases.length - 1}><ArrowDown size={15} /></button><button type="button" onClick={() => removePhase(phase.id)} disabled={locked}><Trash2 size={15} /></button></div></article>)}</div><form className="phase-add-form" onSubmit={addPhase}><input value={phaseName} onChange={(event) => setPhaseName(event.target.value)} placeholder="Nome da nova fase" disabled={locked} /><button type="submit" disabled={locked}><Plus size={17} /> Adicionar fase</button></form>{groupOptions.length ? <div className="group-assignment"><h3>DISTRIBUIÇÃO NOS GRUPOS</h3>{setup.participants.map((team) => <label key={team}><span>{team}</span><select value={setup.assignments[team] ?? ''} onChange={(event) => update({ ...setup, assignments: { ...setup.assignments, [team]: event.target.value }, generated: false }, 'Grupo da equipe alterado', team, event.target.value)} disabled={locked}><option value="">Definir grupo</option>{groupOptions.map((group) => <option key={group}>{group}</option>)}</select></label>)}</div> : null}</section>
+  const nextStatus = statusOrder[statusOrder.indexOf(setup.status) + 1];
+  const pendingNext = nextStatus ? pendingFor(nextStatus) : [];
+
+  return <div className="tournament-manager"><section className="management-panel" id="publication"><div className="management-panel-head"><div><small>SITUAÇÃO</small><h2>PUBLICAÇÃO</h2></div><label className="sr-only" htmlFor="category-status">Situação da categoria</label><select id="category-status" value={setup.status} onChange={(event) => setStatus(event.target.value as TournamentState['status'])}>{statusOrder.map((item, index) => <option key={item} disabled={index < statusOrder.indexOf(setup.status)}>{item}</option>)}</select></div>
+    <p>{locked ? 'A estrutura está bloqueada porque a categoria já começou.' : setup.status === tournamentStatus.draft ? 'Rascunho não aparece na área pública nem aceita jogos na agenda. Publique para liberar o agendamento — os confrontos podem ser montados depois.' : 'Publicada: já aparece na área pública e aceita jogos na agenda. Participantes e fases continuam editáveis até o início.'}</p>
+    {nextStatus && pendingNext.length ? <ul className="form-feedback" role="status"><li>Para avançar para {nextStatus}: {pendingNext.join('; ')}.</li></ul> : null}
+    {renaming === null ? <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setRenaming(name)}><Pencil size={16} aria-hidden="true" /> Renomear categoria</button></div> : <form className="entity-form inline-management-form" onSubmit={renameCategory}><label><span>Nome da categoria</span><input value={renaming} onChange={(event) => setRenaming(event.target.value)} autoFocus required /></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setRenaming(null)}>Cancelar</button><button type="submit" className="primary-button">Salvar nome</button></div></form>}{rosterIssues.length ? <ul className="form-feedback" role="status">{rosterIssues.map((item) => <li key={item}>{item}</li>)}</ul> : null}</section>
+    <section className="management-panel" id="participants"><div className="management-panel-head"><div><small>ETAPA 1</small><h2>PARTICIPANTES E SEEDS</h2></div><strong>{setup.participants.length}</strong></div>{teamNames.length ? <div className="participant-selector">{teamNames.map((team) => <label key={team}><input type="checkbox" checked={setup.participants.includes(team)} onChange={() => toggleParticipant(team)} disabled={locked} /><span>{team}</span>{setup.participants.includes(team) ? <input type="number" min="1" value={setup.seeds[team] ?? 1} onChange={(event) => update({ ...setup, seeds: { ...setup.seeds, [team]: Number(event.target.value) }, generated: false }, 'Seed alterado', team, event.target.value)} disabled={locked} aria-label={`Seed de ${team}`} /> : null}</label>)}</div> : <div className="empty-state"><strong>Nenhuma equipe cadastrada nesta edição</strong><p>As equipes são cadastradas uma vez por edição e depois inscritas em cada categoria.</p>{canManageEdition(session) ? <Link href="/teams/new" className="secondary-button"><Plus size={16} aria-hidden="true" /> Cadastrar equipe</Link> : null}</div>}</section>
+    <section className="management-panel" id="phases"><div className="management-panel-head"><div><small>ETAPA 2</small><h2>FASES E GRUPOS</h2></div><strong>{setup.phases.length}</strong></div><div className="phase-editor-list">{setup.phases.map((phase, index) => <article key={phase.id}><span className="phase-order">{String(index + 1).padStart(2, '0')}</span><div><input value={phase.name} onChange={(event) => updatePhase(phase.id, { name: event.target.value })} disabled={locked} aria-label="Nome da fase" /><div className="phase-fields"><label><span>Formato</span><select value={phase.format} onChange={(event) => updatePhase(phase.id, { format: event.target.value as TournamentPhase['format'] })} disabled={locked}><option>Grupos</option><option>Mata-mata</option><option>Liga</option></select></label><label><span>{phase.format === 'Mata-mata' ? 'Avançam por jogo' : 'Classificados'}</span><input type="number" min="1" max={Math.max(1, setup.participants.length)} value={phase.qualifiers} onChange={(event) => updatePhase(phase.id, { qualifiers: Math.max(1, Number(event.target.value)) })} disabled={locked || phase.format === 'Mata-mata'} aria-label="Quantidade de classificados" /></label>{phase.format === 'Grupos' ? <label><span>Grupos</span><input value={phase.groups.join(', ')} onChange={(event) => updatePhase(phase.id, { groups: event.target.value.split(',').map((item) => item.trim()).filter(Boolean) })} disabled={locked} aria-label="Grupos separados por vírgula" /></label> : null}</div></div><div className="phase-editor-actions"><button type="button" onClick={() => movePhase(index, -1)} disabled={locked || index === 0} aria-label={`Mover ${phase.name || `fase ${index + 1}`} para cima`} title="Mover fase para cima"><ArrowUp size={15} aria-hidden="true" /></button><button type="button" onClick={() => movePhase(index, 1)} disabled={locked || index === setup.phases.length - 1} aria-label={`Mover ${phase.name || `fase ${index + 1}`} para baixo`} title="Mover fase para baixo"><ArrowDown size={15} aria-hidden="true" /></button><button type="button" className="phase-remove-button" onClick={() => removePhase(phase.id)} disabled={locked} aria-label={`Remover ${phase.name || `fase ${index + 1}`}`} title="Remover fase"><Trash2 size={15} aria-hidden="true" /></button></div></article>)}</div><form className="phase-add-form" onSubmit={addPhase}><label className="sr-only" htmlFor="nova-fase">Nome da nova fase</label><input id="nova-fase" value={phaseName} onChange={(event) => setPhaseName(event.target.value)} placeholder="Nome da nova fase" disabled={locked} /><button type="submit" disabled={locked}><Plus size={17} aria-hidden="true" /> Adicionar fase</button></form>{groupOptions.length ? <div className="group-assignment"><h3>DISTRIBUIÇÃO NOS GRUPOS</h3>{setup.participants.map((team) => <label key={team}><span>{team}</span><select value={setup.assignments[team] ?? ''} onChange={(event) => update({ ...setup, assignments: { ...setup.assignments, [team]: event.target.value }, generated: false }, 'Grupo da equipe alterado', team, event.target.value)} disabled={locked}><option value="">Definir grupo</option>{groupOptions.map((group) => <option key={group}>{group}</option>)}</select></label>)}</div> : null}</section>
     <section className="management-panel" id="advancement"><div className="management-panel-head"><div><small>ETAPA 3</small><h2>CRITÉRIO DE AVANÇO</h2></div></div>
       <p>{describeAdvancement(advancement, groupOptions.length || 1)}</p>
       <div className="rule-fields">
@@ -167,6 +211,8 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
       </div>
       <label className="checkbox-field"><input type="checkbox" checked={advancement.thirdPlaceMatch} onChange={(event) => updateAdvancement({ thirdPlaceMatch: event.target.checked })} disabled={locked} /><span>Gerar disputa de terceiro lugar após as semifinais</span></label>
     </section>
-    <section className="management-panel" id="generate"><div className="management-panel-head"><div><small>ETAPA 4</small><h2>GERAR CONFRONTOS</h2></div></div><p>{setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} fases.` : 'Revise participantes, seeds, grupos e fases antes de gerar.'}</p><button type="button" className="wide-action button-reset" onClick={generateConfrontations} disabled={locked || setup.participants.length < 2 || !setup.phases.length}><WandSparkles size={18} /> {setup.generated ? 'REGERAR CONFRONTOS' : 'GERAR CONFRONTOS'} <span>›</span></button></section>
+    <section className="management-panel" id="generate"><div className="management-panel-head"><div><small>ETAPA 4</small><h2>GERAR CONFRONTOS</h2></div></div>
+      <p>{setup.participants.length < 2 ? 'Inscreva ao menos 2 participantes na Etapa 1 para gerar os confrontos.' : !setup.phases.length ? 'Crie ao menos uma fase na Etapa 2 para gerar os confrontos.' : locked ? 'A categoria já começou: os confrontos não podem mais ser regerados.' : setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} fases.` : 'Gera todos contra todos dentro de cada grupo. Também dá para agendar jogos um a um pela agenda, depois de publicar.'}</p>
+      <button type="button" className="wide-action button-reset" onClick={generateConfrontations} disabled={generating || locked || setup.participants.length < 2 || !setup.phases.length} aria-busy={generating}><WandSparkles size={18} aria-hidden="true" /> {generating ? 'GERANDO CONFRONTOS…' : setup.generated ? 'REGERAR CONFRONTOS' : 'GERAR CONFRONTOS'} <span aria-hidden="true">›</span></button></section>
   </div>;
 }

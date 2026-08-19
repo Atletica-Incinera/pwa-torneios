@@ -47,6 +47,7 @@ export function MatchesHub() {
       subtitle={showingAll ? 'Jogos e resultados de todas as modalidades' : `Jogos e resultados somente de ${selected}`}
       actionHref={showingAll ? '/matches/new' : `/matches/new?modalidade=${encodeURIComponent(selected)}`}
       actionLabel={showingAll ? 'Agendar jogo' : `Agendar jogo de ${selected}`}
+      actionShortLabel="Agendar jogo"
       actionPermission="discipline"
       actionDiscipline={selected}
     >

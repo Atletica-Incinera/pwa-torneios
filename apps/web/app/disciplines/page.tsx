@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronRight, ListOrdered, Users } from 'lucide-react';
+import { ChevronRight, ListOrdered, Plus, Users } from 'lucide-react';
 import { AppShell, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
@@ -25,6 +25,20 @@ export default function DisciplinesPage() {
       actionLabel="Adicionar modalidade"
     >
       <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link>
+      {/* Segundo item da barra inferior e primeiro passo depois de criar a
+          competição: chegar aqui num branco absoluto quebrava a cadeia logo no
+          começo. O gestor de modalidade cai no mesmo vazio por outro motivo — a
+          modalidade do escopo dele ainda não foi habilitada — e precisa de outra
+          explicação, não de um convite que ele não pode aceitar. */}
+      {!disciplines.length ? <div className="empty-state">
+        <strong>NENHUMA MODALIDADE HABILITADA</strong>
+        <p>{canManageEdition(session)
+          ? 'Adicione a primeira modalidade e o regulamento dela para liberar categorias, inscrições e jogos.'
+          : session?.role === 'DISCIPLINE_MANAGER'
+            ? `A modalidade do seu escopo (${session.scope}) ainda não foi habilitada nesta edição. Fale com o administrador da edição.`
+            : 'Nenhuma modalidade foi habilitada nesta edição ainda. Aguarde o administrador da edição.'}</p>
+        {canManageEdition(session) ? <Link href="/disciplines/new" className="secondary-button"><Plus size={16} aria-hidden="true" /> Adicionar primeira modalidade</Link> : null}
+      </div> : null}
       <section className="poster-list">
         {disciplines.map((discipline, index) => (
           <Link href={disciplineHref(discipline.name)} className={`discipline-card accent-${discipline.tone}${discipline.enabled ? '' : ' is-disabled'}`} key={discipline.name}>

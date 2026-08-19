@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock3, Goal, Layers3, Settings2, Trophy, Users } from 'lucide-react';
+import { Clock3, Goal, Layers3, Settings2, Trash2, Trophy, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { DisciplineRule, useFrontendState } from '../lib/repositories/browser-repository';
 import { formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
@@ -71,6 +71,6 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
       </div>
       <RegulationFields discipline={name} rule={draft} onChange={setDraft} />
       <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setEditing(false)}>Cancelar</button><button type="submit" className="primary-button">Salvar regras</button></div>
-    </form> : allowed ? <div className="form-actions">{canManageEdition(session) ? <button type="button" className="secondary-button" onClick={toggleEnabled}>{enabled ? 'Remover da edição' : 'Restaurar modalidade'}</button> : null}{enabled ? <button type="button" className="primary-button" onClick={() => { setDraft(rule); setEditing(true); }}>Editar regras</button> : null}</div> : null}
+    </form> : allowed ? <div className="form-actions">{canManageEdition(session) ? <button type="button" className={enabled ? 'danger-button' : 'secondary-button'} onClick={toggleEnabled} title={enabled ? 'Tirar a modalidade desta edição' : 'Voltar a habilitar a modalidade'}>{enabled ? <><Trash2 size={16} aria-hidden="true" /> Remover da edição</> : 'Restaurar modalidade'}</button> : null}{enabled ? <button type="button" className="primary-button" onClick={() => { setDraft(rule); setEditing(true); }}>Editar regras</button> : null}</div> : null}
   </>;
 }

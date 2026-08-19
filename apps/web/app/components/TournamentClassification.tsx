@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { StatusBadge } from './AppShell';
 import { calculateStandings, type Standing, type TournamentMatch } from '../lib/tournament-engine';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
@@ -19,18 +18,22 @@ type TournamentClassificationProps = {
   discipline?: string;
   fallbackParticipants?: readonly string[];
   heading?: ClassificationHeading;
-  detailsHref?: string;
-  generalRankingHref?: string;
-  managementAction?: ReactNode;
   className?: string;
 };
 
-export function TournamentClassification({ tournamentId, discipline = 'Futsal', fallbackParticipants, heading, detailsHref, generalRankingHref, managementAction, className = '' }: TournamentClassificationProps) {
+export function TournamentClassification({ tournamentId, discipline = 'Futsal', fallbackParticipants, heading, className = '' }: TournamentClassificationProps) {
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const setup = tournamentId ? state.tournaments[tournamentId] : undefined;
   const phases = setup?.phases ?? [];
-  const groupNames = phases.find((phase) => phase.format === 'Grupos')?.groups ?? ['Grupo A', 'Grupo B'];
+  // Sem fase de grupos a categoria tem uma tabela só. Inventar 'Grupo A'/'Grupo
+  // B' criava duas abas que nenhuma equipe podia ocupar — a classificação de
+  // uma Liga ou de um mata-mata puro nunca preenchia, e a mensagem pedia uma
+  // distribuição em grupos que não existia para ser feita.
+  const knockoutPhases = phases.filter((phase) => phase.format === 'Mata-mata').map((phase) => phase.name);
+  const groupNames = phases.find((phase) => phase.format === 'Grupos')?.groups?.length
+    ? phases.find((phase) => phase.format === 'Grupos')!.groups
+    : phases.filter((phase) => phase.format !== 'Mata-mata').map((phase) => phase.name);
   // Sem inscrição configurada a tabela fica vazia: listar equipes quaisquer
   // daria a impressão de uma classificação que não existe.
   const participants = setup?.participants.length ? setup.participants : [...(fallbackParticipants ?? [])];
@@ -76,7 +79,15 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
       disciplinary: 0,
     }))
     : undefined;
-  const table = officialTable ?? calculateStandings(groupParticipants, allMatches.filter((match) => activeView === 'Chaveamento' ? false : match.group === activeView || match.phase === activeView), regulation.standings);
+  // Com uma tabela só, todo jogo da categoria conta — menos o mata-mata, que
+  // tem chave própria. Casar pelo nome da aba deixava de fora justamente os
+  // jogos agendados à mão, cuja fase é o nome da fase e não o de um grupo.
+  const singleTable = availableGroups.length === 1;
+  const table = officialTable ?? calculateStandings(groupParticipants, allMatches.filter((match) => {
+    if (activeView === 'Chaveamento') return false;
+    if (singleTable) return !knockoutPhases.includes(match.phase ?? '');
+    return match.group === activeView || match.phase === activeView;
+  }), regulation.standings);
   const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
   const qualifierCount = classificationPhase?.qualifiers;
   const advancementLabel = qualifierCount ? `${qualifierCount} ${qualifierCount === 1 ? 'equipe avança' : 'equipes avançam'}` : 'Avanço ainda não configurado';
@@ -100,14 +111,9 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
           <div className="standings-head"><span>#</span><span>Equipe</span><span>J</span><span>V</span><span>E</span><span>D</span><span>PTS</span></div>
           {table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>Saldo {entry.balance > 0 ? '+' : ''}{entry.balance}{entry.tiebreak ? ` · desempate por ${entry.tiebreak.toLocaleLowerCase('pt-BR')}` : ''}</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}
         </div>
-        {!table.length ? <p className="match-filter-empty">{participants.length ? 'Distribua equipes neste grupo para calcular a classificação.' : 'A tabela aparece depois que as equipes forem inscritas nesta categoria.'}</p> : null}
+        {!table.length ? <p className="match-filter-empty">{!participants.length ? 'A tabela aparece depois que as equipes forem inscritas nesta categoria.' : singleTable ? 'Nenhuma equipe nesta fase ainda.' : `Distribua equipes em ${activeView} para calcular a classificação.`}</p> : null}
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Vitória {regulation.standings.win} · empate {regulation.standings.draw} · derrota {regulation.standings.loss}. Desempate: {describeTiebreakers(regulation.standings)}.</p>{setup ? <p>{describeAdvancement(setup.advancement ?? { ...defaultAdvancement, perGroup: qualifierCount ?? defaultAdvancement.perGroup }, availableGroups.length)}</p> : null}</div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>
       </> : <div className="phase-timeline" aria-label="Chaveamento">{knockout.length ? knockout.map((match, index) => <article key={match.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{match.phase ?? 'MATA-MATA'}</small><h3>{match.entryA} × {match.entryB}</h3><p>{isOfficialResult(match.status) ? `${match.scoreA} × ${match.scoreB}` : match.status}</p></div><Trophy size={20} /></article>) : <p className="match-filter-empty">O chaveamento será exibido quando os confrontos eliminatórios forem gerados.</p>}</div>}
     </div>
-    {(detailsHref || generalRankingHref || managementAction) ? <footer className="tournament-classification-actions">
-      {detailsHref ? <Link href={detailsHref} className="wide-action">VER FASES E DETALHES <span>›</span></Link> : null}
-      {generalRankingHref ? <Link href={generalRankingHref} className="wide-action ranking-general-link">VER CLASSIFICAÇÃO GERAL <span>›</span></Link> : null}
-      {managementAction}
-    </footer> : null}
   </section>;
 }
