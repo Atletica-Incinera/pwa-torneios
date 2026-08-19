@@ -14,14 +14,14 @@ import { Trophy } from 'lucide-react';
  * estado válido em vez de erro — lançava exceção antes desta tela existir.
  */
 export function NoCompetitionsYet({ canCreate }: { canCreate: boolean }) {
-  return <section className="section-block">
-    <div className="detail-card">
-      <Trophy size={22} />
+  return <section className="section-block first-competition-card">
+    <div className="profile-hero">
+      <Trophy size={28} />
       <span>
-        <small>Nenhuma competição cadastrada</small>
-        <strong>{canCreate ? 'Crie a primeira para começar' : 'Aguardando o super administrador criar a primeira competição'}</strong>
+        <h2>Nenhuma competição cadastrada</h2>
+        <p>{canCreate ? 'Crie a primeira competição e a edição inicial para liberar o resto do app.' : 'Aguardando o super administrador criar a primeira competição.'}</p>
       </span>
     </div>
-    {canCreate ? <Link href="/competitions/new" className="primary-button wide-action">Criar competição</Link> : null}
+    {canCreate ? <Link href="/competitions/new" className="primary-button">Criar competição</Link> : null}
   </section>;
 }

@@ -15,7 +15,7 @@ export default function DashboardPage() {
   const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
   if (state.competitions.length === 0) {
-    return <AppShell active="home" eyebrow="INTERENG" title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa">
+    return <AppShell active="home" eyebrow="INTERENG" title="O INTERENG CHEGOU!" subtitle="Comece cadastrando a primeira competição">
       <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
     </AppShell>;
   }

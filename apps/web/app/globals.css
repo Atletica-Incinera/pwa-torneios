@@ -72,15 +72,39 @@ ul.form-feedback li { line-height: 1.45; }
 .regulation-group legend { padding: 0 8px; font-family: var(--font-display); font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; color: var(--orange); }
 .regulation-group .form-hint { margin: 0; }
 .regulation-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
-.regulation-row.wide { grid-template-columns: minmax(0, 2fr) auto auto minmax(0, 1fr) auto; }
+/* Os dois checkboxes do evento (por equipe / relógio parado) andam juntos numa
+   coluna só — sem isso viravam duas linhas inteiras no mobile, cada uma com um
+   checkbox nativo do navegador do lado de um rótulo, destoando do resto do
+   formulário. */
+.regulation-row.wide { grid-template-columns: minmax(0, 2fr) auto minmax(0, 1fr) auto; }
 .regulation-row button, .tiebreaker-list button { min-width: 42px; min-height: 42px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface-2); color: var(--white); }
 .regulation-row button:disabled, .tiebreaker-list button:disabled { opacity: .4; }
-.checkbox-field { display: flex; align-items: center; gap: 8px; }
-.checkbox-field input { width: 20px; height: 20px; }
-.checkbox-field > span { font-size: .82rem; letter-spacing: .02em; text-transform: none; }
+.checkbox-pair { display: flex; gap: 8px; }
+/* `appearance:none` faria o checkbox nativo ignorar as regras de acessibilidade
+   de tema do próprio SO; em vez de redesenhar o widget, a caixa vira um chip —
+   borda e fundo acompanham o tema do app, e só o `accent-color` do input, que
+   os navegadores respeitam, marca o estado selecionado. */
+.checkbox-field { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; }
+/* `.entity-form label` (adiante neste arquivo) tem mais especificidade que
+   `.checkbox-field` sozinho e forçaria checkbox e texto a empilhar em vez de
+   ficarem lado a lado — o seletor com `label` repete a especificidade e vence. */
+.entity-form label.checkbox-field { display: flex; align-items: center; }
+.checkbox-field:has(input:checked) { border-color: var(--orange); background: rgba(246,161,26,.1); }
+.checkbox-pair .checkbox-field { flex: 1; min-width: 0; }
+.checkbox-field input { width: 18px; height: 18px; flex: 0 0 auto; accent-color: var(--orange); cursor: pointer; }
+/* Mesma disputa de especificidade que o label, agora no input: `.entity-form
+   input` (0,1,1) empata com `.checkbox-field input` (0,1,1) e vence por vir
+   depois no arquivo — sem isto o checkbox herdava width:100%/min-height:54px
+   do input de texto padrão e virava uma barra esticada em vez de uma caixinha. */
+.entity-form .checkbox-field input { width: 18px; height: 18px; min-height: 0; padding: 0; border: none; clip-path: none; background: transparent; }
+.checkbox-field > span { flex: 1; min-width: 0; font-size: .82rem; letter-spacing: .02em; text-transform: none; color: rgba(251,254,249,.68); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.checkbox-field:has(input:checked) > span { color: var(--white); font-weight: 700; }
 .tiebreaker-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: tiebreaker; }
 .tiebreaker-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-left: 3px solid var(--orange); background: var(--surface-2); }
 .tiebreaker-list li > span::before { counter-increment: tiebreaker; content: counter(tiebreaker) '. '; color: var(--orange); font-weight: 900; }
+/* .checkbox-pair fica lado a lado em qualquer largura — inclusive aqui: é
+   exatamente a fileira de checkboxes que virava duas linhas cheias no mobile
+   que este componente existe para evitar. */
 @media (max-width: 520px) { .regulation-row, .regulation-row.wide { grid-template-columns: 1fr; } }
 .automatic-award-list { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
 .automatic-award-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border-left: 3px solid var(--orange); background: var(--surface); }
@@ -555,6 +579,10 @@ ul.form-feedback li { line-height: 1.45; }
 .team-hero, .profile-hero, .discipline-hero { min-height: 150px; display: flex; align-items: center; gap: 20px; padding: 22px; border: 1px solid var(--line); background: var(--surface); clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 22px 100%, 0 calc(100% - 22px)); }
 .team-hero h2, .profile-hero h2, .discipline-hero h2 { margin: 12px 0 4px; font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; }
 .team-hero p, .profile-hero p, .discipline-hero p { display: flex; align-items: center; gap: 5px; margin: 0; color: rgba(251,254,249,.5); }
+/* Cartão de "crie a primeira competição": mesma moldura de .profile-hero, com
+   o botão logo abaixo do texto em vez da barra esticada de .wide-action. */
+.first-competition-card .profile-hero p { max-width: 380px; line-height: 1.4; }
+.first-competition-card .primary-button { width: fit-content; margin-top: 18px; padding: 0 26px; clip-path: polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px)); }
 .mini-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
 .mini-stats div { min-height: 92px; padding: 12px; display: grid; place-items: center; gap: 3px; border: 1px solid var(--line); background: var(--surface); }
 .mini-stats svg { color: var(--blue); }
