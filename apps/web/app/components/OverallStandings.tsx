@@ -126,7 +126,17 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
 
       <section className="section-block ranking-admin-panel">
         <SectionTitle eyebrow="REGULAMENTO" title="MÉTRICAS DE PONTUAÇÃO" />
-        <div className="ranking-metric-list">{state.overallRanking.metrics.map((metric) => <article key={metric.id}><SlidersHorizontal size={18} /><input aria-label={`Nome da métrica ${metric.name}`} value={metric.name} onChange={(event) => updateMetric(metric.id, { name: event.target.value })} /><label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => updateMetric(metric.id, { defaultPoints: Number(event.target.value) })} /></label><label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric.id, { position: (event.target.value || undefined) as OverallPosition | undefined })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`}><Trash2 size={17} /></button></article>)}</div>
+        <div className="ranking-metric-list">{state.overallRanking.metrics.map((metric) => <article key={metric.id}>
+          <div className="ranking-metric-name-row">
+            <SlidersHorizontal size={18} />
+            <input aria-label={`Nome da métrica ${metric.name}`} value={metric.name} onChange={(event) => updateMetric(metric.id, { name: event.target.value })} />
+          </div>
+          <div className="ranking-metric-fields-row">
+            <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => updateMetric(metric.id, { defaultPoints: Number(event.target.value) })} /></label>
+            <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric.id, { position: (event.target.value || undefined) as OverallPosition | undefined })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`}><Trash2 size={17} /></button>
+          </div>
+        </article>)}</div>
         <form className="ranking-inline-form" onSubmit={addMetric}><input aria-label="Nome da nova métrica" value={metricDraft.name} onChange={(event) => setMetricDraft({ ...metricDraft, name: event.target.value })} placeholder="Ex.: Campeão geral" /><input aria-label="Pontos da nova métrica" type="number" value={metricDraft.points} onChange={(event) => setMetricDraft({ ...metricDraft, points: event.target.value })} /><select aria-label="Origem da nova métrica" value={metricDraft.position} onChange={(event) => setMetricDraft({ ...metricDraft, position: event.target.value as OverallPosition | '' })}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button type="submit"><Plus size={17} /> Adicionar métrica</button></form>
       </section>
 
