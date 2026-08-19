@@ -22,7 +22,8 @@ export type DisciplineRule = {
   walkover?: WalkoverRule;
 };
 export type DisciplineState = { config?: string; rules?: DisciplineRule; enabled?: boolean; created?: boolean; name?: string; mode?: 'Coletiva' | 'Individual'; tournaments?: number; tone?: 'blue' | 'pink' | 'orange'; startedAt?: string };
-export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number };
+export type PhaseStandingState = { entryId: string; entryName: string; rank: number | null; played: number; won: number; drawn: number; lost: number; scoreFor: number; scoreAgainst: number; points: number };
+export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number; standings?: PhaseStandingState[] };
 /** Origem das equipes do mata-mata: quantas por grupo, melhores terceiros e cruzamento. */
 export type TournamentAdvancement = { perGroup: number; bestThirds: number; crossing: 'padrao' | 'sequencial'; thirdPlaceMatch: boolean };
 export type TournamentState = { status: 'Rascunho' | 'Publicado' | 'Em andamento' | 'Encerrado' | 'Arquivado'; participants: string[]; seeds: Record<string, number>; phases: TournamentPhase[]; assignments: Record<string, string>; generated: boolean; editionId?: string; created?: boolean; name?: string; discipline?: string; format?: string; tone?: 'blue' | 'pink' | 'orange'; advancement?: TournamentAdvancement; /** Equipes que avançam sem jogar, por posição no chaveamento. */ byes?: Record<string, string> };
@@ -42,6 +43,7 @@ export type OverallAwardState = { id: string; editionId: string; teamId: string;
 export type OverallClosureState = { editionId: string; at: string; actor: string; note?: string };
 export type OverallRankingState = { metrics: OverallMetricState[]; awards: OverallAwardState[]; closures?: OverallClosureState[] };
 export type StaffState = {
+  roleAssignmentId?: string;
   name: string;
   email: string;
   initials: string;

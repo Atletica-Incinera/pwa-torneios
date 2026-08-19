@@ -1,7 +1,7 @@
 services:
   traefik:
     image: traefik:v3.1
-    container_name: pwa-torneios-traefik
+    container_name: intereng-traefik
     command:
       - --api.dashboard=true
       - --api.insecure=true
@@ -14,73 +14,178 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - pwa-torneios
+      - intereng
 
   postgres:
     image: postgres:16-alpine
-    container_name: pwa-torneios-postgres
+    container_name: intereng-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-pwa_torneios}
-      POSTGRES_USER: ${POSTGRES_USER:-pwa_torneios}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pwa_torneios_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-competitions}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
-      - pwa-torneios
+      - intereng
 
   redis:
     image: redis:7-alpine
-    container_name: pwa-torneios-redis
+    container_name: intereng-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     networks:
-      - pwa-torneios
+      - intereng
+
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: intereng-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-intereng}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-intereng-local-secret}
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_API_CORS_ALLOW_ORIGIN:-http://app.localhost,http://localhost:3001}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - intereng
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    container_name: intereng-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-intereng}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-intereng-local-secret}
+      S3_BUCKET: ${S3_BUCKET:-intereng}
+    entrypoint: >-
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/$${S3_BUCKET} &&
+      mc anonymous set download local/$${S3_BUCKET}/teams
+      "
+    restart: "no"
+    networks:
+      - intereng
 
   api:
-    container_name: pwa-torneios-api
+    container_name: intereng-api
     build:
-      context: ./apps/api
+      context: ../backend
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-competitions}?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-local-access-secret-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-local-refresh-secret-change-in-production}
+      STAFF_INVITE_PASSWORD: ${STAFF_INVITE_PASSWORD:?Defina STAFF_INVITE_PASSWORD}
+      CORS_ORIGINS: http://${WEB_HOST:-app.localhost},http://localhost:3001
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: lax
+      PII_PEPPER: ${PII_PEPPER:-local-pii-pepper-change-in-production}
+      PII_ENCRYPTION_KEY: ${PII_ENCRYPTION_KEY:-local-32-byte-key-change-me-now!}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_PRESIGN_ENDPOINT: ${S3_PRESIGN_ENDPOINT:-http://localhost:9000}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-intereng}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-intereng}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-intereng-local-secret}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:9000/intereng}
+      S3_PRESIGN_TTL_SECONDS: ${S3_PRESIGN_TTL_SECONDS:-300}
+      S3_MAX_LOGO_BYTES: ${S3_MAX_LOGO_BYTES:-8388608}
+      REDIS_STREAM_TTL: ${REDIS_STREAM_TTL:-3600}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    command: ["sh", "-c", "npm run prisma:migrate && npm run start:prod"]
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pwa-torneios-api.rule=Host(`${API_HOST:-api.localhost}`)
-      - traefik.http.routers.pwa-torneios-api.entrypoints=web
-      - traefik.http.services.pwa-torneios-api.loadbalancer.server.port=3000
+      - traefik.http.routers.intereng-api.rule=Host(`${API_HOST:-api.localhost}`)
+      - traefik.http.routers.intereng-api.entrypoints=web
+      - traefik.http.services.intereng-api.loadbalancer.server.port=3000
+      - traefik.http.services.intereng-api.loadbalancer.responseforwarding.flushinterval=-1ms
+      - traefik.http.middlewares.intereng-sse.headers.customresponseheaders.X-Accel-Buffering=no
+      - traefik.http.routers.intereng-api.middlewares=intereng-sse
     networks:
-      - pwa-torneios
+      - intereng
 
   web:
-    container_name: pwa-torneios-web
+    container_name: intereng-web
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_DATA_SOURCE: http
+        NEXT_PUBLIC_API_URL: http://${API_HOST:-api.localhost}/api/v1
     restart: unless-stopped
     depends_on:
-      - api
+      api:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3001"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pwa-torneios-web.rule=Host(`${WEB_HOST:-app.localhost}`)
-      - traefik.http.routers.pwa-torneios-web.entrypoints=web
-      - traefik.http.services.pwa-torneios-web.loadbalancer.server.port=3001
+      - traefik.http.routers.intereng-web.rule=Host(`${WEB_HOST:-app.localhost}`)
+      - traefik.http.routers.intereng-web.entrypoints=web
+      - traefik.http.services.intereng-web.loadbalancer.server.port=3001
     networks:
-      - pwa-torneios
+      - intereng
 
 volumes:
   postgres_data:
   redis_data:
+  minio_data:
 
 networks:
-  pwa-torneios:
+  intereng:
     driver: bridge

@@ -35,6 +35,11 @@ Thumbs.db
 # Docker
 *.pid
 
+# Codex local artifacts
+.codex/blueprints/
+.codex/backlog/
+.codex/worktrees/
+
 # Database / local data
 postgres_data
 redis_data

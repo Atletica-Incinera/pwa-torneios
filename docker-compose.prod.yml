@@ -4,14 +4,25 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      # As NEXT_PUBLIC_* são embutidas no bundle do navegador durante o build.
+      # Como `environment:` elas só existiriam no processo do servidor e nunca
+      # chegariam ao código de cliente — o `apiBaseUrl()` cairia no fallback
+      # '/api' e toda chamada daria 404 em produção.
+      args:
+        NEXT_PUBLIC_DATA_SOURCE: http
+        # Inclui o `/api/v1` de propósito. O nginx da VM faz strip puro do
+        # prefixo — `/intereng-api/X` chega na API como `/X` — e o prefixo
+        # global do Nest é `api/v1`. Verificado contra produção em 19/08/2026:
+        # `/intereng-api/health` devolve 404 e `/intereng-api/api/v1/health`
+        # devolve 200.
+        NEXT_PUBLIC_API_URL: /intereng-api/api/v1
+        NEXT_PUBLIC_BASE_PATH: /intereng
     restart: always
     expose:
       - "3001"
     environment:
       - NODE_ENV=production
       - PORT=3001
-      - NEXT_PUBLIC_BASE_PATH=/intereng
-      - NEXT_PUBLIC_API_URL=/intereng-api
     networks:
       - incinera-network
     deploy:

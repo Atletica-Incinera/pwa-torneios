@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthError, type AuthAdapter, type FrontendRole, type FrontendSession } from './repositories/auth-adapter';
 import { createLocalAuthAdapter, demoUsers } from './repositories/local-auth-adapter';
 import { createHttpAuthAdapter } from './repositories/http-auth-adapter';
-import { clearStoredSession, readStoredSession, sessionChangeEvent } from './repositories/session-storage';
+import { clearStoredSession, handleSessionStorageEvent, readStoredSession, sessionChangeEvent, writeStoredSession } from './repositories/session-storage';
 import { resolveDataSource } from './repositories/state-adapter';
 
 export type { FrontendRole, FrontendSession };
@@ -44,6 +44,47 @@ export function clearFrontendSession() {
   clearStoredSession();
 }
 
+/**
+ * Troca a senha da própria conta.
+ *
+ * A sessão devolvida substitui a atual: o servidor revoga todas as anteriores
+ * na troca, inclusive a de quem pediu, e emite outra no mesmo passo.
+ */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<{ session?: FrontendSession; error?: string }> {
+  try {
+    return { session: await adapter.changePassword(currentPassword, newPassword) };
+  } catch (caught) {
+    if (caught instanceof AuthError) return { error: caught.message };
+    return { error: 'Não foi possível trocar a senha. Tente novamente.' };
+  }
+}
+
+/** Só há senha para trocar quando quem autentica é a API. */
+export function passwordChangeAvailable() { return resolveDataSource() === 'http'; }
+
+/** A conta ainda está com a senha inicial e não alcança o resto do sistema. */
+export function mustChangePassword(session: FrontendSession | null) { return session?.mustChangePassword === true; }
+
+/** Seleciona explicitamente uma atribuição de papel realmente concedida ao staff. */
+export function selectEditionRole(roleAssignmentId: string): boolean {
+  const current = readStoredSession();
+  if (!current) return false;
+  const selected = current.editionRoles.find((role) => role.roleAssignmentId === roleAssignmentId);
+  if (!selected) return false;
+  if (selected.role === 'DISCIPLINE_MANAGER' && (!selected.editionDisciplineId || !selected.disciplineName)) return false;
+  writeStoredSession({
+    ...current,
+    role: selected.role,
+    scope: selected.role === 'DISCIPLINE_MANAGER' ? selected.disciplineName ?? undefined : undefined,
+    selectedRoleAssignmentId: selected.roleAssignmentId,
+    selectedEditionId: selected.editionId,
+    selectedEditionDisciplineId: selected.role === 'DISCIPLINE_MANAGER'
+      ? selected.editionDisciplineId ?? undefined
+      : undefined,
+  });
+  return true;
+}
+
 export function useFrontendSession() {
   const [session, setSession] = useState<FrontendSession | null>(null);
   const [expired, setExpired] = useState(false);
@@ -60,10 +101,11 @@ export function useFrontendSession() {
         setHydrated(true);
       });
     };
+    const syncStorage = (event: StorageEvent) => { handleSessionStorageEvent(event); sync(); };
     sync();
     window.addEventListener(sessionChangeEvent, sync);
-    window.addEventListener('storage', sync);
-    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', sync); };
+    window.addEventListener('storage', syncStorage);
+    return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', syncStorage); };
   }, []);
   const logout = useCallback(() => { void adapter.signOut(); }, []);
   return { session, hydrated, expired, logout };

@@ -27,6 +27,25 @@ export function resolveMatchDate(value: string, today = new Date()) {
   return toDateKey(today);
 }
 
+/** Data no formato brasileiro (dd/mm/aaaa), para mostrar ao usuário em vez do dateKey cru. */
+export function formatDateKey(value: string) {
+  return new Intl.DateTimeFormat('pt-BR').format(fromDateKey(resolveMatchDate(value)));
+}
+
+/**
+ * Rótulo curto de data para os cartões de partida ("12 OUT").
+ *
+ * `formatAgendaDate` assume um dateKey ISO e estoura `RangeError` com qualquer
+ * outra coisa — inclusive os rótulos relativos que `resolveMatchDate` aceita e
+ * partidas sem data marcada. Como isso roda dentro do render de listas e de
+ * telas públicas, um valor fora do padrão derrubaria a página inteira: aqui o
+ * texto original é devolvido como está.
+ */
+export function formatMatchDateLabel(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value;
+  return formatAgendaDate(value).short;
+}
+
 export function formatAgendaDate(value: string, todayKey = toDateKey(new Date())) {
   const distance = Math.round((fromDateKey(value).getTime() - fromDateKey(todayKey).getTime()) / 86_400_000);
   const label = distance === 0 ? 'HOJE' : distance === -1 ? 'ONTEM' : distance === 1 ? 'AMANHÃ' : new Intl.DateTimeFormat('pt-BR', { weekday: 'short' }).format(fromDateKey(value)).replace('.', '').toUpperCase();

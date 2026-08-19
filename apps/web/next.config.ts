@@ -1,11 +1,19 @@
 import type { NextConfig } from 'next';
 import path from 'node:path';
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '/intereng';
+// Sem prefixo por padrão: é o que vale em desenvolvimento e nos testes. Só o
+// deploy que serve o app atrás de um caminho (produção, sob /intereng) declara
+// NEXT_PUBLIC_BASE_PATH. O padrão anterior era '/intereng', o que fazia a stack
+// de desenvolvimento servir tudo sob esse prefixo e devolver 404 na raiz.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // De `front-end`: o app é servido sob /intereng no proxy da VM.
   basePath: basePath === '/' ? '' : basePath,
+  // Do PR de integração: runtime standalone, que reduz a imagem de 1,23 GB
+  // para 349 MB. O Dockerfile do runner depende disto.
+  output: 'standalone',
   // `NEXT_PUBLIC_DATA_SOURCE` é embutido na compilação, então cada origem de
   // dados precisa da sua build. Separar a pasta deixa as duas conviverem: a
   // suíte local não derruba a do HTTP nem o contrário.

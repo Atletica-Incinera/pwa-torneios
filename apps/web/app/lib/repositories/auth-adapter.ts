@@ -1,14 +1,86 @@
 export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
 
-/**
- * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador
- * local são emitidos aqui mesmo; no HTTP virão do servidor, sem mudar as telas.
- */
-export type FrontendSession = {
+export type FrontendEditionRole = {
+  roleAssignmentId: string;
+  editionId: string;
+  editionName: string;
+  editionDisciplineId: string | null;
+  disciplineId: string | null;
+  disciplineName: string | null;
+  role: Exclude<FrontendRole, 'SUPER_ADMIN'>;
+};
+
+export type FrontendSessionUser = {
+  id: string;
   email: string;
   name: string;
   role: FrontendRole;
   scope?: string;
+  editionRoles: FrontendEditionRole[];
+  selectedRoleAssignmentId?: string;
+  selectedEditionId?: string;
+  selectedEditionDisciplineId?: string;
+  /**
+   * A conta ainda está com a senha inicial — a do convite, igual para todos os
+   * convidados, ou a que veio do ambiente no primeiro super administrador. Com
+   * ela ligada a API recusa tudo menos a troca, então o app leva direto para lá.
+   */
+  mustChangePassword?: boolean;
+};
+
+export type AuthSessionResponse = {
+  token: string;
+  expiresAt: string;
+  user: Omit<FrontendSessionUser, 'editionRoles'> & {
+    editionRoles?: FrontendEditionRole[];
+  };
+};
+
+/**
+ * Converte a identidade emitida pela API para o contexto ativo da interface.
+ * `role` e `scope` continuam existindo para as telas legadas, mas a lista
+ * completa preserva todos os papéis que podem ser selecionados nesta sessão.
+ */
+export function normalizeSessionUser(
+  user: AuthSessionResponse['user'],
+  previous?: FrontendSession | null,
+): FrontendSessionUser {
+  const editionRoles = Array.isArray(user.editionRoles) ? user.editionRoles : [];
+  const requestedRoleAssignmentId = previous?.selectedRoleAssignmentId
+    ?? user.selectedRoleAssignmentId;
+  const requestedRole = requestedRoleAssignmentId
+    ? editionRoles.find((role) => role.roleAssignmentId === requestedRoleAssignmentId)
+    : undefined;
+  const matchingLegacyRole = user.role === 'DISCIPLINE_MANAGER'
+    ? editionRoles.find((role) => role.role === 'DISCIPLINE_MANAGER' && role.disciplineName === user.scope)
+    : editionRoles.find((role) => role.role === user.role);
+  const selectedRole = requestedRole
+    ?? matchingLegacyRole
+    ?? editionRoles.find((role) => role.role === user.role);
+
+  return {
+    ...user,
+    editionRoles,
+    mustChangePassword: user.mustChangePassword === true,
+    role: selectedRole?.role ?? user.role,
+    scope: selectedRole?.role === 'DISCIPLINE_MANAGER'
+      ? selectedRole.disciplineName ?? user.scope
+      : undefined,
+    selectedRoleAssignmentId: selectedRole?.roleAssignmentId,
+    selectedEditionId: selectedRole?.editionId
+      ?? previous?.selectedEditionId
+      ?? user.selectedEditionId,
+    selectedEditionDisciplineId: selectedRole?.role === 'DISCIPLINE_MANAGER'
+      ? selectedRole.editionDisciplineId ?? undefined
+      : undefined,
+  };
+}
+
+/**
+ * Quem está usando o app. `token` e `expiresAt` existem desde já: no adaptador
+ * local são emitidos aqui mesmo; no HTTP virão do servidor, sem mudar as telas.
+ */
+export type FrontendSession = FrontendSessionUser & {
   remembered: boolean;
   token: string;
   expiresAt: string;
@@ -28,6 +100,12 @@ export type AuthAdapter = {
   signOut(): Promise<void>;
   /** Sessão guardada, ou `null` quando não existe ou já expirou. */
   restore(): Promise<FrontendSession | null>;
+  /**
+   * Troca a senha da própria conta e devolve a sessão que substitui a atual — o
+   * servidor revoga todas as anteriores, então continuar com a antiga em mãos
+   * significaria cair no login no próximo request.
+   */
+  changePassword(currentPassword: string, newPassword: string): Promise<FrontendSession>;
 };
 
 /** Erro de credencial: a tela de login mostra a mensagem como está. */

@@ -116,22 +116,39 @@ Os 87 testes unitários do front-end são a suíte de contrato dessas regras.
 
 ## Tempo real
 
-Namespace Socket.IO `live-matches` (o gateway já existe em
-`apps/api/src/live/live-matches.gateway.ts`). O cliente conecta com
-`auth: { token }` e escuta um evento:
+O cliente abre uma conexão SSE pública por edição:
 
-| Evento | Payload |
-| --- | --- |
-| `edition-snapshot` | `FrontendState` — o estado novo da edição |
+```http
+GET /api/v1/editions/:editionId/stream
+Accept: text/event-stream
+```
 
-O servidor emite depois de cada operação aceita. Como o snapshot é pequeno, não
-há patch para reconciliar nem ordem de eventos para acertar: quem recebe,
-substitui. É o que faz o placar do ginásio e o celular da arquibancada mostrarem
-o mesmo número.
+Cada mensagem usa o evento `edition-revision`, um `id` monotônico do stream no
+Redis e o payload abaixo:
 
-Queda de conexão não é silenciosa: o cliente escuta `connect`, `disconnect` e
-`connect_error` e troca o selo da barra de contexto para **Sem conexão**. Quando
-a rede volta, ele recarrega o snapshot sozinho.
+```text
+id: <redis-stream-id>
+event: edition-revision
+data: {"editionId":"<id-da-edicao>","revision":42}
+```
+
+O evento é apenas uma invalidação: ele não transporta `FrontendState`, token,
+staff, auditoria ou qualquer outro dado privado. Ao receber uma revisão mais
+nova, o cliente faz um novo `GET /api/v1/editions/:editionId/snapshot` quando
+autenticado, ou `GET /api/v1/editions/:editionId/public-snapshot` no modo
+público, e substitui o estado pela resposta autorizada.
+
+Ao conectar, o servidor envia a revisão-base atual. Quando o navegador reconecta,
+ele encaminha automaticamente o último `id` como `Last-Event-ID`; o servidor
+reproduz as revisões ainda disponíveis no Redis antes de seguir ao vivo. Um
+heartbeat mantém conexões ociosas abertas sem simular alteração de dados. Para
+`editionId=active`, uma troca de edição ativa encerra o recorte anterior e faz o
+cliente carregar o snapshot da nova edição.
+
+Existe somente um `EventSource` compartilhado por edição na mesma aba. Queda de
+conexão não é silenciosa: `open` e `error` atualizam o selo da barra de contexto
+para **Online** ou **Sem conexão**. O próprio `EventSource` reconecta e, quando a
+rede volta, o cliente invalida o cache e recarrega o snapshot.
 
 ## Como verificar sem o backend pronto
 

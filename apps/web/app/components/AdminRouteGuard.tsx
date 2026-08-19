@@ -3,9 +3,10 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
-import { canReadAudit, clearFrontendSession, useFrontendSession } from '../lib/frontend-session';
+import { canReadAudit, clearFrontendSession, mustChangePassword, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { ErrorScreen } from './ErrorScreen';
+import { PasswordChangeScreen } from './PasswordChangeForm';
 
 // O gestor cria e edita dentro da sua modalidade — inclusive categoria.
 // Fica de fora o que pertence à edição inteira: contexto, cadastro de equipe e
@@ -13,7 +14,11 @@ import { ErrorScreen } from './ErrorScreen';
 const editionAdminPrefixes = ['/competitions', '/disciplines/new', '/staff', '/athletes', '/teams/new'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, status, error, refresh } = useFrontendState();
-  const revoked = Boolean(session?.email && state.staff[session.email]?.revoked);
+  const matchingStaffRoles = session?.email ? Object.values(state.staff).filter((member) => (
+    member.email === session.email
+    && (session.role === 'DISCIPLINE_MANAGER' ? member.role === 'Gestor de modalidade' && member.scope === session.scope : member.role === 'Admin da edição')
+  )) : [];
+  const revoked = matchingStaffRoles.length > 0 && matchingStaffRoles.every((member) => member.revoked);
   const rosterCreation = /^\/teams\/[^/]+\/athletes\/new$/.test(pathname);
   const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && (rosterCreation || editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix))))
     // A auditoria é do super admin: nem o organizador entra.
@@ -29,6 +34,10 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     if (stateHydrated && revoked) { clearFrontendSession(); router.replace('/?access=revoked'); }
   }, [expired, hydrated, pathname, revoked, router, session, stateHydrated]);
   if (!hydrated || expired || !session || revoked) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;
+  // Antes de qualquer checagem que dependa dos dados: com a senha inicial ainda
+  // em uso a API recusa o snapshot com 403, e a tela de erro de carregamento
+  // esconderia o único caminho que a pessoa tem — trocar a senha.
+  if (mustChangePassword(session)) return <PasswordChangeScreen email={session.email} />;
   // Com acesso em ordem, o que falta são os dados: a tela oferece nova tentativa.
   if (status === 'error') return <ErrorScreen message={error} onRetry={() => void refresh()} />;
   if (!stateHydrated) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;

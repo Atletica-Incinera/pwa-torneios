@@ -1,4 +1,4 @@
-import { fromDateKey, resolveMatchDate } from './date-utils.ts';
+import { formatDateKey, fromDateKey, resolveMatchDate } from './date-utils.ts';
 import { estimatedMatchMinutes, resolveRegulation, type Regulation } from './regulation.ts';
 import type { FrontendState } from './frontend-state.ts';
 import { listMatches } from './edition-catalog.ts';
@@ -87,7 +87,7 @@ export function findScheduleConflicts(
   if (window?.start && window?.end) {
     const dateKey = resolveMatchDate(candidate.date);
     if (dateKey < window.start || dateKey > window.end) {
-      conflicts.push({ code: 'fora-da-edicao', message: `A partida está fora do período da edição (${window.start} a ${window.end}).` });
+      conflicts.push({ code: 'fora-da-edicao', message: `A partida está fora do período da edição (${formatDateKey(window.start)} a ${formatDateKey(window.end)}).` });
     }
   }
 
@@ -102,7 +102,7 @@ export function findScheduleConflicts(
     const samePair = sharedTeams.length === 2;
 
     if (samePair && otherStart === start) {
-      conflicts.push({ code: 'confronto-duplicado', message: `Este confronto já está agendado em ${match.date} às ${match.time}.`, matchId: match.id });
+      conflicts.push({ code: 'confronto-duplicado', message: `Este confronto já está agendado em ${formatDateKey(match.date)} às ${match.time}.`, matchId: match.id });
       continue;
     }
     if (candidate.venue && match.venue && sameVenue(candidate.venue, match.venue) && overlaps(start, end + policy.changeoverMinutes, otherStart, otherEnd + policy.changeoverMinutes)) {

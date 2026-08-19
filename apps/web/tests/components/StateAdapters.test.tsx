@@ -1,10 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { AxiosHeaders, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
 import { seededFrontendState, storageKey, type FrontendState } from '../../app/lib/frontend-state';
 import { applyAction } from '../../app/lib/repositories/reducer';
 import { createLocalStateAdapter } from '../../app/lib/repositories/local-adapter';
 import { createHttpStateAdapter } from '../../app/lib/repositories/http-adapter';
 import type { Action } from '../../app/lib/repositories/actions';
 import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
+
+function apiResponse<T>(config: InternalAxiosRequestConfig, data: T, status = 200): AxiosResponse<{ data: T }> {
+  return { data: { data }, status, statusText: status >= 400 ? 'Erro' : 'OK', headers: new AxiosHeaders(), config };
+}
 
 /**
  * Servidor de mentira que roda o mesmo reducer do cliente — é exatamente o que
@@ -13,17 +18,17 @@ import type { StateAdapter } from '../../app/lib/repositories/state-adapter';
  */
 function createFakeApi(initial: FrontendState) {
   let snapshot = initial;
-  const fetchImpl: typeof fetch = async (input, init) => {
-    const url = String(input);
-    if (url.endsWith('/snapshot')) return Response.json(snapshot);
+  const adapter: AxiosAdapter = async (config) => {
+    const url = config.url ?? '';
+    if (url.endsWith('/snapshot')) return apiResponse(config, snapshot);
     if (url.endsWith('/actions')) {
-      const action = JSON.parse(String(init?.body)) as Action;
+      const action = (typeof config.data === 'string' ? JSON.parse(config.data) : config.data) as Action;
       snapshot = applyAction(snapshot, action, { actor: 'Ana Coordenadora' });
-      return Response.json(snapshot);
+      return apiResponse(config, snapshot);
     }
-    return new Response('não encontrado', { status: 404 });
+    return apiResponse(config, null, 404);
   };
-  return { fetchImpl };
+  return { adapter };
 }
 
 const sequence: Action[] = [
@@ -52,23 +57,23 @@ describe('contrato entre as origens de dados', () => {
   beforeEach(() => { window.localStorage.clear(); });
 
   it('local e HTTP produzem o mesmo estado para a mesma sequência de ações', async () => {
-    const { fetchImpl } = createFakeApi(seededFrontendState);
+    const { adapter } = createFakeApi(seededFrontendState);
 
     const local = await run(createLocalStateAdapter());
-    const remote = await run(createHttpStateAdapter({ fetchImpl, getToken: () => 'token-de-teste' }));
+    const remote = await run(createHttpStateAdapter({ adapter, getToken: () => 'token-de-teste' }));
 
     expect(comparable(remote)).toBe(comparable(local));
   });
 
   it('o adaptador local grava o resultado, e o HTTP confia na resposta do servidor', async () => {
-    const { fetchImpl } = createFakeApi(seededFrontendState);
+    const { adapter } = createFakeApi(seededFrontendState);
     const action = sequence[0];
 
     await createLocalStateAdapter().apply(action);
     expect(JSON.parse(window.localStorage.getItem(storageKey) ?? '{}').teams?.aurora?.name).toBe('Aurora');
 
     window.localStorage.clear();
-    const remote = await createHttpStateAdapter({ fetchImpl }).apply(action);
+    const remote = await createHttpStateAdapter({ adapter }).apply(action);
     expect(remote.teams.aurora?.name).toBe('Aurora');
     expect(window.localStorage.getItem(storageKey)).toBeNull();
   });
