@@ -60,7 +60,8 @@ test('a operação vai à API e a resposta é o que a tela mostra', async ({ pag
   await expect(page.getByRole('heading', { name: 'AURORA HTTP', exact: true })).toBeVisible();
 
   // O registro está no servidor, e o autor da auditoria é quem o token diz.
-  const snapshot = await (await request.get(`${api}/editions/active/snapshot`, { headers: { Authorization: 'Bearer token-ana@ufpe.br' } })).json();
+  // A resposta vem envelopada em `{ data }`, como na API real.
+  const { data: snapshot } = await (await request.get(`${api}/editions/active/snapshot`, { headers: { Authorization: 'Bearer token-ana@ufpe.br' } })).json();
   expect(snapshot.teams['aurora-http'].name).toBe('Aurora HTTP');
   expect(snapshot.audit[0]).toMatchObject({ action: 'Equipe cadastrada', actor: 'Ana Coordenadora' });
 });
@@ -68,7 +69,7 @@ test('a operação vai à API e a resposta é o que a tela mostra', async ({ pag
 test('o espectador usa o snapshot público, sem staff nem auditoria', async ({ page }) => {
   const publicSnapshot = page.waitForResponse((response) => response.url().includes('/public-snapshot'));
   await page.goto('/public/tournaments');
-  const payload = await (await publicSnapshot).json();
+  const { data: payload } = await (await publicSnapshot).json();
 
   expect(payload.staff).toEqual({});
   expect(payload.audit).toEqual([]);

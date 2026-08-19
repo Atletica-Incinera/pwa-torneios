@@ -13,11 +13,58 @@ import { privateTournamentStatuses } from '../../app/lib/status.ts';
  * exatamente o que o backend fará — e devolve o snapshot como resposta.
  */
 const port = Number(process.env.MOCK_API_PORT ?? 3201);
+const EDITION = { id: 'intereng-2026', name: '2026' };
+
+/**
+ * O papel do usuário na edição, no formato que a API real devolve.
+ *
+ * Não é detalhe: o app decide o que liberar a partir de `editionRoles`, não do
+ * campo `role` solto. Sem esta lista, quem não é super admin entra e não
+ * consegue navegar — foi o que manteve a suíte vermelha.
+ */
+function editionRole(
+  roleAssignmentId: string,
+  role: 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER',
+  disciplineName: string | null = null,
+) {
+  return {
+    roleAssignmentId,
+    editionId: EDITION.id,
+    editionName: EDITION.name,
+    editionDisciplineId: disciplineName ? `${EDITION.id}-${disciplineName.toLowerCase()}` : null,
+    disciplineId: disciplineName ? disciplineName.toLowerCase() : null,
+    disciplineName,
+    role,
+  };
+}
+
 const users = [
-  { email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora', role: 'EDITION_ADMIN' as const },
-  { email: 'super@intereng.com', password: 'super2026', name: 'Super Admin', role: 'SUPER_ADMIN' as const },
-  { email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins', role: 'DISCIPLINE_MANAGER' as const, scope: 'Futsal' },
+  {
+    id: 'staff-ana', email: 'ana@ufpe.br', password: 'intereng2026', name: 'Ana Coordenadora',
+    role: 'EDITION_ADMIN' as const, editionRoles: [editionRole('papel-ana', 'EDITION_ADMIN')],
+  },
+  {
+    id: 'staff-super', email: 'super@intereng.com', password: 'super2026', name: 'Super Admin',
+    role: 'SUPER_ADMIN' as const, editionRoles: [],
+  },
+  {
+    id: 'staff-bruno', email: 'bruno@ufpe.br', password: 'futsal2026', name: 'Bruno Martins',
+    role: 'DISCIPLINE_MANAGER' as const, scope: 'Futsal',
+    editionRoles: [editionRole('papel-bruno', 'DISCIPLINE_MANAGER', 'Futsal')],
+  },
 ];
+
+/** O usuário no formato de `AuthUserResponse` — sem a senha, evidentemente. */
+function sessionUser(user: (typeof users)[number]) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    scope: 'scope' in user ? user.scope : undefined,
+    editionRoles: user.editionRoles,
+  };
+}
 
 let snapshot: FrontendState = seededFrontendState;
 const sessions = new Map<string, { email: string; name: string }>();
@@ -29,14 +76,51 @@ function publicSnapshot(state: FrontendState) {
   return { ...state, tournaments, matches, staff: {}, audit: [] };
 }
 
-function send(response: ServerResponse, status: number, body?: unknown) {
+/**
+ * O app roda numa porta e este mock em outra, então toda chamada é cross-origin.
+ * Como o cliente HTTP envia `withCredentials`, o navegador recusa a resposta se
+ * a origem vier como `*` — ela precisa ser ecoada, junto de `Allow-Credentials`.
+ * Sem isso a requisição nem chega aqui e a tela mostra "Não foi possível acessar
+ * o servidor", que foi o que derrubou a suíte inteira.
+ */
+function corsHeaders(origin: string | undefined) {
+  return {
+    'Access-Control-Allow-Origin': origin ?? '*',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers':
+      'Content-Type, Authorization, Idempotency-Key, X-Edition-Role, X-Edition-Discipline-Id, X-Operator-Id',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    Vary: 'Origin',
+  };
+}
+
+/**
+ * Toda resposta da API real vem envelopada: `{ data }` no sucesso e
+ * `{ error: { message } }` na falha — é isso que o cliente HTTP desembrulha.
+ * O mock devolvia o corpo cru, então o cliente lia `undefined` e quebrava antes
+ * de conseguir transformar a falha numa mensagem de tela.
+ */
+function envelope(status: number, body: unknown) {
+  if (body === undefined) return undefined;
+  if (status >= 400) {
+    const message = (body as { message?: string }).message ?? 'Falha na requisição.';
+    return { error: { code: status === 401 ? 'UNAUTHORIZED' : 'ERROR', message } };
+  }
+  return { data: body };
+}
+
+function send(
+  response: ServerResponse,
+  status: number,
+  body?: unknown,
+  origin?: string,
+) {
   response.writeHead(status, {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    ...corsHeaders(origin),
   });
-  response.end(body === undefined ? '' : JSON.stringify(body));
+  const payload = envelope(status, body);
+  response.end(payload === undefined ? '' : JSON.stringify(payload));
 }
 
 async function readBody(request: IncomingMessage) {
@@ -46,39 +130,66 @@ async function readBody(request: IncomingMessage) {
 }
 
 createServer(async (request, response) => {
+  /** Responde ecoando a origem desta requisição, exigido por withCredentials. */
+  const reply = (status: number, payload?: unknown) => send(response, status, payload, request.headers.origin);
   const url = new URL(request.url ?? '/', `http://127.0.0.1:${port}`);
   const session = sessions.get((request.headers.authorization ?? '').replace('Bearer ', ''));
 
-  if (request.method === 'OPTIONS') return send(response, 204);
+  if (request.method === 'OPTIONS') return reply(204);
 
   // Gancho de teste: cada cenário começa da mesma edição.
-  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); return send(response, 204); }
+  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); return reply(204); }
 
   if (url.pathname === '/auth/login' && request.method === 'POST') {
     const { email, password } = await readBody(request) as { email?: string; password?: string };
     const user = users.find((item) => item.email === email && item.password === password);
-    if (!user) return send(response, 401, { message: 'E-mail ou senha inválidos.' });
+    if (!user) return reply(401, { message: 'E-mail ou senha inválidos.' });
     const token = `token-${user.email}`;
     sessions.set(token, { email: user.email, name: user.name });
-    return send(response, 200, { token, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: { email: user.email, name: user.name, role: user.role, scope: 'scope' in user ? user.scope : undefined } });
+    return reply(200, {
+      token,
+      expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      user: sessionUser(user),
+    });
   }
 
-  if (url.pathname === '/auth/logout') { if (session) sessions.delete((request.headers.authorization ?? '').replace('Bearer ', '')); return send(response, 204); }
+  /**
+   * Renovação de sessão.
+   *
+   * Na API real o refresh viaja num cookie HttpOnly, que não atravessa a
+   * fronteira de origem desta suíte (app e mock em portas diferentes, sobre
+   * HTTP). Este mock declina sempre — e é justamente disso que o teste de
+   * sessão expirada precisa: ao tomar 401 aqui, o cliente encerra o acesso e
+   * devolve ao login com aviso, em vez de tratar como erro genérico.
+   */
+  if (url.pathname.endsWith('/auth/refresh')) {
+    return reply(401, { message: 'Token de atualização não fornecido.' });
+  }
 
-  if (url.pathname.endsWith('/public-snapshot')) return send(response, 200, publicSnapshot(snapshot));
+  // O app consulta esta rota quando restaura uma sessão sem papéis em memória.
+  if (url.pathname.endsWith('/auth/me')) {
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
+    const user = users.find((item) => item.email === session.email);
+    if (!user) return reply(401, { message: 'Sessão inválida.' });
+    return reply(200, sessionUser(user));
+  }
+
+  if (url.pathname === '/auth/logout') { if (session) sessions.delete((request.headers.authorization ?? '').replace('Bearer ', '')); return reply(204); }
+
+  if (url.pathname.endsWith('/public-snapshot')) return reply(200, publicSnapshot(snapshot));
 
   if (url.pathname.endsWith('/snapshot')) {
-    if (!session) return send(response, 401, { message: 'Sessão inválida.' });
-    return send(response, 200, snapshot);
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
+    return reply(200, snapshot);
   }
 
   if (url.pathname.endsWith('/actions') && request.method === 'POST') {
-    if (!session) return send(response, 401, { message: 'Sessão inválida.' });
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
     const action = await readBody(request) as Action;
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
-    return send(response, 200, snapshot);
+    return reply(200, snapshot);
   }
 
-  return send(response, 404, { message: 'Rota inexistente.' });
+  return reply(404, { message: 'Rota inexistente.' });
 }).listen(port, () => console.log(`mock-api ouvindo em ${port}`));
