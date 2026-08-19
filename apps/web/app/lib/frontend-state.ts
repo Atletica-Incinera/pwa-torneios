@@ -113,6 +113,21 @@ export const seededFrontendState: FrontendState = {
   staff: seedStaff,
 };
 
+/**
+ * Nenhuma competição foi criada ainda — o primeiro estado real de um sistema
+ * novo, não uma vitrine de demonstração.
+ *
+ * Diferente de `initialFrontendState`: aquele carrega "InterEng 2026" como
+ * esqueleto para telas que sempre tiveram alguma edição para mostrar antes do
+ * primeiro carregamento terminar. Aqui a origem confirmou que não existe
+ * nenhuma — mostrar dados de mentira seria pior que mostrar vazio.
+ */
+export const emptyFrontendState: FrontendState = {
+  ...initialFrontendState,
+  competitions: [],
+  editions: [],
+};
+
 export function getActiveCompetition(state: Pick<FrontendState, 'competitions'>) {
   return state.competitions.find((item) => item.active) ?? state.competitions[0];
 }

@@ -1,7 +1,7 @@
-import { getActiveEdition, initialFrontendState, type FrontendState } from '../frontend-state.ts';
+import { emptyFrontendState, getActiveEdition, initialFrontendState, type FrontendState } from '../frontend-state.ts';
 import { createId } from '../create-id.ts';
 import type { AxiosAdapter } from 'axios';
-import { apiRequestEnvelope, type ApiEnvelope } from './api-client.ts';
+import { apiRequestEnvelope, ApiError, type ApiEnvelope } from './api-client.ts';
 import { readSelectedEditionDisciplineId, readSelectedEditionRole, readSessionToken } from './session-storage.ts';
 import { getOperatorDeviceId } from './operator-device.ts';
 import type { Action } from './actions.ts';
@@ -187,10 +187,21 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
       selectedEditionDisciplineId,
       operatorDeviceId,
     ]);
-    const envelope = options.adapter
-      ? await requestSnapshot()
-      : await sharePendingSnapshotRequest(requestKey, requestSnapshot);
-    return acceptSnapshot(envelope, sequence);
+    try {
+      const envelope = options.adapter
+        ? await requestSnapshot()
+        : await sharePendingSnapshotRequest(requestKey, requestSnapshot);
+      return acceptSnapshot(envelope, sequence);
+    } catch (caught) {
+      // Nenhuma competição ativa é um estado legítimo — o primeiro carregamento
+      // de um sistema sem nada cadastrado ainda, não uma falha. Sem isto, a tela
+      // de erro genérica ocupava o lugar de qualquer página privada, inclusive a
+      // única capaz de criar a primeira competição.
+      if (caught instanceof ApiError && caught.code === 'NO_ACTIVE_EDITION') {
+        return acceptSnapshot({ data: emptyFrontendState }, sequence);
+      }
+      throw caught;
+    }
   };
 
   return {

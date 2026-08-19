@@ -33,8 +33,11 @@ const navItems = [
 
 export function PublicAppShell({ active, eyebrow, title, subtitle, children }: PublicAppShellProps) {
   const { state, status, error, refresh, source, connection } = useFrontendState();
+  // Alcançável desde que "sem competição ativa" virou estado válido em vez de
+  // erro: um visitante público pode chegar aqui num sistema recém-migrado,
+  // sem login nenhum, antes de qualquer competição existir.
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
-  const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
+  const editions = competition ? state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id) : [];
   const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
   // O espectador só vê resultado oficial: enquanto o snapshot não chega, nada é
   // mostrado como se fosse definitivo.
@@ -43,10 +46,10 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
   return (
     <main id="app-main" className={`app-screen management-screen public-readonly-screen ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
-        <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition.year}`}>
-          <span className="context-mark">{String(edition.year).slice(-2)}</span>
-          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
-        </Link>
+        {competition ? <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition?.year ?? ''}`}>
+          <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>
+          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition?.year ?? ''}</strong></span>
+        </Link> : <Link href="/public" className="context-copy" aria-label="Nenhuma competição ativa"><span><small>INTERENG</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
         <ConnectionBadge source={source} connection={connection} publicView />
       </div>
 

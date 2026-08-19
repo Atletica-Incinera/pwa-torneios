@@ -4,15 +4,21 @@ import Link from 'next/link';
 import { Radio, Shield, Trophy, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
 import { MatchCard } from '../components/MatchCard';
+import { NoCompetitionsYet } from '../components/NoCompetitionsYet';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { listCategories, listDisciplines, listMatches, listTeams } from '../lib/edition-catalog';
 import { isLive, matchStatus, tournamentStatus } from '../lib/status';
-import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { canManageEdition, isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
 
 export default function DashboardPage() {
   const { state } = useFrontendState();
   const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
+  if (state.competitions.length === 0) {
+    return <AppShell active="home" eyebrow="INTERENG" title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa">
+      <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
+    </AppShell>;
+  }
   const categories = listCategories(state, activeEdition?.id);
   const disciplines = listDisciplines(state, activeEdition?.id).filter((item) => item.enabled);
   const editionMatches = listMatches(state, activeEdition?.id);

@@ -22,7 +22,23 @@ export function apiBaseUrl() {
 }
 
 export type ApiEnvelope<T> = { data: T; meta?: unknown };
-type ApiErrorEnvelope = { error?: { message?: string | string[] } };
+type ApiErrorEnvelope = { error?: { code?: string; message?: string | string[] } };
+
+/**
+ * Erro da API com o código do envelope (`error.code`) preservado.
+ *
+ * A mensagem em português não é estável o bastante para o código decidir
+ * comportamento por ela — o código é. É o que deixa `NO_ACTIVE_EDITION`
+ * (estado legítimo: nenhuma competição criada ainda) distinguível de um 404
+ * comum (ID errado), sem comparar texto.
+ */
+export class ApiError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
 
 export type ApiRequest = {
   path: string;
@@ -71,9 +87,12 @@ function requestError(error: unknown): Error {
   }
   const raw = error.response?.data?.error?.message;
   const message = Array.isArray(raw) ? raw[0] : raw;
-  return new Error(message || (error.response
-    ? `Falha na requisição (${error.response.status}).`
-    : 'Não foi possível acessar o servidor.'));
+  return new ApiError(
+    message || (error.response
+      ? `Falha na requisição (${error.response.status}).`
+      : 'Não foi possível acessar o servidor.'),
+    error.response?.data?.error?.code,
+  );
 }
 
 async function requestSessionRefresh(client: AxiosInstance): Promise<FrontendSession> {

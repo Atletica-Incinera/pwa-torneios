@@ -96,6 +96,10 @@ function restoreUsers() {
 let snapshot: FrontendState = seededFrontendState;
 const sessions = new Map<string, { email: string; name: string }>();
 
+/** Cenário de teste: sistema recém-migrado, nenhuma competição criada ainda. */
+let noActiveEdition = false;
+const emptySnapshot: FrontendState = { ...seededFrontendState, competitions: [], editions: [] };
+
 /** O payload do espectador: sem staff, sem auditoria, sem rascunho. */
 function publicSnapshot(state: FrontendState) {
   const tournaments = Object.fromEntries(Object.entries(state.tournaments).filter(([, item]) => !privateTournamentStatuses.includes(item.status)));
@@ -130,8 +134,10 @@ function corsHeaders(origin: string | undefined) {
 function envelope(status: number, body: unknown) {
   if (body === undefined) return undefined;
   if (status >= 400) {
-    const message = (body as { message?: string }).message ?? 'Falha na requisição.';
-    return { error: { code: status === 401 ? 'UNAUTHORIZED' : 'ERROR', message } };
+    const typed = body as { message?: string; code?: string };
+    const message = typed.message ?? 'Falha na requisição.';
+    const code = typed.code ?? (status === 401 ? 'UNAUTHORIZED' : 'ERROR');
+    return { error: { code, message } };
   }
   return { data: body };
 }
@@ -166,7 +172,21 @@ createServer(async (request, response) => {
 
   // Gancho de teste: cada cenário começa da mesma edição — e das mesmas
   // credenciais, já que a troca de senha altera o usuário em memória.
-  if (url.pathname === '/test/reset') { snapshot = seededFrontendState; sessions.clear(); restoreUsers(); return reply(204); }
+  if (url.pathname === '/test/reset') {
+    snapshot = seededFrontendState;
+    sessions.clear();
+    restoreUsers();
+    noActiveEdition = false;
+    return reply(204);
+  }
+
+  // Simula o sistema recém-migrado: banco com tabelas, mas sem nenhuma
+  // competição cadastrada — o estado real de produção logo após o cutover.
+  if (url.pathname === '/test/no-active-edition') {
+    noActiveEdition = true;
+    snapshot = emptySnapshot;
+    return reply(204);
+  }
 
   if (url.pathname === '/auth/login' && request.method === 'POST') {
     const { email, password } = await readBody(request) as { email?: string; password?: string };
@@ -221,6 +241,20 @@ createServer(async (request, response) => {
     return reply(200, { token, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: sessionUser(user) });
   }
 
+  // Espelha o 404 com código próprio que a API real devolve quando nenhuma
+  // competição está ativa — antes de qualquer outra checagem de snapshot,
+  // porque é o estado real de um sistema recém-migrado: não há edição para
+  // resolver "active" nenhuma, autenticado ou não.
+  if (
+    noActiveEdition
+    && (url.pathname.endsWith('/public-snapshot') || url.pathname.endsWith('/snapshot'))
+  ) {
+    return reply(404, {
+      code: 'NO_ACTIVE_EDITION',
+      message: 'Não foi possível determinar a competição ativa.',
+    });
+  }
+
   // O público não passa por guarda nenhuma na API real — nem quando o token
   // enviado pertence a uma conta com a senha inicial ainda de pé. Checar isto
   // antes da guarda abaixo é o que expôs o bug do front em produção: com um
@@ -241,11 +275,40 @@ createServer(async (request, response) => {
     return reply(200, snapshot);
   }
 
+  if (url.pathname === '/competitions/bootstrap' && request.method === 'POST') {
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
+    const user = users.find((item) => item.email === session.email);
+    if (user?.role !== 'SUPER_ADMIN') return reply(403, { message: 'Acesso restrito a SuperAdmins.' });
+    if (snapshot.competitions.length > 0) {
+      return reply(409, { message: 'Já existe ao menos uma competição.' });
+    }
+    const body = await readBody(request) as { name?: string; slug?: string; year?: number; start?: string; end?: string };
+    const competitionId = `competition-${body.slug}`;
+    const editionId = `edition-${body.slug}-${body.year}`;
+    snapshot = {
+      ...snapshot,
+      competitions: [{ id: competitionId, name: body.name ?? '', slug: body.slug ?? '', active: true }],
+      editions: [{
+        id: editionId, name: String(body.year), year: body.year ?? 0,
+        start: body.start ?? '', end: body.end ?? '', status: 'Planejamento', active: true,
+        competitionId,
+      }],
+    };
+    // Como na API real: nascem ativas — é o que faz "active" voltar a resolver.
+    noActiveEdition = false;
+    return reply(201, snapshot.editions[0]);
+  }
+
   if (url.pathname.endsWith('/actions') && request.method === 'POST') {
     if (!session) return reply(401, { message: 'Sessão inválida.' });
     const action = await readBody(request) as Action;
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
+    // A partir da primeira competição ativa, "active" volta a resolver — como
+    // na API real, que consulta o banco de novo a cada requisição.
+    if (noActiveEdition && snapshot.competitions.some((item) => item.active)) {
+      noActiveEdition = false;
+    }
     return reply(200, snapshot);
   }
 
