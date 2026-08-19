@@ -83,6 +83,7 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   // tem chave própria. Casar pelo nome da aba deixava de fora justamente os
   // jogos agendados à mão, cuja fase é o nome da fase e não o de um grupo.
   const singleTable = availableGroups.length === 1;
+  const usesFairPlay = regulation.standings.tiebreakers.includes('fair-play') && regulation.secondary.some((item) => item.fairPlayPoints > 0);
   const table = officialTable ?? calculateStandings(groupParticipants, allMatches.filter((match) => {
     if (activeView === 'Chaveamento') return false;
     if (singleTable) return !knockoutPhases.includes(match.phase ?? '');
@@ -109,7 +110,9 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
       {activeView !== 'Chaveamento' ? <>
         <div className="standings-list" aria-label={`Classificação de ${activeView}`}>
           <div className="standings-head"><span>#</span><span>Equipe</span><span>J</span><span>V</span><span>E</span><span>D</span><span>PTS</span></div>
-          {table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>Saldo {entry.balance > 0 ? '+' : ''}{entry.balance}{entry.tiebreak ? ` · desempate por ${entry.tiebreak.toLocaleLowerCase('pt-BR')}` : ''}</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}
+          {/* Sem mostrar o acumulado disciplinar, o peso configurado no
+              regulamento agia sobre a ordem sem deixar rastro na tela. */}
+          {table.map((entry) => <article className={`standing-row rank-${entry.rank}`} key={entry.name}><span className="rank-block">{entry.rank}</span><div><strong>{entry.name}</strong><small>Saldo {entry.balance > 0 ? '+' : ''}{entry.balance}{usesFairPlay ? ` · fair play ${entry.disciplinary}` : ''}{entry.tiebreak ? ` · desempate por ${entry.tiebreak.toLocaleLowerCase('pt-BR')}` : ''}</small></div><span>{entry.played}</span><span>{entry.won}</span><span>{entry.drawn}</span><span>{entry.lost}</span><strong>{entry.points}</strong></article>)}
         </div>
         {!table.length ? <p className="match-filter-empty">{!participants.length ? 'A tabela aparece depois que as equipes forem inscritas nesta categoria.' : singleTable ? 'Nenhuma equipe nesta fase ainda.' : `Distribua equipes em ${activeView} para calcular a classificação.`}</p> : null}
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Vitória {regulation.standings.win} · empate {regulation.standings.draw} · derrota {regulation.standings.loss}. Desempate: {describeTiebreakers(regulation.standings)}.</p>{setup ? <p>{describeAdvancement(setup.advancement ?? { ...defaultAdvancement, perGroup: qualifierCount ?? defaultAdvancement.perGroup }, availableGroups.length)}</p> : null}</div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>

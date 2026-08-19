@@ -215,7 +215,10 @@ export function setTarget(regulation: Regulation, period: number) {
 export function describeCompletion(regulation: Regulation) {
   const { completion } = regulation;
   if (completion.mode === 'sets') return `Melhor de ${completion.setsToWin * 2 - 1} sets · ${completion.pointsToWinSet} pontos (${completion.pointsToWinDecidingSet} no decisivo) com ${completion.minAdvantage} de vantagem`;
-  if (completion.mode === 'board') return `Resultado por ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} · vitória ${completion.winPoints} / empate ${completion.drawPoints}`;
+  // "vitória 1 / empate 0.5" solto aparecia a dois centímetros dos campos de
+  // pontuação da tabela e reintroduzia a mesma ambiguidade que o formulário
+  // acabou de desfazer: aqui o número é o placar da súmula, não a pontuação.
+  if (completion.mode === 'board') return `Resultado por ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} · placar ${completion.winPoints} para o vencedor / ${completion.drawPoints} no empate`;
   if (completion.mode === 'result') return `Resultado único da ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')}`;
   const overtime = completion.overtimePeriods > 0 ? ` · prorrogação de ${completion.overtimePeriods} × ${completion.overtimeDurationMinutes} min` : '';
   return `${regulation.base.periodCount} ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')}s${completion.allowDraw ? ' · empate permitido' : ' · não admite empate'}${overtime}`;

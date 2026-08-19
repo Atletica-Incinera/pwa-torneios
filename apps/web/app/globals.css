@@ -68,7 +68,13 @@ ul.form-feedback li { line-height: 1.45; }
 .correction-history { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
 .correction-history li { display: grid; gap: 3px; padding: 10px 12px; border-left: 3px solid var(--orange); background: var(--surface); }
 .correction-history span { color: var(--text-secondary); font-size: 12px; }
-.regulation-group { display: grid; gap: 12px; margin: 0 0 22px; padding: 16px; border: 1px solid var(--line); background: var(--surface); }
+/* `min-inline-size: min-content` e o padrao do fieldset no Chrome, e nao ha
+   como ele encolher: o formulario inteiro do regulamento media 577px dentro
+   de uma tela de 320px e era recortado em silencio pelo `overflow: hidden`
+   da `.app-screen` — o teste de transbordo nao via porque mede a rolagem do
+   documento, que o recorte esconde. */
+.regulation-group { display: grid; gap: 12px; margin: 0 0 22px; padding: 16px; min-inline-size: 0; min-width: 0; border: 1px solid var(--line); background: var(--surface); }
+.regulation-group > *, .regulation-row > *, .regulation-event-row > *, .regulation-event-head > *, .rule-fields > * { min-width: 0; }
 .regulation-group legend { padding: 0 8px; font-family: var(--font-display); font-size: 1rem; letter-spacing: .04em; text-transform: uppercase; color: var(--orange); }
 .regulation-group .form-hint { margin: 0; }
 .regulation-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 10px; align-items: end; }
@@ -76,7 +82,29 @@ ul.form-feedback li { line-height: 1.45; }
    coluna só — sem isso viravam duas linhas inteiras no mobile, cada uma com um
    checkbox nativo do navegador do lado de um rótulo, destoando do resto do
    formulário. */
-.regulation-row.wide { grid-template-columns: minmax(0, 2fr) auto minmax(0, 1fr) auto; }
+/* A linha de evento era uma faixa de quatro colunas com a dupla de chips numa
+   trilha `auto`. Trilha `auto` e maximizada ate o max-content ANTES de sobrar
+   espaco para as `fr`: os dois chips comiam ~275px e deixavam ~38px para o
+   campo numerico, que ficava sem area util e com o rotulo quebrado em duas
+   linhas. Vira um cartao de tres faixas, que nao disputa largura com nada. */
+.regulation-event-row { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+.regulation-event-head { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 10px; align-items: end; }
+/* Os chips ganharam rotulo por extenso e param de caber lado a lado em tela
+   estreita: com base flexivel eles quebram para uma faixa cada em vez de
+   cortar o texto no meio. */
+.regulation-event-row .checkbox-pair { min-width: 0; flex-wrap: wrap; }
+.regulation-event-row .checkbox-pair .checkbox-field { flex: 1 1 220px; align-items: center; padding: 8px 12px; }
+/* Rotulo que explica a consequencia nao cabe numa linha em toda largura, e
+   cortar com reticencias devolveria o "RELOGIO PAR..." que esta correcao
+   veio desfazer: aqui ele quebra. */
+.regulation-event-row .checkbox-field > span { white-space: normal; }
+.regulation-event-weight { max-width: 240px; }
+.regulation-event-row > small { color: var(--text-secondary); font-size: 12px; line-height: 1.45; }
+.regulation-event-remove { min-width: 44px; min-height: 44px; display: grid; place-items: center; border: 1px solid var(--pink); background: transparent; color: var(--pink); cursor: pointer; }
+.regulation-event-remove:hover, .regulation-event-remove:focus-visible { background: var(--pink); color: var(--white); }
+/* O entalhe e o `padding: 0 15px` de `.entity-form input` sobram num campo de
+   dois digitos: sem isto o valor nao aparece inteiro. */
+.regulation-row input[type="number"], .regulation-event-row input[type="number"] { padding: 0 10px; text-align: center; clip-path: none; }
 .regulation-row button, .tiebreaker-list button { min-width: 42px; min-height: 42px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface-2); color: var(--white); }
 .regulation-row button:disabled, .tiebreaker-list button:disabled { opacity: .4; }
 .checkbox-pair { display: flex; gap: 8px; }
@@ -97,7 +125,14 @@ ul.form-feedback li { line-height: 1.45; }
    depois no arquivo — sem isto o checkbox herdava width:100%/min-height:54px
    do input de texto padrão e virava uma barra esticada em vez de uma caixinha. */
 .entity-form .checkbox-field input { width: 18px; height: 18px; min-height: 0; padding: 0; border: none; clip-path: none; background: transparent; }
-.checkbox-field > span { flex: 1; min-width: 0; font-size: .82rem; letter-spacing: .02em; text-transform: none; color: rgba(251,254,249,.68); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.checkbox-field > span { flex: 1; min-width: 0; font-size: .82rem; font-weight: 600; line-height: 1.35; letter-spacing: .02em; text-transform: none; color: rgba(251,254,249,.68); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Terceiro override da mesma familia (ver as duas notas acima): o bloco
+   tipografico de `.entity-form label > span` aparece duas vezes adiante e ambos
+   (0,1,2) vencem `.checkbox-field > span` (0,1,1) — era isso que transformava
+   "Relogio parado" em "RELOGIO PAR..." em caixa-alta espicada. Esta regra
+   (0,2,1) vence os dois e nao pode subir mais: `:has(input:checked) > span`
+   (0,2,2) precisa continuar vencendo no estado marcado. */
+.entity-form .checkbox-field > span { font-size: .82rem; font-weight: 600; line-height: 1.35; letter-spacing: .02em; text-transform: none; color: rgba(251,254,249,.68); }
 .checkbox-field:has(input:checked) > span { color: var(--white); font-weight: 700; }
 .tiebreaker-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: tiebreaker; }
 .tiebreaker-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-left: 3px solid var(--orange); background: var(--surface-2); }
@@ -105,7 +140,7 @@ ul.form-feedback li { line-height: 1.45; }
 /* .checkbox-pair fica lado a lado em qualquer largura — inclusive aqui: é
    exatamente a fileira de checkboxes que virava duas linhas cheias no mobile
    que este componente existe para evitar. */
-@media (max-width: 520px) { .regulation-row, .regulation-row.wide { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .regulation-row { grid-template-columns: 1fr; } }
 .automatic-award-list { display: grid; gap: 8px; margin: 0 0 16px; padding: 0; list-style: none; }
 .automatic-award-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border-left: 3px solid var(--orange); background: var(--surface); }
 .automatic-award-list span { grid-column: 1; color: var(--text-secondary); font-size: 12px; }
