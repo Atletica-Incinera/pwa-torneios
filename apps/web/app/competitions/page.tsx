@@ -4,23 +4,39 @@ import Link from 'next/link';
 import { CalendarRange, Check, ChevronRight, Pencil, Plus, Save, Trophy } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { AppShell, EmptyState, SectionTitle, StatusBadge } from '../components/AppShell';
+import { NoCompetitionsYet } from '../components/NoCompetitionsYet';
 import { EditionState, useFrontendState } from '../lib/repositories/browser-repository';
 import { listDisciplines } from '../lib/edition-catalog';
 import { useUi } from '../components/UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { createId } from '../lib/create-id';
+import { isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
 
 export default function CompetitionsPage() {
   const { state, dispatch } = useFrontendState();
+  const { session } = useFrontendSession();
   const { confirm, toast } = useUi();
   const activeCompetition = state.competitions.find((item) => item.active) ?? state.competitions[0];
-  const staff = Object.values(state.staff).filter((member) => !member.revoked);
   const enabledDisciplines = listDisciplines(state, state.editions.find((item) => item.active)?.id).filter((item) => item.enabled);
-  const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === activeCompetition.id);
+  const editions = activeCompetition ? state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === activeCompetition.id) : [];
   const activeEdition = editions.find((item) => item.active) ?? editions[0];
+  // Hooks sempre chamados, na mesma ordem, em qualquer render — inclusive
+  // quando `activeCompetition` ainda não existe. Retornar cedo antes deles
+  // violaria as Rules of Hooks assim que a primeira competição fosse criada e
+  // o componente ganhasse hooks a mais numa renderização que antes tinha menos.
   const [creating, setCreating] = useState(false); const [editing, setEditing] = useState<string | null>(null); const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); const [dates, setDates] = useState({ start: '', end: '' });
   useUnsavedChanges((creating && Boolean(draft.start || draft.end)) || Boolean(editing && dates.start));
+
+  // A partir daqui o resto da página indexa `activeCompetition.id`/`.name` sem
+  // checar de novo — só alcançável desde que o snapshot passou a tratar "sem
+  // competição ativa" como estado válido em vez de erro.
+  if (!activeCompetition) {
+    return <AppShell active="profile" eyebrow="CONTEXTO" title="INTERENG" subtitle="Configure o torneio e escolha o ano da edição ativa">
+      <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
+    </AppShell>;
+  }
+  const staff = Object.values(state.staff).filter((member) => !member.revoked);
 
   function createEdition(event: FormEvent) { event.preventDefault(); if (!draft.year || !draft.start || !draft.end) { toast('Preencha ano e período da edição.', 'error'); return; } if (draft.end < draft.start) { toast('A data final deve ser posterior ao início.', 'error'); return; } if (editions.some((edition) => edition.year === Number(draft.year))) { toast('Já existe uma edição neste ano.', 'error'); return; } const edition: EditionState = { id: createId('edition'), name: draft.year, year: Number(draft.year), start: draft.start, end: draft.end, status: 'Planejamento', active: false, competitionId: activeCompetition.id }; void dispatch({ type: 'edition/create', payload: { edition }, audit: { action: 'Edição criada', entity: `${activeCompetition.name} ${edition.year}`, after: 'Planejamento' } }); setCreating(false); setDraft({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); }
   /** Corrigir o nome do torneio: sem isso, um erro de digitação fica para sempre. */

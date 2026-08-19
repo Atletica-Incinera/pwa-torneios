@@ -26,18 +26,23 @@ type AppShellProps = {
 export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
   const { state, source, connection } = useFrontendState();
   const { session } = useFrontendSession();
+  // Alcançável desde que o snapshot passou a tratar "sem competição ativa"
+  // como estado válido em vez de erro: um sistema recém-migrado chega aqui
+  // com os dois arrays vazios, e o resto da barra de contexto precisa saber
+  // disso — ela é a moldura de toda página privada, inclusive a que oferece
+  // o atalho para criar a primeira.
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
-  const editions = state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id);
+  const editions = competition ? state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id) : [];
   const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
   const canUseAction = actionPermission === 'discipline' ? canManageDiscipline(session, actionDiscipline) : canManageEdition(session);
   return (
     <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">
-        <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, edição ${edition.year}, contexto ativo`}>
-          <span className="context-mark">{String(edition.year).slice(-2)}</span>
-          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
+        {competition ? <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, edição ${edition?.year ?? ''}, contexto ativo`}>
+          <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>
+          <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition?.year ?? ''}</strong></span>
           <ChevronDown size={16} />
-        </Link>
+        </Link> : <Link href="/dashboard" className="context-copy" aria-label="Nenhuma competição ativa"><span><small>INTERENG</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
         <ConnectionBadge source={source} connection={connection} />
       </div>
 

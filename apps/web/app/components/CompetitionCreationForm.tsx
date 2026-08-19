@@ -7,12 +7,13 @@ import { AppShell } from './AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { createId } from '../lib/create-id';
+import { bootstrapCompetition } from '../lib/repositories/competition-bootstrap';
 
 function slugify(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
 
 export function CompetitionCreationForm() {
   const router = useRouter();
-  const { state, dispatch } = useFrontendState();
+  const { state, dispatch, refresh } = useFrontendState();
   const [form, setForm] = useState({ name: '', slug: '', year: String(new Date().getFullYear() + 1), start: '', end: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -27,6 +28,21 @@ export function CompetitionCreationForm() {
     if (form.end < form.start) { setError('O encerramento deve acontecer depois do início.'); return; }
     if (state.competitions.some((item) => item.slug === finalSlug)) { setError('Este identificador público já está em uso.'); return; }
     setSubmitting(true);
+    // Sem nenhuma competição ainda, o pipeline de ações não alcança: ele
+    // resolve a edição "active" antes de rodar qualquer ação, inclusive esta.
+    // O endpoint de bootstrap existe só para essa saída — depois da primeira
+    // competição, o caminho normal (abaixo) volta a funcionar.
+    if (state.competitions.length === 0) {
+      try {
+        await bootstrapCompetition({ name: form.name.trim(), slug: finalSlug, year: Number(form.year), start: form.start, end: form.end });
+        await refresh();
+        router.push('/competitions');
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Não foi possível criar a competição.');
+        setSubmitting(false);
+      }
+      return;
+    }
     const id = createId('competition'); const editionId = createId('edition');
     const saved = await dispatch({
       type: 'competition/create',

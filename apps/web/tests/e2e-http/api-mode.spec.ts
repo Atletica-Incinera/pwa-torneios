@@ -136,6 +136,61 @@ test('a página pública carrega normalmente para quem está com a senha inicial
   await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
 });
 
+test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de erro', async ({ page, request }) => {
+  // Achado em produção: o cutover real caiu exatamente neste estado — banco
+  // migrado, super admin criado, zero competições. O dashboard e /competitions
+  // indexavam a primeira competição sem checar se existia; a API devolvia 404
+  // "não foi possível determinar a competição ativa" para tudo, e a tela de
+  // erro genérica ocupava o lugar de qualquer página privada — inclusive a
+  // única capaz de criar a primeira.
+  await request.post(`${api}/test/no-active-edition`);
+  await login(page, 'super@intereng.com', 'super2026');
+
+  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'DADOS INDISPONÍVEIS' })).toHaveCount(0);
+
+  await page.goto('/competitions');
+  await expect(page.getByText('Nenhuma competição cadastrada')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Criar competição' }).first().click();
+  await page.waitForURL(/\/competitions\/new/);
+  await page.getByLabel('Nome do torneio').fill('InterEng');
+  await page.getByLabel('Ano da primeira edição').fill('2027');
+  await page.getByLabel('Início').fill('2027-10-10');
+  await page.getByLabel('Encerramento').fill('2027-10-17');
+  await page.getByRole('button', { name: 'Criar torneio' }).click();
+
+  // Diferente do competition/create normal (nasce inativo, exige ativação à
+  // parte): o bootstrap cria já ativo — é o que faz "active" voltar a
+  // resolver no mesmo instante. O onboarding sai de cena e o dashboard mostra
+  // dados de verdade.
+  await page.waitForURL(/\/competitions/);
+  await expect(page.getByRole('button', { name: 'InterEng', exact: true })).toBeVisible();
+  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
+  await expect(page.getByText('Nenhuma competição cadastrada')).toHaveCount(0);
+});
+
+test('o endpoint de bootstrap recusa quando já existe alguma competição', async ({ request }) => {
+  // O bootstrap é só para a saída do zero. Depois da primeira competição, o
+  // caminho normal (competition/create via /editions/active/actions) volta a
+  // funcionar, e tentar o bootstrap de novo precisa ser recusado — não
+  // silenciosamente promovido a "criar mais uma". A suíte padrão (sem
+  // /test/no-active-edition) já começa com uma competição semeada.
+  const login = await request.post(`${api}/auth/login`, {
+    data: { email: 'super@intereng.com', password: 'super2026' },
+  });
+  const { data } = await login.json();
+
+  const response = await request.post(`${api}/competitions/bootstrap`, {
+    headers: { Authorization: `Bearer ${data.token}` },
+    data: { name: 'Outro', slug: 'outro', year: 2028, start: '2028-01-01', end: '2028-01-08' },
+  });
+  expect(response.status()).toBe(409);
+});
+
 test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {
   await login(page);
   // A API de mentira não tem socket: a ligação de tempo real não sobe.
