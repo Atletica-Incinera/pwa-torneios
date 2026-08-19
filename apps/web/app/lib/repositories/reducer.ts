@@ -102,6 +102,13 @@ function reduce(current: FrontendState, action: Action): FrontendState {
     case 'staff/upsert':
       return { ...current, staff: { ...current.staff, [action.payload.email]: action.payload.member } };
 
+    // O modo local não modela super admin como uma entrada de state.staff — é
+    // o usuário de demonstração fixo em demoUsers, fora deste estado. Só a
+    // API real (staff/promoteSuperAdmin no backend) tem efeito de verdade;
+    // aqui é só o toast de sucesso que a tela mostra.
+    case 'staff/promoteSuperAdmin':
+      return current;
+
     case 'ranking/addMetric':
       return { ...current, overallRanking: { ...current.overallRanking, metrics: [...current.overallRanking.metrics, action.payload.metric] } };
 

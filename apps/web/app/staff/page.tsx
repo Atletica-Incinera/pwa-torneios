@@ -1,6 +1,7 @@
 'use client';
 
-import { KeyRound, Mail, ShieldCheck, UserX, UserCheck } from 'lucide-react';
+import Link from 'next/link';
+import { KeyRound, Mail, ShieldAlert, ShieldCheck, UserX, UserCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
@@ -39,6 +40,7 @@ export default function StaffPage() {
 
   return <AppShell active="profile" eyebrow="ACESSO" title="STAFF" subtitle="Papéis e permissões da edição" actionHref="/staff/new" actionLabel="Convidar membro">
     <div className="info-banner"><ShieldCheck size={20} /><p>Administradores controlam a edição. Gestores atuam somente na modalidade atribuída.</p></div>
+    {isSuperAdmin(session) ? <Link href="/staff/promote" className="secondary-button"><ShieldAlert size={17} aria-hidden="true" /> Conceder super admin</Link> : null}
     <section className="section-block no-top"><SectionTitle eyebrow="EQUIPE" title="ACESSOS" /><div className="staff-list">
       {members.map(({ key, member }, index) => <article className={`staff-card${member.revoked ? ' is-revoked' : ''}`} key={key}>
         <span className={`avatar-frame avatar-${index % 3}`}>{member.initials}</span>
