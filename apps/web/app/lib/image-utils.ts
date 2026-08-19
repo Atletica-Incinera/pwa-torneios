@@ -3,6 +3,44 @@ export type OptimizedImage = {
   previewUrl: string;
 };
 
+export const MAX_SOURCE_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Lê o arquivo escolhido pelo usuário como uma imagem pronta para recorte manual (crop). */
+export async function loadImageForCrop(file: File): Promise<HTMLImageElement> {
+  if (!file.type.startsWith('image/')) throw new Error('Selecione um arquivo de imagem.');
+  const source = await fileToDataUrl(file);
+  return loadImage(source);
+}
+
+export type SquareCrop = {
+  /** Origem do recorte em pixels da imagem original (não da tela). */
+  x: number;
+  y: number;
+  /** Lado do quadrado de recorte, também em pixels da imagem original. */
+  size: number;
+};
+
+/** Recorta uma região quadrada da imagem e devolve o WebP pronto para upload. */
+export async function cropImageToWebp(
+  image: HTMLImageElement,
+  crop: SquareCrop,
+  outputSize = 512,
+  quality = 0.82,
+): Promise<OptimizedImage> {
+  const canvas = document.createElement('canvas');
+  canvas.width = outputSize;
+  canvas.height = outputSize;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('Não foi possível preparar a imagem.');
+  context.drawImage(image, crop.x, crop.y, crop.size, crop.size, 0, 0, outputSize, outputSize);
+
+  const blob = await canvasToBlob(canvas, quality);
+  if (blob.type !== 'image/webp') {
+    throw new Error('Este navegador não conseguiu converter a imagem para WebP.');
+  }
+  return { blob, previewUrl: await blobToDataUrl(blob) };
+}
+
 export async function optimizeImageFile(
   file: File,
   maxSize = 512,

@@ -3,15 +3,14 @@
 import { Archive, Pencil, Save } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { TeamMark } from './AppShell';
+import { FileField } from './FileField';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUi } from './UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
-import { optimizeImageFile, type OptimizedImage } from '../lib/image-utils';
+import { MAX_SOURCE_IMAGE_BYTES, optimizeImageFile, type OptimizedImage } from '../lib/image-utils';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { athletesOfTeam, type TeamView } from '../lib/edition-catalog';
 import { uploadTeamLogo } from '../lib/repositories/logo-upload';
-
-const MAX_SOURCE_IMAGE_BYTES = 8 * 1024 * 1024;
 
 export function TeamManager({ team, readOnly = false }: { team: TeamView; readOnly?: boolean }) {
   const { state, dispatch, source } = useFrontendState();
@@ -165,17 +164,13 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
               placeholder="Nome do responsável"
             />
           </label>
-          <label>
-            <span>Logotipo</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              onChange={chooseLogo}
-            />
-          </label>
-          <small className="field-help">
-            A imagem é reduzida e convertida para WebP antes de ser armazenada.
-          </small>
+          <FileField
+            label="Logotipo"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            fileName={pendingLogo ? 'Imagem selecionada' : undefined}
+            hint="A imagem é reduzida e convertida para WebP antes de ser armazenada."
+            onChange={chooseLogo}
+          />
           {error ? (
             <p className="form-error" role="alert">
               {error}
