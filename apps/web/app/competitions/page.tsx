@@ -32,7 +32,7 @@ export default function CompetitionsPage() {
   // checar de novo — só alcançável desde que o snapshot passou a tratar "sem
   // competição ativa" como estado válido em vez de erro.
   if (!activeCompetition) {
-    return <AppShell active="profile" eyebrow="CONTEXTO" title="INTERENG" subtitle="Configure o torneio e escolha o ano da edição ativa">
+    return <AppShell active="profile" eyebrow="CONTEXTO" title="INTERENG" subtitle="Nenhum torneio configurado ainda">
       <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
     </AppShell>;
   }

@@ -73,8 +73,10 @@ export function RegulationFields({ discipline, rule, onChange }: { discipline: s
       {regulation.secondary.map((action, index) => (
         <div className="regulation-row wide" key={`${action.id}-${index}`}>
           <label><span>Evento</span><input value={action.label} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, label: event.target.value, id: slug(event.target.value) } : item))} /></label>
-          <label className="checkbox-field"><input type="checkbox" checked={action.requiresSide} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, requiresSide: event.target.checked } : item))} /><span>Por equipe</span></label>
-          <label className="checkbox-field"><input type="checkbox" checked={action.allowedWhenStopped} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, allowedWhenStopped: event.target.checked } : item))} /><span>Relógio parado</span></label>
+          <div className="checkbox-pair">
+            <label className="checkbox-field"><input type="checkbox" checked={action.requiresSide} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, requiresSide: event.target.checked } : item))} /><span>Por equipe</span></label>
+            <label className="checkbox-field"><input type="checkbox" checked={action.allowedWhenStopped} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, allowedWhenStopped: event.target.checked } : item))} /><span>Relógio parado</span></label>
+          </div>
           <label><span>Fair play</span><input type="number" min="0" max="10" value={action.fairPlayPoints} onChange={(event) => setSecondary(regulation.secondary.map((item, position) => position === index ? { ...item, fairPlayPoints: Math.max(0, Number(event.target.value)) } : item))} /></label>
           <button type="button" onClick={() => setSecondary(regulation.secondary.filter((_, position) => position !== index))} aria-label={`Remover ${action.label}`}><Trash2 size={16} /></button>
         </div>
