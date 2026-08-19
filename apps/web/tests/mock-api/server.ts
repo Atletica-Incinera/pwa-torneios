@@ -221,14 +221,20 @@ createServer(async (request, response) => {
     return reply(200, { token, expiresAt: new Date(Date.now() + 3_600_000).toISOString(), user: sessionUser(user) });
   }
 
+  // O público não passa por guarda nenhuma na API real — nem quando o token
+  // enviado pertence a uma conta com a senha inicial ainda de pé. Checar isto
+  // antes da guarda abaixo é o que expôs o bug do front em produção: com um
+  // token de sessão pendente em mãos, `authenticated` do state-adapter dava
+  // `true` mesmo em /public, e o app chamava o snapshot privado por engano —
+  // não porque o público exigisse sessão.
+  if (url.pathname.endsWith('/public-snapshot')) return reply(200, publicSnapshot(snapshot));
+
   // Espelha a guarda da API: enquanto a senha inicial estiver de pé, nada além
-  // das rotas de sessão responde. É o que faz o app cair na tela de troca em vez
-  // de tentar carregar a edição.
+  // das rotas de sessão e do snapshot público responde. É o que faz o app cair
+  // na tela de troca em vez de tentar carregar a edição.
   if (session && users.find((item) => item.email === session.email)?.mustChangePassword) {
     return reply(403, { message: 'É necessário trocar a senha inicial antes de usar o sistema.' });
   }
-
-  if (url.pathname.endsWith('/public-snapshot')) return reply(200, publicSnapshot(snapshot));
 
   if (url.pathname.endsWith('/snapshot')) {
     if (!session) return reply(401, { message: 'Sessão inválida.' });

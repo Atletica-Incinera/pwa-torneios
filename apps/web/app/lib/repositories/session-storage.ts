@@ -102,9 +102,22 @@ export function expireStoredSession() {
   writeStoredSession({ ...session, token: '', expiresAt: new Date().toISOString() });
 }
 
-/** O token em vigor, para as requisições do adaptador HTTP. */
+/**
+ * O token em vigor, para as requisições de dados do adaptador HTTP.
+ *
+ * Com a senha inicial ainda em uso, a API recusa qualquer rota autenticada
+ * com 403 — inclusive o snapshot privado. `/public/*` não passa pelo
+ * `AdminRouteGuard`, então sem isto o app enviava o token mesmo lá (`load()`
+ * do state-adapter usa "tem token" para decidir entre snapshot privado e
+ * público) e o visitante via a tela de erro genérica em vez da página
+ * pública, que não deveria exigir sessão nenhuma.
+ *
+ * O fluxo de troca de senha não usa esta função — lê o token direto da sessão
+ * guardada — então continua funcionando com a marca ligada.
+ */
 export function readSessionToken(): string | null {
   const session = readStoredSession();
+  if (session?.mustChangePassword) return null;
   return session?.token || null;
 }
 
