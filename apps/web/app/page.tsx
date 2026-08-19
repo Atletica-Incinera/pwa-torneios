@@ -5,6 +5,7 @@ import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from './lib/frontend-session';
+import { resolveDataSource } from './lib/repositories/state-adapter';
 import { useUi } from './components/UiProvider';
 
 export default function LoginPage() {
@@ -119,7 +120,7 @@ export default function LoginPage() {
             <p>Acesso exclusivo para Super Admin e Staff.</p>
             <Link href="/public">Ver área pública</Link>
           </div>
-          <details className="demo-access"><summary>Acessos de demonstração</summary><p>Admin: ana@ufpe.br · intereng2026</p><p>Gestor: bruno@ufpe.br · futsal2026</p></details>
+          {resolveDataSource() === 'local' ? <details className="demo-access"><summary>Acessos de demonstração</summary><p>Admin: ana@ufpe.br · intereng2026</p><p>Gestor: bruno@ufpe.br · futsal2026</p></details> : null}
         </div>
       </section>
       {recovering ? <div className="app-dialog-backdrop"><form className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="recover-title" onSubmit={recover}><Mail size={30} /><h2 id="recover-title">RECUPERAR ACESSO</h2><p>Informe o e-mail cadastrado no staff.</p><label><span>E-mail</span><input type="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} autoFocus /></label><div><button type="button" className="secondary-button" onClick={() => setRecovering(false)}>Cancelar</button><button type="submit" className="primary-button">Solicitar recuperação</button></div></form></div> : null}

@@ -77,3 +77,22 @@ describe('troca de senha pela API', () => {
     expect(readStoredSession()?.mustChangePassword).toBe(true);
   });
 });
+
+describe('leitura pública com conta pendente de troca de senha', () => {
+  it('readSessionToken devolve null enquanto mustChangePassword estiver ligado', async () => {
+    const { readSessionToken } = await import('../../app/lib/repositories/session-storage');
+    writeStoredSession(pendingSession);
+
+    // É o que faz /public/* cair no snapshot público em vez do privado: o
+    // state-adapter decide pelo retorno desta função, e /public não passa
+    // pelo AdminRouteGuard que intercepta as rotas privadas.
+    expect(readSessionToken()).toBeNull();
+  });
+
+  it('volta a devolver o token assim que a senha é trocada', async () => {
+    const { readSessionToken } = await import('../../app/lib/repositories/session-storage');
+    writeStoredSession({ ...pendingSession, mustChangePassword: false });
+
+    expect(readSessionToken()).toBe('token-inicial');
+  });
+});

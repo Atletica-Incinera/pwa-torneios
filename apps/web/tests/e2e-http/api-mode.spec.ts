@@ -35,6 +35,14 @@ test('a sessão é emitida pela API e o snapshot vem de lá', async ({ page }) =
   expect(await page.evaluate((key) => localStorage.getItem(key), stateKey)).toBeNull();
 });
 
+test('a tela de login não expõe credenciais de demonstração', async ({ page }) => {
+  // Achado em produção: o painel de acessos de demonstração (senhas fixas,
+  // "Admin: ana@ufpe.br · intereng2026") ficava visível mesmo compilado
+  // contra a API real, sem checar a origem dos dados.
+  await page.goto('/');
+  await expect(page.getByText('Acessos de demonstração')).toHaveCount(0);
+});
+
 test('credencial errada mostra a mensagem da API', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('E-mail').fill('ana@ufpe.br');
@@ -109,6 +117,23 @@ test('conta com a senha inicial só alcança a troca de senha', async ({ page })
 
   // Com a senha trocada e a sessão nova em mãos, a mesma rota carrega.
   await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
+});
+
+test('a página pública carrega normalmente para quem está com a senha inicial pendente', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('E-mail').fill('nova@ufpe.br');
+  await page.locator('input[aria-label="Senha"]').fill('intereng2026');
+  await page.getByRole('button', { name: 'ENTRAR' }).click();
+  await expect(page.getByRole('heading', { name: 'TROQUE SUA SENHA' })).toBeVisible();
+
+  // Achado em produção: /public não passa pelo guard que intercepta rotas
+  // privadas, e o adaptador decidia buscar o snapshot autenticado só por haver
+  // um token em mãos — mesmo de uma conta que a API recusa por inteiro. O
+  // visitante via a tela genérica de erro em vez da página pública.
+  const publicSnapshot = page.waitForResponse((response) => response.url().includes('/public-snapshot'));
+  await page.goto('/public/tournaments');
+  expect((await publicSnapshot).status()).toBe(200);
+  await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
 });
 
 test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {
