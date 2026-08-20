@@ -42,7 +42,7 @@ export default function StaffPage() {
     save(member, { revoked: !member.revoked }, member.revoked ? 'Acesso restaurado' : 'Acesso revogado');
   }
 
-  return <AppShell active="profile" eyebrow="ACESSO" title="STAFF" subtitle="Papéis e permissões da edição" actionHref="/staff/new" actionLabel="Convidar membro">
+  return <AppShell active="profile" eyebrow="ACESSO" title="STAFF" subtitle="Papéis e permissões da edição" actionHref="/staff/new" actionLabel="Convidar membro para o staff" actionShortLabel="Membro">
     <div className="info-banner"><ShieldCheck size={20} /><p>Administradores controlam a edição. Gestores atuam somente na modalidade atribuída.</p></div>
     {isSuperAdmin(session) && superAdminGrantAvailable() ? <Link href="/staff/promote" className="secondary-button"><ShieldAlert size={17} aria-hidden="true" /> Conceder super admin</Link> : null}
     {/* Super admin não tem atribuição de edição, então não aparecia em lugar

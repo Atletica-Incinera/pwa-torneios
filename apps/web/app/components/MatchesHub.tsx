@@ -47,13 +47,13 @@ export function MatchesHub() {
       subtitle={showingAll ? 'Jogos e resultados de todas as modalidades' : `Jogos e resultados somente de ${selected}`}
       actionHref={showingAll ? '/matches/new' : `/matches/new?modalidade=${encodeURIComponent(selected)}`}
       actionLabel={showingAll ? 'Agendar jogo' : `Agendar jogo de ${selected}`}
-      actionShortLabel="Agendar jogo"
+      actionShortLabel="Jogo"
       actionPermission="discipline"
       actionDiscipline={selected}
     >
       <DisciplineSelector options={options} onScopeChange={refresh} />
       <MatchSchedule discipline={showingAll ? '' : selected} />
-      <Link href={showingAll ? '/disciplines' : disciplineHref(selected)} className="wide-action">{showingAll ? 'VER MODALIDADES' : `VER TABELA E CATEGORIAS DE ${selected.toUpperCase()}`} <span>›</span></Link>
+      <Link href={showingAll ? '/disciplines' : disciplineHref(selected)} className="wide-action">{showingAll ? 'VER MODALIDADES' : `TABELA DE ${selected.toUpperCase()}`} <span>›</span></Link>
     </AppShell>
   );
 }

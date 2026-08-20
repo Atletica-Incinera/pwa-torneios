@@ -75,6 +75,14 @@ export type RankingAction =
   /** Um lançamento manual ou o lote vindo dos pódios oficiais. */
   | (WithAudit & { type: 'ranking/addAwards'; payload: { awards: OverallAwardState[] } })
   | (WithAudit & { type: 'ranking/revokeAward'; payload: { id: string; revokedAt: string; revokedBy: string; revokeReason: string } })
+  /**
+   * Cria as quatro métricas padrão numa edição que ainda não tem nenhuma.
+   *
+   * Semear na criação da edição não alcança a que já existe — e é justamente
+   * essa que está em produção, sem métrica nenhuma e portanto sem pontuar nada
+   * na classificação geral. Idempotente: o segundo disparo não duplica.
+   */
+  | (WithAudit & { type: 'ranking/seedDefaultMetrics'; payload: { editionId: string } })
   | (WithAudit & { type: 'ranking/close'; payload: { closure: OverallClosureState } })
   | (WithAudit & { type: 'ranking/reopen'; payload: { editionId: string } });
 

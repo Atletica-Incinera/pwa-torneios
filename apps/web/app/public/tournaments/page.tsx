@@ -16,7 +16,7 @@ export default function PublicCategoriesPage() {
 
   return (
     <PublicAppShell active="disciplines" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="MODALIDADES" subtitle="Categorias, fases e resultados desta edição">
-      <Link href="/public/standings/general" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link>
+      <Link href="/public/standings/general" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL <span>›</span></Link>
       <section className="tournament-list" aria-label="Categorias da edição">
         {visible.map((item, index) => <TournamentCard tournament={item} index={index} detailHref={`/public/tournaments/${item.id}`} resultsHref={`/public/tournaments/${item.id}?aba=jogos`} publicView key={item.id} />)}
         {!visible.length ? <EmptyState title="SEM MODALIDADES PUBLICADAS" copy="As categorias aparecem aqui quando forem publicadas." /> : null}

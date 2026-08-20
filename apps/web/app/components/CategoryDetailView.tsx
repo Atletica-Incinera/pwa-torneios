@@ -70,7 +70,7 @@ export function CategoryDetailView({ id }: { id: string }) {
       subtitle={`${category.entries === null ? 'Inscrição pendente' : `${category.entries} inscritas`} · ${category.status}`}
       actionHref={`/matches/new?modalidade=${encodeURIComponent(category.discipline)}`}
       actionLabel={`Agendar jogo de ${category.discipline}`}
-      actionShortLabel="Agendar jogo"
+      actionShortLabel="Jogo"
       actionPermission="discipline"
       actionDiscipline={category.discipline}
     >

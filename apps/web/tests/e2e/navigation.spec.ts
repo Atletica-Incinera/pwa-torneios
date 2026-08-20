@@ -30,7 +30,7 @@ test('a gestão da categoria virou a aba Regras', async ({ page }) => {
   await loginAs(page);
   await page.goto('/tournaments/futsal-m/manage');
   await expect(page).toHaveURL(/\/tournaments\/futsal-m\?aba=regras/);
-  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E SEEDS' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E ORDEM DO SORTEIO' })).toBeVisible();
 });
 
 test('modalidade lista suas categorias e leva à categoria', async ({ page }) => {

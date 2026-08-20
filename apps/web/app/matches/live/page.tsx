@@ -39,6 +39,8 @@ function LiveMatchContent() {
   const operationLock = useRef(false);
   const periodEndHandled = useRef(false);
   const operatorId = useRef(getOperatorDeviceId());
+  // Espelho do estado da trava, lido pelo batimento sem entrar nas deps do efeito.
+  const lockState = useRef<{ operatorId?: string; operatorHeartbeat?: string }>({});
   const scheduled = listMatches(state);
   const requestedMatch = matchId ? findMatch(state, matchId) : undefined;
   // Sem partida pedida, opera a que está ao vivo; sem nenhuma, a primeira da agenda.
@@ -47,6 +49,9 @@ function LiveMatchContent() {
   const invalidMatch = !resolved || Boolean(matchId && !requestedMatch);
   const match = resolved ?? emptyMatch;
   const persisted = state.matches[match.id] ?? {};
+  // Atualizado a cada render para o batimento enxergar a trava corrente sem
+  // reiniciar o intervalo (ver o efeito do batimento, adiante).
+  lockState.current = { operatorId: persisted.operatorId, operatorHeartbeat: persisted.operatorHeartbeat };
   const status = match.status;
   const phase = match.phase;
   const homeScore = match.scoreA ?? 0;
@@ -114,9 +119,22 @@ function LiveMatchContent() {
 
   useEffect(() => {
     if (!hydrated || invalidMatch || !authorized || finished || operatorConflict || !live) return;
-    // Só grava quando a trava precisa ser renovada: sem isso o app inteiro
-    // re-renderizava a cada tique, no meio da partida.
-    const heartbeat = () => { void dispatch({ type: 'match/claimOperator', payload: { id: match.id, operatorId: operatorId.current, operatorName: session?.name ?? 'Operador' } }); };
+    // `evaluateOperatorLock` estava importada e nunca era chamada: o batimento
+    // gravava a cada 15 s. Cada gravação custa uma transação Serializable com
+    // advisory lock que serializa TODA ação da edição, mais revisão nova,
+    // snapshot reconstruído, linha de auditoria e invalidação de cache para
+    // cada espectador conectado. Com três partidas simultâneas eram doze
+    // invalidações por minuto disputando a trava com os gols sendo registrados,
+    // e a auditoria virava um dilúvio de "Operação assumida".
+    //
+    // O estado da trava vem de um ref, e não das dependências do efeito: pôr
+    // `operatorHeartbeat` nas deps faria o cleanup rodar a cada renovação,
+    // disparando `releaseOperator` seguido de `claimOperator` — o dobro das
+    // gravações e uma corrida na própria trava.
+    const heartbeat = () => {
+      if (evaluateOperatorLock(lockState.current, operatorId.current) !== 'renew') return;
+      void dispatch({ type: 'match/claimOperator', payload: { id: match.id, operatorId: operatorId.current, operatorName: session?.name ?? 'Operador' } });
+    };
     heartbeat();
     const timer = window.setInterval(heartbeat, 15_000);
     return () => {
@@ -473,7 +491,7 @@ function LiveMatchContent() {
 
       {persisted.periodResults?.length ? <p className="period-results">Parciais: {persisted.periodResults.map((item) => `${item.scoreA}-${item.scoreB}`).join(' · ')}</p> : null}
 
-      {operatorConflict ? <div className="info-banner" role="status"><KeyRound size={18} /><div><strong>{persisted.operatorName ?? 'Outro operador'} está operando este placar.</strong><p>Assuma a operação para registrar eventos por este dispositivo.</p></div>{authorized ? <button type="button" className="secondary-button" onClick={() => void takeOperation()}>Assumir operação</button> : null}</div> : null}
+      {operatorConflict ? <div className="info-banner" role="status"><KeyRound size={18} /><div><strong>{persisted.operatorName ?? 'Outro operador'} está operando este placar.</strong><p>Assuma o placar para registrar lances por este aparelho.</p></div>{authorized ? <button type="button" className="secondary-button" onClick={() => void takeOperation()}>Assumir este placar</button> : null}</div> : null}
 
       {!authorized ? <div className="info-banner" role="status"><p>Seu perfil pode acompanhar este placar, mas não operar a modalidade {match.discipline}.</p></div> : null}
 
@@ -506,9 +524,9 @@ function LiveMatchContent() {
           {hasClock ? <button type="button" className="sport-press" onClick={togglePause} disabled={finished || clock >= periodDurationSeconds}>{paused ? <Play size={19} /> : <Pause size={19} />}{paused ? 'Retomar' : 'Pausar'}</button> : null}
           <button type="button" className="sport-press" onClick={() => void advancePeriod()} disabled={finished || currentPeriod >= totalPeriods}><SkipForward size={19} />Próximo {periodLabel.toLowerCase()}</button>
           {tiedAtRegulationEnd ? <button type="button" className="sport-press" onClick={() => void startOvertime()}><TimerReset size={19} />Prorrogação</button> : null}
-          <button type="button" className="sport-press" onClick={() => void undoLastAction()} disabled={finished || !events.length}><RotateCcw size={19} />Desfazer</button>
-          <button type="button" className="finish sport-press" onClick={() => void finishMatch()} disabled={finished}><TimerReset size={19} />Encerrar</button>
-          {holdsOperation ? <button type="button" className="sport-press" onClick={releaseOperation}><KeyRound size={19} />Liberar operação</button> : null}
+          <button type="button" className="sport-press" onClick={() => void undoLastAction()} disabled={finished || !events.length}><RotateCcw size={19} aria-hidden="true" />Desfazer último lance</button>
+          <button type="button" className="finish sport-press" onClick={() => void finishMatch()} disabled={finished}><TimerReset size={19} aria-hidden="true" />Encerrar partida</button>
+          {holdsOperation ? <button type="button" className="sport-press" onClick={releaseOperation}><KeyRound size={19} aria-hidden="true" />Passar o placar adiante</button> : null}
         </section>
       </> : null}
 

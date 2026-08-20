@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Radio, Shield, Trophy, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
+import { EditionProgress } from '../components/EditionProgress';
 import { MatchCard } from '../components/MatchCard';
 import { NoCompetitionsYet } from '../components/NoCompetitionsYet';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
@@ -37,5 +38,5 @@ export default function DashboardPage() {
     { label: 'Categorias', value: String(categories.length), meta: `${disciplines.length} modalidades · ${drafts} em rascunho`, icon: Trophy, tone: 'orange', href: '/disciplines' },
     { label: 'Jogos ao vivo', value: String(liveMatches), meta: liveMatches ? 'Agora' : 'Nenhum agora', icon: Radio, tone: 'blue', href: `/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}` },
   ];
-  return <AppShell active="home" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa"><section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
+  return <AppShell active="home" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa">{canManageEdition(session) ? <EditionProgress /> : null}<section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
 }

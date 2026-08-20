@@ -32,7 +32,8 @@ export function DisciplineDetailView({ id }: { id: string }) {
       title={discipline.name.toUpperCase()}
       subtitle={`${discipline.categories.length} ${discipline.categories.length === 1 ? 'categoria' : 'categorias'} na edição ${activeEdition?.year ?? ''}`}
       actionHref={canManage ? newCategoryHref : undefined}
-      actionLabel="Criar categoria"
+      actionLabel={`Criar categoria de ${discipline.name}`}
+      actionShortLabel="Categoria"
       actionPermission="discipline"
       actionDiscipline={discipline.name}
     >
