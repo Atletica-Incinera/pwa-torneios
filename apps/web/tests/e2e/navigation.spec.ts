@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { loginAs } from './helpers';
 
 test('categoria abre na tabela e alterna as abas sem sair da tela', async ({ page }) => {

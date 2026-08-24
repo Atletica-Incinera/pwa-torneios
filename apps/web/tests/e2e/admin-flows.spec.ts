@@ -1,4 +1,4 @@
-﻿import { expect, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { loginAs } from './helpers';
 
 test('valida, confirma descarte e cadastra uma equipe sem duplicar ações', async ({ page }) => {
