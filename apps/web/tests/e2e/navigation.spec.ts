@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import { loginAs } from './helpers';
 
 test('categoria abre na tabela e alterna as abas sem sair da tela', async ({ page }) => {
@@ -108,7 +108,7 @@ test('detalhe da equipe apresenta classificação e desempenho por modalidade', 
 });
 
 test('admin entra e preserva a modalidade ao navegar', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/login');
   await page.getByRole('button', { name: 'Mostrar senha' }).click();
   await expect(page.locator('input[aria-label="Senha"]')).toHaveAttribute('type', 'text');
   await page.getByLabel('E-mail').fill('ana@ufpe.br');

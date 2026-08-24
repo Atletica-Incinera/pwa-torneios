@@ -22,8 +22,8 @@ export default function LoginPage() {
 
   useEffect(() => {
     const access = new URL(window.location.href).searchParams.get('access');
-    if (access === 'revoked') setMessage('Seu acesso foi revogado pelo administrador da edicao.');
-    if (access === 'expired') setMessage('Sua sessao expirou. Entre novamente para continuar.');
+    if (access === 'revoked') setMessage('Seu acesso foi revogado pelo administrador da edição.');
+    if (access === 'expired') setMessage('Sua sessão expirou. Entre novamente para continuar.');
   }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -35,7 +35,7 @@ export default function LoginPage() {
     }
     setSubmitting(true);
     const result = await signIn(email, password, remember);
-    if (!result.session) { setMessage(result.error ?? 'Nao foi possivel entrar.'); setSubmitting(false); return; }
+    if (!result.session) { setMessage(result.error ?? 'Não foi possível entrar.'); setSubmitting(false); return; }
     const redirect = new URL(window.location.href).searchParams.get('redirect');
     toast(`Bem-vindo, ${result.session.name}.`);
     router.push(redirect?.startsWith('/') ? redirect : '/dashboard');
@@ -44,7 +44,7 @@ export default function LoginPage() {
   function recover(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!recoveryEmail.includes('@')) { setMessage('Informe um e-mail valido para recuperar o acesso.'); return; }
-    toast('Solicitacao registrada. O envio sera conectado ao servico de e-mail da API.', 'info');
+    toast('Solicitação registrada. O envio será conectado ao serviço de e-mail da API.', 'info');
     setRecovering(false); setRecoveryEmail(''); setMessage('');
   }
 
@@ -53,18 +53,18 @@ export default function LoginPage() {
       <div className="ambient ambient-blue" />
       <div className="ambient ambient-pink" />
 
-      <section className="brand-panel" aria-label="Apresentacao do produto">
+      <section className="brand-panel" aria-label="Apresentação do produto">
         <div className="brand-mark">
           <Trophy size={42} strokeWidth={2.4} />
         </div>
-        <p className="eyebrow">INTERENG - EDICAO 2026</p>
+        <p className="eyebrow">INTERENG - EDIÇÃO 2026</p>
         <h1>
           INTERENG
           <br />
           PERNAMBUCO
         </h1>
         <p className="brand-copy">
-          A engenharia pernambucana reunida em competicao, cultura e esporte.
+          A engenharia pernambucana reunida em competição, cultura e esporte.
         </p>
         <div className="slash slash-one" />
         <div className="slash slash-two" />
@@ -119,12 +119,12 @@ export default function LoginPage() {
           <div className="access-note">
             <span className="live-dot" />
             <p>Acesso exclusivo para Super Admin e Staff.</p>
-            <Link href="/">Ver area publica</Link>
+            <Link href="/">Ver área pública</Link>
           </div>
-          {resolveDataSource() === 'local' ? <details className="demo-access"><summary>Acessos de demonstracao</summary><p>Admin: ana@ufpe.br - intereng2026</p><p>Gestor: bruno@ufpe.br - futsal2026</p></details> : null}
+          {resolveDataSource() === 'local' ? <details className="demo-access"><summary>Acessos de demonstração</summary><p>Admin: ana@ufpe.br - intereng2026</p><p>Gestor: bruno@ufpe.br - futsal2026</p></details> : null}
         </div>
       </section>
-      {recovering ? <div className="app-dialog-backdrop"><form className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="recover-title" onSubmit={recover}><Mail size={30} /><h2 id="recover-title">RECUPERAR ACESSO</h2><p>Informe o e-mail cadastrado no staff.</p><label><span>E-mail</span><input type="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} autoFocus /></label><div><button type="button" className="secondary-button" onClick={() => setRecovering(false)}>Cancelar</button><button type="submit" className="primary-button">Solicitar recuperacao</button></div></form></div> : null}
+      {recovering ? <div className="app-dialog-backdrop"><form className="app-dialog" role="dialog" aria-modal="true" aria-labelledby="recover-title" onSubmit={recover}><Mail size={30} /><h2 id="recover-title">RECUPERAR ACESSO</h2><p>Informe o e-mail cadastrado no staff.</p><label><span>E-mail</span><input type="email" value={recoveryEmail} onChange={(event) => setRecoveryEmail(event.target.value)} autoFocus /></label><div><button type="button" className="secondary-button" onClick={() => setRecovering(false)}>Cancelar</button><button type="submit" className="primary-button">Solicitar recuperação</button></div></form></div> : null}
     </main>
   );
 }
