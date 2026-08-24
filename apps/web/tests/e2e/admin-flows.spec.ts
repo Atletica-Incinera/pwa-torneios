@@ -347,10 +347,15 @@ test('o painel do gestor não oferece porta fechada', async ({ page }) => {
   // A consulta global de atletas é da edição inteira: some do painel do gestor.
   await expect(page.locator('.stat-card')).toHaveCount(3);
   await expect(page.getByRole('link', { name: /atletas/i })).toHaveCount(0);
-  for (const card of await page.locator('.stat-card').all()) {
-    await card.click();
+  // Volta por URL, e não por `goBack()`: o histórico só é confiável se cada
+  // clique empilhar exatamente uma entrada, e basta um que não navegue para o
+  // laço andar para trás demais e cair na tela de login — que era a falha
+  // intermitente, reproduzida em 1 de 3 execuções locais.
+  const destinos = await page.locator('.stat-card').evaluateAll((cards) =>
+    cards.map((card) => (card as HTMLAnchorElement).getAttribute('href') ?? ''));
+  for (const destino of destinos) {
+    await page.goto(destino);
     await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toHaveCount(0);
-    await page.goBack();
   }
 });
 
