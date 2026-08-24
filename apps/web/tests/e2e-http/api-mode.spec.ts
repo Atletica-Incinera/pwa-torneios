@@ -50,7 +50,7 @@ test('credencial errada mostra a mensagem da API', async ({ page }) => {
   await page.getByRole('button', { name: 'ENTRAR' }).click();
 
   await expect(page.getByRole('status')).toContainText(/inválidos/i);
-  await expect(page).toHaveURL(/\/$|\/\?/);
+  await expect(page).toHaveURL(/\/login/);
 });
 
 test('a operação vai à API e a resposta é o que a tela mostra', async ({ page, request }) => {
