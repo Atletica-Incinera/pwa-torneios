@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+﻿import { expect, test, type Page } from '@playwright/test';
 
 /**
  * O app compilado com `NEXT_PUBLIC_DATA_SOURCE=http`, falando com a API.
@@ -12,7 +12,7 @@ const stateKey = 'intereng:app-state:v1';
 test.beforeEach(async ({ request }) => { await request.get(`${api}/test/reset`); });
 
 async function login(page: Page, email = 'ana@ufpe.br', password = 'intereng2026') {
-  await page.goto('/');
+  await page.goto('/login');
   await page.getByLabel('E-mail').fill(email);
   await page.locator('input[aria-label="Senha"]').fill(password);
   await page.getByRole('button', { name: 'ENTRAR' }).click();
@@ -39,18 +39,18 @@ test('a tela de login não expõe credenciais de demonstração', async ({ page 
   // Achado em produção: o painel de acessos de demonstração (senhas fixas,
   // "Admin: ana@ufpe.br · intereng2026") ficava visível mesmo compilado
   // contra a API real, sem checar a origem dos dados.
-  await page.goto('/');
+  await page.goto('/login');
   await expect(page.getByText('Acessos de demonstração')).toHaveCount(0);
 });
 
 test('credencial errada mostra a mensagem da API', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/login');
   await page.getByLabel('E-mail').fill('ana@ufpe.br');
   await page.locator('input[aria-label="Senha"]').fill('senha-errada');
   await page.getByRole('button', { name: 'ENTRAR' }).click();
 
   await expect(page.getByRole('status')).toContainText(/inválidos/i);
-  await expect(page).toHaveURL(/\/$|\/\?/);
+  await expect(page).toHaveURL(/\/login/);
 });
 
 test('a operação vai à API e a resposta é o que a tela mostra', async ({ page, request }) => {
@@ -100,7 +100,7 @@ test('token recusado pela API devolve ao login com aviso', async ({ page }) => {
 });
 
 test('conta com a senha inicial só alcança a troca de senha', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/login');
   await page.getByLabel('E-mail').fill('nova@ufpe.br');
   await page.locator('input[aria-label="Senha"]').fill('intereng2026');
   await page.getByRole('button', { name: 'ENTRAR' }).click();
@@ -122,7 +122,7 @@ test('conta com a senha inicial só alcança a troca de senha', async ({ page })
 });
 
 test('a página pública carrega normalmente para quem está com a senha inicial pendente', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/login');
   await page.getByLabel('E-mail').fill('nova@ufpe.br');
   await page.locator('input[aria-label="Senha"]').fill('intereng2026');
   await page.getByRole('button', { name: 'ENTRAR' }).click();
