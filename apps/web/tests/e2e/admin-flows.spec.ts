@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+﻿import { expect, test } from '@playwright/test';
 import { loginAs } from './helpers';
 
 test('valida, confirma descarte e cadastra uma equipe sem duplicar ações', async ({ page }) => {
@@ -175,7 +175,7 @@ test('só o super admin concede acesso de admin da edição', async ({ page }) =
   // O organizador convida gestor, não outro admin.
   await expect(page.getByLabel('Papel').locator('option')).toHaveText(['Gestor de modalidade']);
 
-  await page.goto('/');
+  await page.goto('/login');
   await loginAs(page, 'super@intereng.com', 'super2026');
   await page.goto('/staff/new');
   await expect(page.getByLabel('Papel').locator('option')).toHaveText(['Admin da edição', 'Gestor de modalidade']);
