@@ -149,7 +149,11 @@ function LiveMatchContent() {
     const update = () => {
       const nextClock = currentClock();
       setClock(nextClock);
-      if (hasClock && nextClock >= periodDurationSeconds && !paused && !finished && !periodEndHandled.current) {
+      // Só quem detém a trava encerra a etapa. Sem esta guarda, QUALQUER aparelho
+      // do staff com a tela aberta gravava o fim de período assim que o relógio
+      // dele cruzava o limite — inclusive um com a data adiantada, que encerrava
+      // o primeiro tempo para todo mundo sem nunca ter operado a partida.
+      if (allowed && holdsOperation && hasClock && nextClock >= periodDurationSeconds && !paused && !finished && !periodEndHandled.current) {
         periodEndHandled.current = true;
         void dispatch({ type: 'match/updateClock', payload: { id: match.id, patch: { paused: true, clockSeconds: periodDurationSeconds, runningSince: undefined } }, audit: { action: `${periodLabel} encerrado`, entity: `${match.entryA} × ${match.entryB}`, after: `${currentPeriod}/${totalPeriods}` } });
         announce(`${periodLabel} ${currentPeriod} encerrado.`);
@@ -160,7 +164,7 @@ function LiveMatchContent() {
     if (!hasClock || paused || finished || !persisted.runningSince) return;
     const timer = window.setInterval(update, 250);
     return () => window.clearInterval(timer);
-  }, [dispatch, currentPeriod, finished, hasClock, match.entryA, match.entryB, match.id, paused, periodDurationSeconds, periodLabel, persisted.clockSeconds, persisted.runningSince, totalPeriods]);
+  }, [allowed, dispatch, currentPeriod, finished, hasClock, holdsOperation, match.entryA, match.entryB, match.id, paused, periodDurationSeconds, periodLabel, persisted.clockSeconds, persisted.runningSince, totalPeriods]);
 
   function showImpact(tone: EventTone) {
     setImpact(tone);
