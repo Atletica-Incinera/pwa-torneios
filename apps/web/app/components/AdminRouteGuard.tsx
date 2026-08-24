@@ -38,9 +38,9 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     // Prazo vencido ou 401: quem estava dentro precisa saber por quê.
-    if (expired) { router.replace('/?access=expired'); return; }
+    if (expired) { router.replace('/login?access=expired'); return; }
     if (!session) { router.replace(`/?redirect=${encodeURIComponent(pathname)}`); return; }
-    if (stateHydrated && revoked) { clearFrontendSession(); router.replace('/?access=revoked'); }
+    if (stateHydrated && revoked) { clearFrontendSession(); router.replace('/login?access=revoked'); }
   }, [expired, hydrated, pathname, revoked, router, session, stateHydrated]);
   if (!hydrated || expired || !session || revoked) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;
   // Antes de qualquer checagem que dependa dos dados: com a senha inicial ainda
