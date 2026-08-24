@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';

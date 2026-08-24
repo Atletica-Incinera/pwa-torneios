@@ -1,4 +1,4 @@
-﻿import type { Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 export async function loginAs(page: Page, email = 'ana@ufpe.br', password = 'intereng2026') {
   await page.goto('/login');

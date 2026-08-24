@@ -1,4 +1,4 @@
-﻿import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 /**
  * O app compilado com `NEXT_PUBLIC_DATA_SOURCE=http`, falando com a API.
