@@ -114,7 +114,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
     if (impact.blocked.length) { toast(`Anule antes as partidas já operadas que dependem deste resultado (${impact.blocked.length}).`, 'error'); return; }
 
     const reason = await prompt({
-      title: 'Retificar resultado encerrado?',
+      title: 'Corrigir resultado encerrado encerrado?',
       message: impact.downstream.length
         ? `${impact.downstream.length} confronto(s) gerado(s) a partir deste resultado serão refeitos, e a classificação será recalculada.`
         : 'A classificação da modalidade será recalculada com o novo placar.',

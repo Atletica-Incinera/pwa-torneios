@@ -133,6 +133,9 @@ ul.form-feedback li { line-height: 1.45; }
    (0,2,1) vence os dois e nao pode subir mais: `:has(input:checked) > span`
    (0,2,2) precisa continuar vencendo no estado marcado. */
 .entity-form .checkbox-field > span { font-size: .82rem; font-weight: 600; line-height: 1.35; letter-spacing: .02em; text-transform: none; color: rgba(251,254,249,.68); }
+/* Chip fora da dupla de eventos carrega frase inteira ("Gerar disputa de
+   terceiro lugar após as semifinais"), e o `nowrap` cortava no meio. */
+.checkbox-field:not(.checkbox-pair .checkbox-field) > span { white-space: normal; }
 .checkbox-field:has(input:checked) > span { color: var(--white); font-weight: 700; }
 .tiebreaker-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: tiebreaker; }
 .tiebreaker-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 8px; align-items: center; padding: 8px 10px; border-left: 3px solid var(--orange); background: var(--surface-2); }
@@ -420,7 +423,11 @@ ul.form-feedback li { line-height: 1.45; }
 .minute-orange { background: var(--orange); color: #000; }
 
 .bottom-nav { position: fixed !important; inset-block-end: 0; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(100%, 520px); min-height: 76px; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(2,39,52,.96); backdrop-filter: blur(16px); display: grid; grid-template-columns: repeat(5, 1fr); }
-.nav-item { text-decoration: none; color: rgba(251,254,249,.48); display: grid; place-items: center; align-content: center; gap: 5px; font-size: 11px; font-weight: 700; }
+/* `min-width: 0` e o que impede o item de grid de estourar a propria celula:
+   sem ele, `Modalidades` transbordava 32px em 320px e ficava POR CIMA de
+   `Jogos`. O rotulo agora encolhe um ponto antes de colidir. */
+.nav-item { text-decoration: none; color: rgba(251,254,249,.48); display: grid; place-items: center; align-content: center; gap: 5px; min-width: 0; font-size: 11px; font-weight: 700; }
+.nav-item > span { max-width: 100%; font-size: clamp(9px, 2.9vw, 11px); line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
 .nav-icon { width: 36px; height: 30px; display: grid; place-items: center; }
 .nav-item.active { color: var(--white); }
 .nav-item.active .nav-icon { background: var(--orange); color: var(--black); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
@@ -555,7 +562,12 @@ ul.form-feedback li { line-height: 1.45; }
 .tournament-orange { box-shadow: inset 6px 0 0 var(--orange); }
 .tournament-number { font-family: var(--font-display); font-size: 38px; color: rgba(247,240,227,.18); writing-mode: vertical-rl; }
 .tournament-main { align-self: center; min-width: 0; }
-.tournament-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.tournament-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+/* Os selos eram recortados pelo card nos dois viewports — o de fase perdia
+   metade do nome e o de papel do staff perdia a última letra. Encolhem e
+   quebram em vez de sumir por baixo da borda. */
+.tournament-meta > *, .staff-role > * { min-width: 0; }
+.tournament-meta .status-badge, .staff-role .status-badge { white-space: normal; overflow-wrap: anywhere; }
 .tournament-card h2 { margin: 18px 0 20px; font-family: var(--font-display); font-size: 22px; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
 .tournament-facts { display: flex; flex-wrap: wrap; gap: 14px; color: rgba(251,254,249,.58); font-size: 12px; }
 .tournament-facts span { display: flex; align-items: center; gap: 5px; }
@@ -3567,7 +3579,13 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 /* O rótulo volta ao botão de criar do cabeçalho. `flex: 0 1 auto` sobrescreve o
    `flex: 0 0 auto` de `.header-action`: sem isso o botão não encolhe e o texto
    vaza do `overflow: hidden` da tela. */
-.header-action-labeled { width: auto; min-width: 48px; min-height: 48px; max-width: 62%; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 0 1 auto; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+/* O botao NAO encolhe. Medido: com `flex: 0 1 auto` nos dois lados, o titulo
+   — que quebra em varias linhas sem prejuizo — vencia a disputa e o rotulo do
+   botao era cortado em TODAS as oito telas de criacao, nos dois viewports
+   (`CAD...`, `NO...`, `AGEN...`). O `max-width: 62%` nunca chegava a valer:
+   o botao real media 93-142px. Quem cede espaco agora e o titulo. */
+.header-action-labeled { width: auto; min-width: 48px; min-height: 48px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 0 0 auto; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.mobile-header:has(.header-action-labeled) > div:first-child { flex: 1 1 auto; min-width: 0; }
 /* `.header-action span` é o ponto rosa de notificação; o texto precisa sair dessa regra. */
 .header-action-labeled .header-action-text { position: static; width: auto; height: auto; background: none; border-radius: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
@@ -3599,3 +3617,19 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 /* `cursor: not-allowed` não existe no toque: sem opacidade, um botão bloqueado
    por pré-requisito parecia habilitado e o clique simplesmente não fazia nada. */
 .wide-action:disabled { opacity: .45; }
+
+/* --- Montagem da edição ---
+   Guia de progressão no painel: o app conhecia a ordem dos seis passos e não a
+   contava a ninguém. Some sozinho quando os seis estão cumpridos. */
+.edition-progress { margin: 0 0 24px; padding: 16px; border: 1px solid var(--orange); background: rgba(246,161,26,.08); display: grid; gap: 12px; }
+.edition-progress-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.edition-progress-head h2 { margin: 4px 0 0; font-family: var(--font-display); font-size: clamp(1.1rem, 5vw, 1.4rem); }
+.edition-progress-count { flex: 0 0 auto; font-family: var(--font-display); font-size: 1.1rem; color: var(--orange); }
+.edition-progress-steps { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.edition-progress-steps li { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+.edition-progress-steps .edition-progress-mark { display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; border-radius: 50%; background: var(--surface-2); font-size: 10px; }
+.edition-progress-steps li.is-done { border-color: rgba(246,161,26,.5); color: var(--white); }
+.edition-progress-steps li.is-done .edition-progress-mark { background: var(--orange); color: var(--black); }
+.edition-progress-steps li.is-next { border-color: var(--orange); color: var(--white); }
+.edition-progress-hint { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.edition-progress .wide-action { margin-top: 0; }

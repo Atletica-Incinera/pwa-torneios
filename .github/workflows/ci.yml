@@ -1,0 +1,158 @@
+name: CI Front
+
+# Até aqui o repositório só tinha `cd.yml`, e merge em `front-end` publica direto
+# no site do evento. As suítes existiam mas ninguém era obrigado a rodá-las —
+# inclusive a e2e, que foi a única coisa que pegou as três regressões do último
+# PR. Este workflow torna esse resultado obrigatório antes do merge.
+
+on:
+  pull_request:
+    branches:
+      - front-end
+  push:
+    branches:
+      - front-end
+
+# Repare que `front-end` é a branch de produção, e não `main` — a mesma pegadinha
+# que o `cd.yml` já documenta. Um PR contra `main` não dispara este workflow
+# porque um merge em `main` também não publica nada.
+#
+# E, ao contrário do `cd.yml`, aqui não há `paths-ignore`: quando um filtro de
+# caminho pula o workflow, o check obrigatório nunca reporta e o PR fica travado
+# esperando um resultado que não vem.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Em PR só vale o último commit, então cancelar a execução anterior devolve o
+  # veredito mais rápido. Em `push` na `front-end` não cancelamos: cada commit
+  # ali vira deploy e precisa do próprio resultado registrado.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # Todo o código do front vive em `apps/web`, com o próprio package.json e o
+    # próprio package-lock.json. Não existe package.json na raiz nem workspaces.
+    working-directory: apps/web
+
+jobs:
+  verificacoes:
+    name: Typecheck, unidade e componentes
+    # ubuntu-latest, e NÃO `self-hosted`. O runner self-hosted é a VM de
+    # produção, onde o site do evento está no ar. Rodar teste nele disputa CPU
+    # com o app e sobe processo (servidor Next em porta fixa, navegador headless)
+    # ao lado dos containers reais. O `cd.yml` usa self-hosted porque precisa
+    # daquela máquina para publicar; o CI não precisa de nada que só exista lá.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar o Node
+        uses: actions/setup-node@v4
+        with:
+          # Mesma major das três etapas do Dockerfile. Também é o piso para os
+          # scripts `test:unit` e o mock de API rodarem `.ts` direto pelo node,
+          # sem transpilar: a remoção de tipos passou a ser padrão no 22.18.
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Testes de unidade
+        run: npm run test:unit
+
+      - name: Testes de componentes
+        run: npm run test:components
+
+  e2e:
+    name: Ponta a ponta (Playwright)
+    # Job separado, em paralelo com o de cima, porque leva bem mais tempo: dois
+    # `next build` mais cerca de quatro minutos de teste. Separado, um erro de
+    # tipo aparece em dois minutos em vez de esperar a e2e terminar; e o relatório
+    # do Playwright fica isolado num job só dele.
+    #
+    # POR QUE ELA RODA EM TODO PR, e não só na branch de produção: aqui merge é
+    # deploy. Não existe homologação — o que passa por `front-end` já está no ar
+    # para o evento. Deixar a e2e só no push da branch de produção significaria
+    # descobrir a regressão depois de publicá-la, que é exatamente o cenário que
+    # este workflow deveria eliminar. Some a isso que a e2e foi a única suíte que
+    # pegou as três regressões do último PR e que faltam poucos dias para o
+    # evento: o custo de rodá-la é de minutos num runner hospedado, e o custo de
+    # não rodá-la é o site quebrado durante o torneio. Se algum dia o tempo de
+    # espera virar problema de verdade, o corte a fazer é dentro da suíte (mover
+    # os casos mais lentos para um job noturno), não desligá-la no PR.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar o Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # Só chromium: é o único navegador que os dois playwright.config declaram
+      # (mobile-chromium e desktop-chromium). `--with-deps` traz as bibliotecas
+      # de sistema que o headless exige no runner.
+      - name: Instalar o navegador do Playwright
+        run: npx playwright install --with-deps chromium
+
+      # `test:e2e` compila o app em modo `local` (dados no navegador) e roda a
+      # suíte de `tests/e2e`.
+      #
+      # O `--grep-invert` exclui os quatro testes de regressão visual. Não é
+      # preguiça: as imagens de referência versionadas são
+      # `...-desktop-chromium-win32.png` — foram geradas no Windows, e o
+      # Playwright procura o sufixo da plataforma onde está rodando. No Linux ele
+      # não acharia nenhuma delas e reprovaria os oito casos (quatro testes por
+      # dois projetos) sem que nada estivesse quebrado. Os argumentos passam
+      # inteiros: `scripts/run-e2e.mjs` repassa `process.argv.slice(2)` para a CLI
+      # do Playwright.
+      #
+      # Para ligar a regressão visual no CI, basta gerar o conjunto Linux
+      # (`npm run test:visual:update` dentro de um container linux/amd64),
+      # versionar os `-linux.png` ao lado dos `-win32.png` — eles convivem, cada
+      # plataforma lê o seu — e remover o `--grep-invert` daqui.
+      - name: E2E com dados locais
+        run: npm run test:e2e -- --grep-invert "regressão visual"
+
+      # A outra metade: app compilado apontando para a API, conversando com o
+      # servidor de mentira que cumpre o contrato. É a suíte que pega quebra de
+      # contrato entre front e API, que é como o site cai em produção sem que
+      # nenhum teste local perceba.
+      - name: E2E contra a API de mentira
+        run: npm run test:e2e:http
+
+      # Sem isto, uma falha de e2e no CI é uma linha de log e nada mais. O
+      # relatório traz o traço da execução, o screenshot do momento da falha e o
+      # vídeo do passo a passo — a diferença entre "reproduzir na sua máquina" e
+      # "abrir o artefato". Os caminhos são relativos à raiz do repositório, e não
+      # ao `working-directory`. `test-results` cobre também a suíte http, cujo
+      # config não gera relatório HTML.
+      - name: Publicar o relatório do Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 14

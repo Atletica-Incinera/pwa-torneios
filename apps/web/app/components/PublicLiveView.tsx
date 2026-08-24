@@ -17,7 +17,7 @@ export function PublicLiveView() {
   return (
     <PublicAppShell active="live" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="AO VIVO" subtitle="Placares oficiais acontecendo agora">
       <PublicMatchCollection mode="live" />
-      <Link href="/public/tournaments" className="wide-action"><Trophy size={18} /> VER TODAS AS MODALIDADES <span>›</span></Link>
+      <Link href="/public/tournaments" className="wide-action"><Trophy size={18} /> TODAS AS MODALIDADES <span>›</span></Link>
     </PublicAppShell>
   );
 }

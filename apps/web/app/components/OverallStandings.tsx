@@ -22,6 +22,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   const activeEdition = getActiveEdition(state);
   const [metricDraft, setMetricDraft] = useState({ name: '', points: '1', position: '' as OverallPosition | '' });
   const [metricDrafts, setMetricDrafts] = useState<Record<string, string>>({});
+  const [seeding, setSeeding] = useState(false);
   const [awardDraft, setAwardDraft] = useState({ teamId: '', discipline: state.preferences.selectedDiscipline, metricId: state.overallRanking.metrics[0]?.id ?? '', points: String(state.overallRanking.metrics[0]?.defaultPoints ?? 1), note: '' });
 
   const teams = useMemo(() => listTeams(state), [state]);
@@ -76,6 +77,17 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
     if (!next || next === metric.name) return;
     if (next.length < 2) { toast('O nome da métrica precisa de ao menos 2 caracteres.', 'error'); return; }
     updateMetric(metric, { name: next }, 'Métrica do ranking renomeada');
+  }
+
+  async function seedDefaultMetrics() {
+    if (seeding || !activeEdition) return;
+    setSeeding(true);
+    const saved = await dispatch({
+      type: 'ranking/seedDefaultMetrics',
+      payload: { editionId: activeEdition.id },
+      audit: { action: 'Métricas padrão do ranking criadas', entity: `Edição ${activeEdition.year}` },
+    });
+    if (!saved.ok) setSeeding(false);
   }
 
   async function removeMetric(metric: OverallMetricState) {
@@ -149,12 +161,20 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
         <p className="form-hint">Métricas com posição declarada saem direto do pódio das disputas encerradas. As demais continuam sendo lançamento manual do admin.</p>
         {suggestions.length ? <>
           <ul className="automatic-award-list">{suggestions.map((item) => <li key={`${item.teamId}-${item.discipline}-${item.metric.id}`}><strong>{item.teamName}</strong><span>{item.discipline} · {item.metric.name}</span><b>{item.points} pts</b></li>)}</ul>
-          <button type="button" className="wide-action" onClick={() => void applyAutomatic()}><Sparkles size={18} /> LANÇAR {suggestions.length} BONIFICAÇÃO(ÕES) <span>›</span></button>
+          <button type="button" className="wide-action" onClick={() => void applyAutomatic()}><Sparkles size={18} /> LANÇAR {suggestions.length} {suggestions.length === 1 ? 'BONIFICAÇÃO' : 'BONIFICAÇÕES'} <span>›</span></button>
         </> : <p className="match-filter-empty">Nenhuma bonificação automática pendente. Encerre as disputas para liberar o pódio.</p>}
       </section>
 
       <section className="section-block ranking-admin-panel">
         <SectionTitle eyebrow="REGULAMENTO" title="MÉTRICAS DE PONTUAÇÃO" />
+        {/* Um banco recém-migrado não tem métrica nenhuma, e sem métrica a
+            classificação geral não pontua nada nem aplica a bonificação
+            automática do pódio. É o estado real da produção de hoje. */}
+        {!state.overallRanking.metrics.length ? <div className="empty-state">
+          <strong>NENHUMA MÉTRICA CADASTRADA</strong>
+          <p>Sem métricas, nada pontua na classificação geral. Comece pelas quatro padrão — campeão, vice, terceiro e participação — e ajuste os valores depois.</p>
+          <button type="button" className="secondary-button" onClick={() => void seedDefaultMetrics()} disabled={seeding}><Sparkles size={16} aria-hidden="true" /> {seeding ? 'Criando…' : 'Criar métricas padrão'}</button>
+        </div> : null}
         <div className="ranking-metric-list">{state.overallRanking.metrics.map((metric) => <article key={metric.id}>
           <div className="ranking-metric-name-row">
             <SlidersHorizontal size={18} aria-hidden="true" />
@@ -197,7 +217,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
       <section className="section-block ranking-admin-panel">
         <SectionTitle eyebrow="OFICIALIZAÇÃO" title="FECHAMENTO DO RANKING" />
         <p className="form-hint">{closed ? 'A classificação geral está oficial. Reabrir exige motivo e fica registrado na auditoria.' : 'Feche o ranking quando todos os resultados estiverem homologados. Depois disso, alterações viram retificações rastreáveis.'}</p>
-        <button type="button" className="wide-action" onClick={() => void toggleClosure()}><Lock size={18} /> {closed ? 'REABRIR RANKING GERAL' : 'FECHAR RANKING GERAL'} <span>›</span></button>
+        <button type="button" className="wide-action" onClick={() => void toggleClosure()}><Lock size={18} /> {closed ? 'REABRIR RANKING GERAL' : 'FECHAR A CLASSIFICAÇÃO'} <span>›</span></button>
       </section>
     </> : null}
   </>;

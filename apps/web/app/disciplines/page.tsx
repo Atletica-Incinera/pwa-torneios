@@ -22,9 +22,10 @@ export default function DisciplinesPage() {
       title="MODALIDADES"
       subtitle={`${enabled.length} modalidades habilitadas · ${enabled.reduce((total, item) => total + item.categories.length, 0)} categorias`}
       actionHref={canManageEdition(session) ? "/disciplines/new" : undefined}
-      actionLabel="Adicionar modalidade"
+      actionLabel="Adicionar modalidade à edição"
+      actionShortLabel="Modalidade"
     >
-      <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link>
+      <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL <span>›</span></Link>
       {/* Segundo item da barra inferior e primeiro passo depois de criar a
           competição: chegar aqui num branco absoluto quebrava a cadeia logo no
           começo. O gestor de modalidade cai no mesmo vazio por outro motivo — a

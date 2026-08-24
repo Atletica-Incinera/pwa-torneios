@@ -76,7 +76,9 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
       goalsAgainst: entry.scoreAgainst,
       balance: entry.scoreFor - entry.scoreAgainst,
       points: entry.points,
-      disciplinary: 0,
+      // Vem do servidor desde que `PhaseStanding.disciplinary` passou a ser
+      // gravado; ausente (API antiga) cai em 0, que é o valor neutro.
+      disciplinary: entry.disciplinary ?? 0,
     }))
     : undefined;
   // Com uma tabela só, todo jogo da categoria conta — menos o mata-mata, que

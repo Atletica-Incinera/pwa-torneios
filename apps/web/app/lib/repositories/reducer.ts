@@ -1,4 +1,4 @@
-import type { FrontendState, MatchState } from '../frontend-state.ts';
+import { initialFrontendState, type FrontendState, type MatchState } from '../frontend-state.ts';
 import { createId } from '../create-id.ts';
 import { clearDownstream, progressTournament } from '../tournament-progression.ts';
 import { evaluateOperatorLock } from '../match-lifecycle.ts';
@@ -134,6 +134,14 @@ function reduce(current: FrontendState, action: Action): FrontendState {
       // Estorno não apaga o lançamento: marca-o, com motivo e responsável.
       return { ...current, overallRanking: { ...current.overallRanking, awards: current.overallRanking.awards.map((award) => award.id === id ? { ...award, revokedAt, revokedBy, revokeReason } : award) } };
     }
+
+    // No modo local as métricas já vêm semeadas no estado inicial, então não há
+    // o que criar: quem precisa desta ação é o banco de produção, que nasceu
+    // vazio. A tela só oferece o botão quando a lista está de fato vazia.
+    case 'ranking/seedDefaultMetrics':
+      return current.overallRanking.metrics.length
+        ? current
+        : { ...current, overallRanking: { ...current.overallRanking, metrics: initialFrontendState.overallRanking.metrics } };
 
     case 'ranking/close':
       return { ...current, overallRanking: { ...current.overallRanking, closures: [...(current.overallRanking.closures ?? []), action.payload.closure] } };

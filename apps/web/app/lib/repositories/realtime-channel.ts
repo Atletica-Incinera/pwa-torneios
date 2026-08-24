@@ -40,16 +40,29 @@ type SharedRealtimeChannel = {
   dispose: () => void;
 };
 
+/**
+ * Espera antes de reabrir o canal, dobrando a cada tentativa.
+ *
+ * O reconnect automático do `EventSource` só existe para conexão interrompida:
+ * quando o servidor responde algo diferente de 200 — e o teto de conexões
+ * simultâneas responde 429 — a especificação manda o navegador FECHAR e nunca
+ * mais tentar. Sem reabrir por conta própria, a aba que apanhasse do teto
+ * ficaria sem tempo real até alguém recarregar a página.
+ */
+const reopenDelays = [500, 1_000, 2_000, 4_000, 8_000] as const;
+
 const sharedChannels = new Map<string, SharedRealtimeChannel>();
 
 function openSharedChannel(url: string): SharedRealtimeChannel {
-  const source = new EventSource(url, { withCredentials: false });
   const subscribers = new Set<RealtimeSubscriber>();
   const channel: SharedRealtimeChannel = {
-    source,
+    source: new EventSource(url, { withCredentials: false }),
     subscribers,
     dispose: () => undefined,
   };
+  let attempt = 0;
+  let disposed = false;
+  let reopenTimer: number | undefined;
 
   const receive = (rawEvent: Event) => {
     const revision = parseRevision(rawEvent as MessageEvent<string>);
@@ -61,22 +74,48 @@ function openSharedChannel(url: string): SharedRealtimeChannel {
     for (const subscriber of [...subscribers]) subscriber.onConnection?.(connection);
   };
 
-  source.addEventListener(revisionEvent, receive);
-  // Aceita também streams sem `event:` para manter compatibilidade HTTP.
-  source.onmessage = receive;
-  source.onopen = () => updateConnection('online');
-  source.onerror = () => updateConnection('offline');
+  const detach = (target: EventSource) => {
+    target.removeEventListener(revisionEvent, receive);
+    target.onmessage = null;
+    target.onopen = null;
+    target.onerror = null;
+  };
+  const attach = (target: EventSource) => {
+    target.addEventListener(revisionEvent, receive);
+    // Aceita também streams sem `event:` para manter compatibilidade HTTP.
+    target.onmessage = receive;
+    target.onopen = () => { attempt = 0; updateConnection('online'); };
+    target.onerror = () => {
+      updateConnection('offline');
+      if (channel.source.readyState !== EventSource.CLOSED || disposed) return;
+      const wait = reopenDelays[Math.min(attempt, reopenDelays.length - 1)];
+      attempt += 1;
+      reopenTimer = window.setTimeout(reopen, wait);
+    };
+  };
+  const reopen = () => {
+    if (disposed) return;
+    detach(channel.source);
+    channel.source.close();
+    channel.source = new EventSource(url, { withCredentials: false });
+    attach(channel.source);
+  };
+  attach(channel.source);
   channel.dispose = () => {
-    source.removeEventListener(revisionEvent, receive);
-    source.close();
+    disposed = true;
+    if (reopenTimer !== undefined) window.clearTimeout(reopenTimer);
+    detach(channel.source);
+    channel.source.close();
   };
   return channel;
 }
 
 /**
- * Mantém um EventSource por edição. O navegador cuida do reconnect e reenvia o
- * último `id` recebido como `Last-Event-ID`; o cliente apenas refaz o snapshot
- * autorizado quando chega uma revisão mais nova.
+ * Mantém um EventSource por edição. O navegador reconecta sozinho e reenvia o
+ * último `id` recebido como `Last-Event-ID` — mas só quando a conexão cai; se o
+ * servidor responder algo diferente de 200 ele fecha em definitivo, e é aí que
+ * `openSharedChannel` reabre por conta própria. O cliente apenas refaz o
+ * snapshot autorizado quando chega uma revisão mais nova.
  */
 export function createRealtimeChannel(): RealtimeConnect {
   return (edition, onRevision, onConnection) => {

@@ -49,7 +49,9 @@ export function AthleteDetailView({ id }: { id: string }) {
               <Link href={`/tournaments/${category.id}`} className="list-row" key={category.id}>
                 <Trophy size={20} />
                 <span><strong>{category.name}</strong><small>{category.discipline} · {category.phase}</small></span>
-                <StatusBadge tone={category.registered ? 'orange' : 'neutral'}>{category.registered ? 'Equipe inscrita' : 'Equipe não inscrita'}</StatusBadge>
+                {/* Encurtado porque `.list-row` recortava os dois rótulos até sobrar "EQ":
+                    inscrita e não inscrita ficavam visualmente idênticas. */}
+                <StatusBadge tone={category.registered ? 'orange' : 'neutral'}>{category.registered ? 'Inscrita' : 'Fora'}</StatusBadge>
               </Link>
             ))}
           </div>

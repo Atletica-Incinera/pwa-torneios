@@ -75,7 +75,7 @@ test('publicar libera a agenda antes de os confrontos existirem', async ({ page 
 
   await page.goto('/matches/new?modalidade=Futsal');
   await expect(page.getByLabel('Modalidade')).toHaveValue('Futsal');
-  await expect(page.getByLabel('Categoria / chave do InterEng')).toContainText('Futsal Ordem E2E');
+  await expect(page.getByLabel('Categoria')).toContainText('Futsal Ordem E2E');
 });
 
 test('modalidade sem categoria publicada aparece no dropdown, com o motivo', async ({ page }) => {
@@ -113,7 +113,7 @@ test('o + da modalidade cria categoria, não outra modalidade', async ({ page })
   await page.getByLabel('Nome da categoria').fill('Futsal Misto E2E');
   await page.getByRole('button', { name: 'Criar categoria' }).click();
   await expect(page).toHaveURL(/\/tournaments\/category-[a-z0-9-]+\?aba=regras/);
-  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E SEEDS' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PARTICIPANTES E ORDEM DO SORTEIO' })).toBeVisible();
   const created = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem('intereng:app-state:v1') ?? '{}').tournaments ?? {}).find((item: unknown) => (item as { name?: string }).name === 'Futsal Misto E2E'));
   expect((created as { discipline?: string; status?: string })?.discipline).toBe('Futsal');
   expect((created as { discipline?: string; status?: string })?.status).toBe('Rascunho');

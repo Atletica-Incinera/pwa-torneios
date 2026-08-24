@@ -22,7 +22,14 @@ export type DisciplineRule = {
   walkover?: WalkoverRule;
 };
 export type DisciplineState = { config?: string; rules?: DisciplineRule; enabled?: boolean; created?: boolean; name?: string; mode?: 'Coletiva' | 'Individual'; tournaments?: number; tone?: 'blue' | 'pink' | 'orange'; startedAt?: string };
-export type PhaseStandingState = { entryId: string; entryName: string; rank: number | null; played: number; won: number; drawn: number; lost: number; scoreFor: number; scoreAgainst: number; points: number };
+/**
+ * Linha da tabela oficial, calculada pelo servidor.
+ *
+ * `disciplinary` é o acumulado de fair play. Ele já ordenava a tabela do lado
+ * de lá e não vinha no payload, então a tela mostrava zero para todo mundo —
+ * numa chave decidida no fair play, a ordem ficava sem como ser justificada.
+ */
+export type PhaseStandingState = { entryId: string; entryName: string; rank: number | null; played: number; won: number; drawn: number; lost: number; scoreFor: number; scoreAgainst: number; points: number; disciplinary?: number };
 export type TournamentPhase = { id: string; name: string; format: 'Grupos' | 'Mata-mata' | 'Liga'; groups: string[]; qualifiers: number; standings?: PhaseStandingState[] };
 /** Origem das equipes do mata-mata: quantas por grupo, melhores terceiros e cruzamento. */
 export type TournamentAdvancement = { perGroup: number; bestThirds: number; crossing: 'padrao' | 'sequencial'; thirdPlaceMatch: boolean };
