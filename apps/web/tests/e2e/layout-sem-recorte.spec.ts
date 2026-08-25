@@ -40,6 +40,14 @@ test(`nenhuma tela esconde ou recorta conteudo a ${largura}px`, async ({ page })
     } catch {
       continue;
     }
+    // A pagina inteira, nao so a primeira dobra: a sobreposicao de 8px entre a
+    // lista de edicoes e o texto abaixo dela vivia em 1181px, fora do visor, e
+    // por isso passou batido na primeira varredura.
+    const alturaTotal = await page.evaluate(() => document.body.scrollHeight);
+    const achadosPorTela: Record<string, unknown[]>[] = [];
+    for (let deslocamento = 0; deslocamento < alturaTotal; deslocamento += 700) {
+      await page.evaluate((y) => window.scrollTo(0, y), deslocamento);
+      await page.waitForTimeout(60);
     const achados = await page.evaluate(() => {
       const visivel = (el: Element) => {
         const cs = getComputedStyle(el);
@@ -61,8 +69,27 @@ test(`nenhuma tela esconde ou recorta conteudo a ${largura}px`, async ({ page })
         if (r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth) continue;
         // Quem responde no centro do texto? Se for outro elemento que nao o
         // contem, ha algo por cima.
-        const alvo = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        if (!alvo || alvo === el || el.contains(alvo) || alvo.contains(el)) continue;
+        // Varios pontos, nao so o centro: quando o bloco de cima cobre apenas a
+        // primeira linha, o centro ainda responde o proprio texto.
+        const pontos: [number, number][] = [
+          [r.left + r.width / 2, r.top + 2],
+          [r.left + 4, r.top + 2],
+          [r.left + r.width / 2, r.top + r.height / 2],
+          [r.left + r.width / 2, r.bottom - 2],
+        ];
+        let alvo: Element | null = null;
+        for (const [x, y] of pontos) {
+          const achado = document.elementFromPoint(x, y);
+          if (achado && achado !== el && !el.contains(achado) && !achado.contains(el)) { alvo = achado; break; }
+        }
+        if (!alvo) continue;
+        // Encostar nao e cobrir. Exige area de sobreposicao de verdade: o
+        // <small> logo abaixo do nome comeca no mesmo pixel em que o nome
+        // termina, e a amostragem na borda o acusava sem motivo.
+        const ra = alvo.getBoundingClientRect();
+        const largura = Math.min(r.right, ra.right) - Math.max(r.left, ra.left);
+        const altura = Math.min(r.bottom, ra.bottom) - Math.max(r.top, ra.top);
+        if (largura <= 2 || altura <= 2) continue;
         // Sobreposicao transparente e tecnica legitima: o <input type=date>
         // invisivel por cima do rotulo faz o toque abrir o seletor nativo.
         if (Number(getComputedStyle(alvo).opacity) < 0.1) continue;
@@ -103,8 +130,18 @@ test(`nenhuma tela esconde ou recorta conteudo a ${largura}px`, async ({ page })
 
       return { cobertos, recortados, colados };
     });
-    if (achados.cobertos.length || achados.recortados.length || achados.colados.length) {
-      todos.push({ rota, ...achados });
+      achadosPorTela.push(achados as unknown as Record<string, unknown[]>);
+    }
+    const juntos = {
+      cobertos: achadosPorTela.flatMap((a) => a.cobertos ?? []),
+      recortados: achadosPorTela.flatMap((a) => a.recortados ?? []),
+      colados: achadosPorTela.flatMap((a) => a.colados ?? []),
+    };
+    // A mesma peca reaparece em varias alturas de rolagem; uma vez basta.
+    const unico = (lista: unknown[]) => [...new Map(lista.map((x) => [JSON.stringify(x), x])).values()];
+    const achadosFinais = { cobertos: unico(juntos.cobertos), recortados: unico(juntos.recortados), colados: unico(juntos.colados) };
+    if (achadosFinais.cobertos.length || achadosFinais.recortados.length || achadosFinais.colados.length) {
+      todos.push({ rota, ...achadosFinais });
     }
   }
   expect(todos, `defeitos de layout a ${largura}px:
