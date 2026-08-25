@@ -319,8 +319,8 @@ ul.form-feedback li { line-height: 1.45; }
 .stat-card { width: 100%; min-width: 0; min-height: 176px; height: 100%; padding: clamp(14px, 4vw, 18px); display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; border: 1px solid var(--line); background: var(--surface); clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
 .stat-icon { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 auto; margin-bottom: auto; background: rgba(251,254,249,.06); }
 .stat-card strong { max-width: 100%; font-size: clamp(2.55rem, 10vw, 3.35rem); line-height: .92; }
-.stat-card > span { max-width: 100%; margin-top: 9px; font-size: clamp(.72rem, 2.8vw, .82rem); font-weight: 700; line-height: 1.25; letter-spacing: .06em; overflow-wrap: anywhere; text-transform: uppercase; }
-.stat-card small { max-width: 100%; margin-top: 8px; color: rgba(251,254,249,.52); font-size: clamp(.72rem, 2.7vw, .82rem); line-height: 1.35; overflow-wrap: anywhere; }
+.stat-card > span { max-width: 100%; margin-top: 9px; font-size: clamp(.72rem, 2.8vw, .82rem); font-weight: 700; line-height: 1.25; letter-spacing: .06em; overflow-wrap: break-word; hyphens: auto; text-transform: uppercase; }
+.stat-card small { max-width: 100%; margin-top: 8px; color: rgba(251,254,249,.52); font-size: clamp(.72rem, 2.7vw, .82rem); line-height: 1.35; overflow-wrap: break-word; hyphens: auto; }
 .stat-blue { box-shadow: inset 0 4px 0 var(--blue); }
 .stat-pink { box-shadow: inset 0 4px 0 var(--pink); }
 .stat-orange { box-shadow: inset 0 4px 0 var(--orange); }
@@ -422,12 +422,12 @@ ul.form-feedback li { line-height: 1.45; }
 .minute-pink { background: var(--pink); }
 .minute-orange { background: var(--orange); color: #000; }
 
-.bottom-nav { position: fixed !important; inset-block-end: 0; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(100%, 520px); min-height: 76px; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(2,39,52,.96); backdrop-filter: blur(16px); display: grid; grid-template-columns: repeat(5, 1fr); }
+.bottom-nav { position: fixed !important; inset-block-end: 0; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(100%, 520px); min-height: 76px; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(2,39,52,.96); backdrop-filter: blur(16px); display: grid; grid-template-columns: repeat(5, minmax(44px, auto)); justify-content: space-between; }
 /* `min-width: 0` e o que impede o item de grid de estourar a propria celula:
    sem ele, `Modalidades` transbordava 32px em 320px e ficava POR CIMA de
    `Jogos`. O rotulo agora encolhe um ponto antes de colidir. */
 .nav-item { text-decoration: none; color: rgba(251,254,249,.48); display: grid; place-items: center; align-content: center; gap: 5px; min-width: 0; font-size: 11px; font-weight: 700; }
-.nav-item > span { max-width: 100%; font-size: clamp(9px, 2.9vw, 11px); line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
+.nav-item > span { max-width: 100%; font-size: clamp(9px, 2.9vw, 11px); line-height: 1.15; text-align: center; overflow-wrap: break-word; hyphens: manual; }
 .nav-icon { width: 36px; height: 30px; display: grid; place-items: center; }
 .nav-item.active { color: var(--white); }
 .nav-item.active .nav-icon { background: var(--orange); color: var(--black); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
@@ -467,7 +467,7 @@ ul.form-feedback li { line-height: 1.45; }
 /* Queda de conexão precisa saltar: o app promete tempo real. */
 .sync-state.sync-offline { color: var(--pink); }
 .page-heading { margin-bottom: 24px; }
-.page-heading h1 { overflow-wrap: anywhere; }
+.page-heading h1 { overflow-wrap: break-word; hyphens: auto; }
 .header-action { flex: 0 0 auto; text-decoration: none; cursor: pointer; }
 .stat-card { color: inherit; text-decoration: none; }
 .next-match-link { display: block; color: inherit; }
@@ -494,7 +494,10 @@ ul.form-feedback li { line-height: 1.45; }
 .floating-add { display: grid; place-items: center; text-decoration: none; z-index: 15; background: var(--orange); color: var(--black); }
 
 /* Context, lists and modules */
-.featured-context { min-height: 190px; position: relative; display: grid; grid-template-columns: 96px 1fr 26px; align-items: center; gap: 16px; padding: 24px; overflow: hidden; border: 1px solid rgba(246,161,26,.58); background: var(--surface); clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 26px 100%, 0 calc(100% - 26px)); }
+/* Ficava a 16px da aba de torneio logo acima, apertado para um cartao deste
+   peso — e o recorte do canto superior direito faz os dois parecerem
+   encostados. */
+.featured-context { margin-block-start: 10px; min-height: 190px; position: relative; display: grid; grid-template-columns: 96px 1fr 26px; align-items: center; gap: 16px; padding: 24px; overflow: hidden; border: 1px solid rgba(246,161,26,.58); background: var(--surface); clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 26px 100%, 0 calc(100% - 26px)); }
 .context-number { align-self: stretch; display: grid; place-items: center; font-family: var(--font-display); font-size: 54px; color: var(--orange); border-right: 1px solid var(--line); }
 .featured-context p { margin: 14px 0 3px; color: rgba(251,254,249,.56); }
 .featured-context h2 { margin: 0 0 10px; font-size: 24px; }
@@ -518,7 +521,7 @@ ul.form-feedback li { line-height: 1.45; }
 /* Disciplines, people and roster */
 .poster-list, .tournament-list, .match-list, .athlete-list, .staff-list { display: grid; gap: 12px; }
 .discipline-card { min-height: 140px; display: grid; grid-template-columns: 62px minmax(0, 1fr) 24px; align-items: center; gap: 16px; padding: 20px 17px; border: 1px solid var(--line); background: var(--surface); overflow: hidden; clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
-.discipline-card h2 { margin: 10px 0 3px; font-family: var(--font-display); font-size: 22px; font-weight: 800; text-transform: uppercase; }
+.discipline-card h2 { margin: 10px 0 3px; font-family: var(--font-display); font-size: clamp(26px, 7vw, 32px); font-weight: 800; letter-spacing: -.01em; line-height: 1.02; text-transform: uppercase; }
 .discipline-card p { margin: 0 0 10px; color: rgba(251,254,249,.55); }
 .discipline-card small { display: flex; align-items: center; gap: 5px; }
 .discipline-index { font-family: var(--font-display); font-size: 36px; color: rgba(247,240,227,.2); }
@@ -562,12 +565,13 @@ ul.form-feedback li { line-height: 1.45; }
 .tournament-orange { box-shadow: inset 6px 0 0 var(--orange); }
 .tournament-number { font-family: var(--font-display); font-size: 38px; color: rgba(247,240,227,.18); writing-mode: vertical-rl; }
 .tournament-main { align-self: center; min-width: 0; }
-.tournament-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
-/* Os selos eram recortados pelo card nos dois viewports — o de fase perdia
-   metade do nome e o de papel do staff perdia a última letra. Encolhem e
-   quebram em vez de sumir por baixo da borda. */
+.tournament-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 8px; min-width: 0; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+/* Os selos eram recortados pelo card, e a correcao anterior os fez encolher e
+   quebrar por dentro — "Rascunho" virava duas linhas em 72px e "Fase de
+   grupos" tres. Selo de status e rotulo curto: ou cabe inteiro, ou desce para
+   a linha seguinte. Quem quebra agora e a LINHA de selos, nao a palavra. */
 .tournament-meta > *, .staff-role > * { min-width: 0; }
-.tournament-meta .status-badge, .staff-role .status-badge { white-space: normal; overflow-wrap: anywhere; }
+.tournament-meta .status-badge, .staff-role .status-badge { white-space: nowrap; }
 .tournament-card h2 { margin: 18px 0 20px; font-family: var(--font-display); font-size: 22px; font-weight: 800; line-height: 1.05; text-transform: uppercase; }
 .tournament-facts { display: flex; flex-wrap: wrap; gap: 14px; color: rgba(251,254,249,.58); font-size: 12px; }
 .tournament-facts span { display: flex; align-items: center; gap: 5px; }
@@ -663,8 +667,12 @@ ul.form-feedback li { line-height: 1.45; }
 .entity-form { display: grid; gap: 18px; }
 .entity-form label { display: grid; gap: 8px; }
 .entity-form label > span { font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: rgba(251,254,249,.72); }
-.entity-form input, .entity-form select { width: 100%; min-height: 54px; padding: 0 15px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--white); outline: 0; clip-path: polygon(0 0, calc(100% - 12px) 0,100% 12px,100% 100%,0 100%); }
-.entity-form input:focus, .entity-form select:focus { border-color: var(--blue); }
+.entity-form input, .entity-form select { width: 100%; min-height: 54px; padding: 0 15px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--white); clip-path: polygon(0 0, calc(100% - 12px) 0,100% 12px,100% 100%,0 100%); }
+/* Sem isto o campo focado era indistinguivel do nao focado: `outline: 0`
+   apagava o anel global e a regra de foco pintava a borda de --blue, que
+   ja era a cor de repouso. O clip-path corta o outline, entao a marca
+   visivel precisa vir de dentro — dai o box-shadow em vez de contorno. */
+.entity-form input:focus-visible, .entity-form select:focus-visible { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange); }
 .entity-form small { color: rgba(251,254,249,.42); }
 
 .file-field-control { position: relative; display: flex; align-items: stretch; min-height: 54px; min-width: 0; border: 1px solid var(--line); background: var(--surface); overflow: hidden; clip-path: polygon(0 0, calc(100% - 12px) 0,100% 12px,100% 100%,0 100%); }
@@ -674,6 +682,11 @@ ul.form-feedback li { line-height: 1.45; }
 .file-field-control:focus-within { border-color: var(--blue); }
 .rule-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .rule-fields.two-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Depois da regra base, senao perde o empate de especificidade — foi
+   exatamente o que acontecia com a media query declarada la em cima. */
+@media (max-width: 640px) {
+  .rule-fields, .rule-fields.two-columns, .discipline-rule-summary { grid-template-columns: 1fr; }
+}
 .rule-fields label { min-width: 0; }
 .discipline-rule-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .form-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 8px; }
@@ -913,8 +926,10 @@ ul.form-feedback li { line-height: 1.45; }
 
 .theme-profile {
   --screen-bg: var(--orange);
-  --screen-text: var(--white);
-  --screen-muted: rgba(247, 240, 227, .76);
+  /* Tinta escura, nao creme: creme sobre este laranja mede 1,85:1 e some.
+     A mesma tinta sobre o mesmo fundo mede 7,4:1. */
+  --screen-text: var(--black);
+  --screen-muted: rgba(2, 39, 52, .78);
   --screen-surface: var(--black);
   --screen-on-surface: var(--white);
   --screen-surface-muted: rgba(247, 240, 227, .68);
@@ -931,6 +946,9 @@ ul.form-feedback li { line-height: 1.45; }
   --screen-before: var(--blue);
   --page-wash: rgba(2, 39, 52, .16);
 }
+
+/* O selo de aviso e laranja: sobre o fundo laranja desta tela ele desaparece. */
+.theme-profile .status-badge.status-orange { background: var(--black); color: var(--white); }
 
 .management-screen,
 .live-screen {
@@ -979,7 +997,8 @@ ul.form-feedback li { line-height: 1.45; }
   max-width: 100%;
   font-size: var(--type-page);
   letter-spacing: -.018em;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .brand-panel h1 { font-size: var(--type-hero); }
@@ -1007,7 +1026,8 @@ ul.form-feedback li { line-height: 1.45; }
   font-size: var(--type-card-title);
   font-weight: 600;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .mobile-header p:not(.eyebrow),
@@ -1080,6 +1100,10 @@ small,
 }
 
 .management-screen .mobile-header p:not(.eyebrow) { color: var(--screen-muted); }
+/* O texto de apoio usava o tom global (creme), correto nas telas escuras e
+   invisivel na de fundo laranja: 1,85:1. Seguindo o tema, cada tela usa o
+   seu proprio tom secundario. */
+.management-screen :is(.form-hint, .section-title-row p) { color: var(--screen-muted); }
 
 .management-screen .context-bar {
   border-left: 4px solid var(--page-accent);
@@ -1128,11 +1152,15 @@ small,
   color: var(--screen-on-control);
 }
 
-.management-screen .entity-form input:focus,
-.management-screen .entity-form select:focus,
+.management-screen .entity-form input:focus-visible,
+.management-screen .entity-form select:focus-visible,
 .management-screen .search-field:focus-within {
-  border-color: var(--screen-accent);
-  box-shadow: 0 0 0 3px var(--screen-accent);
+  /* Laranja fixo, e nao --screen-accent: o anel precisa contrastar com o FUNDO
+     DO CAMPO, que e escuro em toda tela, e nao com o tema. Em theme-profile o
+     accent e o azul-escuro — anel escuro sobre campo escuro (1,2:1) repetiria
+     o defeito de origem. Laranja sobre o campo mede 6,3:1. */
+  border-color: var(--orange);
+  box-shadow: inset 0 0 0 2px var(--orange);
 }
 
 .header-action,
@@ -1343,8 +1371,12 @@ small,
 
 .theme-profile .account-strip small,
 .theme-profile .context-copy small,
-.theme-profile .mobile-header p:not(.eyebrow),
 .theme-profile .module-list > :nth-child(odd) small { color: var(--screen-surface-muted); }
+
+/* Fora do grupo acima de proposito: o cabecalho nao esta sobre superficie
+   escura, esta sobre o fundo laranja da pagina. Com o tom de superficie ele
+   media 1,85:1. */
+.theme-profile .mobile-header p:not(.eyebrow) { color: var(--screen-muted); }
 
 .theme-profile .module-list > :nth-child(even) small { color: var(--screen-surface-alt-muted); }
 .theme-profile .module-list > :nth-child(odd) b { color: var(--screen-on-surface); }
@@ -1629,7 +1661,8 @@ small,
   width: min(100%, 150px);
   max-width: 150px;
   overflow: visible;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
   text-overflow: clip;
   white-space: normal;
   text-align: center;
@@ -2141,7 +2174,8 @@ small,
   align-self: stretch;
   display: grid;
   place-items: center;
-  font-size: 38px;
+  /* Era 38px, o dobro do nome da modalidade. Indice e referencia, nao manchete. */
+  font-size: 24px;
   writing-mode: vertical-rl;
 }
 
@@ -2519,7 +2553,8 @@ small,
   font-family: var(--font-display);
   font-size: clamp(1.2rem, 5.5vw, 1.65rem);
   line-height: 1;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  hyphens: auto;
   text-transform: uppercase;
 }
 
@@ -2965,7 +3000,7 @@ small,
   .theme-teams .team-card { grid-template-columns: 64px minmax(0, 1fr) 20px; }
   .theme-teams .team-card .team-mark-logo { width: 62px; height: 62px; min-width: 62px; min-height: 62px; }
   .management-screen .discipline-card { min-height: 180px; grid-template-columns: 42px minmax(0, 1fr) 18px; padding: 18px 14px; }
-  .management-screen .discipline-card h2 { margin: 14px 0 16px; font-size: 19px; }
+  .management-screen .discipline-card h2 { margin: 14px 0 16px; font-size: clamp(24px, 6.6vw, 30px); }
   .match-score-card { padding: 16px; }
   .match-score-card .versus-row { gap: 8px; }
   .match-score-card .team-side { padding-inline: 4px; }
@@ -3586,6 +3621,14 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
    o botao real media 93-142px. Quem cede espaco agora e o titulo. */
 .header-action-labeled { width: auto; min-width: 48px; min-height: 48px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex: 0 0 auto; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
 .mobile-header:has(.header-action-labeled) > div:first-child { flex: 1 1 auto; min-width: 0; }
+/* Com o botao rotulado dividindo a linha, sobravam 146px de 375 para o titulo —
+   e "MODALIDADES", que precisa de 191px, quebrava no meio da palavra. Empilhar
+   devolve a largura inteira ao h1 em vez de espremer os dois lado a lado. */
+@media (max-width: 560px) {
+  .mobile-header:has(.header-action-labeled) { flex-wrap: wrap; }
+  .mobile-header:has(.header-action-labeled) > div:first-child { flex: 1 1 100%; }
+  .mobile-header:has(.header-action-labeled) > .header-action-labeled { flex: 0 0 auto; margin-top: 4px; }
+}
 /* `.header-action span` é o ponto rosa de notificação; o texto precisa sair dessa regra. */
 .header-action-labeled .header-action-text { position: static; width: auto; height: auto; background: none; border-radius: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
