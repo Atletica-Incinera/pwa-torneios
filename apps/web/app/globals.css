@@ -45,6 +45,12 @@ select { color-scheme: dark; }
 select option { background: var(--surface); color: var(--white); }
 body { font-family: var(--font-interface); font-size: var(--type-body); font-weight: 400; line-height: var(--leading-body); text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; font-synthesis: none; }
 button, input, select, textarea { font: inherit; }
+/* Um <select> dimensiona pela opcao mais longa e ignora a largura do pai:
+   medido, o de "Quem enfrenta quem no mata-mata" chegou a 516px num visor
+   de 375 e era cortado pela borda do cartao. O teto vale para os tres
+   controles porque o defeito e da mesma familia. */
+input, select, textarea { max-width: 100%; }
+.rule-fields :is(input, select, textarea) { width: 100%; }
 a { color: inherit; text-decoration: none; }
 a:where([class]) { text-decoration: none; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -211,20 +217,18 @@ ul.form-feedback li { line-height: 1.45; }
 .phase-add-form { display: flex; gap: 8px; margin-top: 10px; }
 .phase-add-form input { flex: 1; min-width: 0; min-height: 42px; background: var(--surface); color: var(--white); border: 1px solid var(--line); padding: 0 10px; }
 .phase-add-form button { border: 0; background: var(--orange); color: var(--black); padding: 0 12px; }
-@media (max-width: 520px) { .participant-selector { grid-template-columns: 1fr; } .phase-fields { grid-template-columns: 1fr; } .phase-editor-list article { grid-template-columns: 34px minmax(0, 1fr); } .phase-editor-actions { grid-column: 2; } .rule-fields, .rule-fields.two-columns, .discipline-rule-summary { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .participant-selector { grid-template-columns: 1fr; } .phase-fields { grid-template-columns: 1fr; } .phase-editor-list article { grid-template-columns: 34px minmax(0, 1fr); } .phase-editor-actions { grid-column: 2; } .rule-fields, .rule-fields.two-columns, .discipline-rule-summary { } }
 @media (max-width: 430px) {
   .management-panel { padding: 14px; }
   .management-panel-head { align-items: flex-start; flex-wrap: wrap; }
   .management-panel-head select { flex: 1 1 150px; }
   .phase-add-form { flex-wrap: wrap; }
   .phase-add-form button { min-height: 42px; }
-  .standings-head, .standing-row { grid-template-columns: 30px minmax(0, 1fr) repeat(4, 22px) 32px; gap: 3px; padding-inline: 6px; }
-  .standings-head { font-size: 9px; }
-  .standing-row { min-height: 64px; font-size: .82rem; }
-  .standing-row small { font-size: 9px; }
-  .rank-block { width: 28px; height: 36px; }
-  .qualification-note { align-items: flex-start; flex-wrap: wrap; }
-  .spectator-clock-row { align-items: stretch; flex-direction: column; }
+  .standings-head, .standing-row { padding-inline: 6px; }
+.standing-row { font-size: .82rem; }
+.rank-block { }
+  .qualification-note { flex-wrap: wrap; }
+  .spectator-clock-row { flex-direction: column; }
 }
 .date-switcher button:disabled, .match-controls button:disabled, .event-btn:disabled { opacity: .4; cursor: not-allowed; }
 .flow-steps { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0 0 18px; color: var(--text-muted); font-size: var(--type-caption); }
@@ -244,7 +248,12 @@ ul.form-feedback li { line-height: 1.45; }
 .roster-manage-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 68px; padding: 10px; border: 1px solid var(--line); background: var(--surface); }
 .athlete-open { color: var(--orange); font-size: 1.2rem; }
 .roster-athlete-copy { min-width: 0; }
-.roster-athlete-copy strong, .roster-athlete-copy small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Nome de pessoa nao reticencia: e o conteudo principal da linha. A 320px a
+   coluna fica com 88px e "Marina Souza" perdia 45px — some justamente o que
+   se procura na lista. Quebra em duas linhas; a linha ja tem 68px de altura
+   minima. O metadado abaixo continua com reticencias, que ali e aceitavel. */
+.roster-athlete-copy strong { display: block; overflow-wrap: break-word; }
+.roster-athlete-copy small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .roster-athlete-copy small { color: var(--text-secondary); font-size: var(--type-caption); }
 .roster-associate-button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; background: var(--orange); color: var(--black); cursor: pointer; }
 .roster-manage-row .local-athlete-editor { grid-column: 1 / -1; }
@@ -348,7 +357,7 @@ ul.form-feedback li { line-height: 1.45; }
 .quick-card.live { background: var(--orange); color: #000; }
 
 .search-field { min-height: 54px; background: var(--surface); border: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 18px; }
-.search-field input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--white); }
+.search-field input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--white); }
 .team-list { display: grid; gap: 12px; }
 .team-card { min-height: 118px; display: grid; grid-template-columns: 78px 1fr 34px; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--line); background: var(--surface); clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); }
 .team-blue { box-shadow: inset 4px 0 0 var(--blue); }
@@ -437,8 +446,7 @@ ul.form-feedback li { line-height: 1.45; }
 @media (max-width: 880px) {
   .login-shell { grid-template-columns: 1fr; }
   .brand-panel { min-height: auto; padding: 54px 24px 34px; border-right: 0; border-bottom: 1px solid var(--line); }
-  .brand-panel h1 { font-size: clamp(40px, 11vw, 60px); }
-  .brand-copy { font-size: 16px; margin-top: 20px; }
+.brand-copy { margin-top: 20px; }
   .brand-mark { width: 60px; height: 60px; margin-bottom: 22px; }
   .slash { display: none; }
   .auth-panel { padding: 26px 16px 44px; place-items: start center; }
@@ -451,7 +459,7 @@ ul.form-feedback li { line-height: 1.45; }
   .app-screen { padding-left: 14px; padding-right: 14px; }
   .event-btn { min-height: 78px; font-size: 11px; }
   .score-numbers { font-size: clamp(60px, 17vw, 72px); }
-  .team-card { grid-template-columns: 68px 1fr 24px; padding: 13px; }
+  .team-card { padding: 13px; }
 }
 
 /* Shared product shell */
@@ -485,7 +493,10 @@ ul.form-feedback li { line-height: 1.45; }
 .team-mark-logo { background: var(--white); overflow: hidden; }
 .team-mark-logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .team-mark-small { width: 42px; height: 48px; font-size: 16px; }
-.toolbar-row { display: grid; grid-template-columns: 1fr 54px; gap: 9px; }
+/* `minmax(0, 1fr)`, e nao `1fr`: o minimo automatico de `1fr` e min-content,
+   entao a coluna de busca nao encolhia abaixo de 318px e empurrava o botao
+   de filtro 20px para fora da tela, cortado pela borda. */
+.toolbar-row { display: grid; grid-template-columns: minmax(0, 1fr) 54px; gap: 9px; }
 .toolbar-row .search-field { margin-bottom: 18px; }
 .square-filter, .filter-icon { height: 54px; border: 1px solid var(--line); background: var(--surface); color: var(--white); display: grid; place-items: center; cursor: pointer; }
 .team-card { color: inherit; text-decoration: none; }
@@ -565,7 +576,7 @@ ul.form-feedback li { line-height: 1.45; }
 .tournament-orange { box-shadow: inset 6px 0 0 var(--orange); }
 .tournament-number { font-family: var(--font-display); font-size: 38px; color: rgba(247,240,227,.18); writing-mode: vertical-rl; }
 .tournament-main { align-self: center; min-width: 0; }
-.tournament-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 8px; min-width: 0; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.tournament-meta { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; min-width: 0; color: rgba(251,254,249,.5); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
 /* Os selos eram recortados pelo card, e a correcao anterior os fez encolher e
    quebrar por dentro — "Rascunho" virava duas linhas em 72px e "Fase de
    grupos" tres. Selo de status e rotulo curto: ou cabe inteiro, ou desce para
@@ -682,11 +693,6 @@ ul.form-feedback li { line-height: 1.45; }
 .file-field-control:focus-within { border-color: var(--blue); }
 .rule-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .rule-fields.two-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* Depois da regra base, senao perde o empate de especificidade — foi
-   exatamente o que acontecia com a media query declarada la em cima. */
-@media (max-width: 640px) {
-  .rule-fields, .rule-fields.two-columns, .discipline-rule-summary { grid-template-columns: 1fr; }
-}
 .rule-fields label { min-width: 0; }
 .discipline-rule-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .form-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; margin-top: 8px; }
@@ -766,8 +772,7 @@ ul.form-feedback li { line-height: 1.45; }
   .public-header nav { display: none; }
   .staff-login { padding: 8px 10px; font-size: 10px; }
   .public-hero { width: calc(100% - 32px); min-height: auto; grid-template-columns: 1fr; gap: 44px; padding: 70px 0 80px; }
-  .public-hero h1 { font-size: clamp(44px,13vw,68px); }
-  .public-live-card { min-height: 310px; padding: 22px; }
+.public-live-card { min-height: 310px; padding: 22px; }
   .public-section { width: calc(100% - 32px); padding: 56px 0; }
   .public-match-grid { grid-template-columns: 1fr; }
   .public-schedule > div { grid-template-columns: 58px 1fr; }
@@ -778,8 +783,7 @@ ul.form-feedback li { line-height: 1.45; }
 }
 
 @media (max-width: 430px) {
-  .sync-state { font-size: 0; }
-  .sync-state svg { width: 18px; height: 18px; }
+.sync-state svg { width: 18px; height: 18px; }
   .featured-context { grid-template-columns: 66px 1fr 20px; padding: 18px 14px; }
   .context-number { font-size: 38px; }
   .list-row { grid-template-columns: 44px 1fr 18px; }
@@ -798,7 +802,7 @@ ul.form-feedback li { line-height: 1.45; }
   .tournament-hero > div:first-child { flex-direction: row; align-items: center; gap: 10px; justify-content: flex-start; }
   .tournament-hero > div:first-child > strong { margin: 0; }
   .entry-grid { grid-template-columns: 1fr; }
-  .standings-head, .standing-row { grid-template-columns: 32px minmax(0,1fr) 23px 23px 23px 23px 34px; gap: 3px; }
+  .standings-head, .standing-row { grid-template-columns: 32px minmax(0,1fr) 23px 23px 23px 23px 34px; }
   .config-grid { grid-template-columns: 1fr; }
   .form-actions { grid-template-columns: 1fr; }
 }
@@ -2995,11 +2999,9 @@ small,
   .team-heading-row { grid-template-columns: minmax(0, 1fr); align-items: flex-start; gap: 6px; }
   .team-heading-row .status-badge { justify-self: start; }
   .team-copy h2 { font-size: .98rem; }
-  .theme-teams .team-card .team-copy h2 { font-size: 19px; }
-  .theme-teams .team-card .team-open { font-size: 24px; }
+.theme-teams .team-card .team-open { font-size: 24px; }
   .theme-teams .team-card { grid-template-columns: 64px minmax(0, 1fr) 20px; }
-  .theme-teams .team-card .team-mark-logo { width: 62px; height: 62px; min-width: 62px; min-height: 62px; }
-  .management-screen .discipline-card { min-height: 180px; grid-template-columns: 42px minmax(0, 1fr) 18px; padding: 18px 14px; }
+.management-screen .discipline-card { min-height: 180px; grid-template-columns: 42px minmax(0, 1fr) 18px; padding: 18px 14px; }
   .management-screen .discipline-card h2 { margin: 14px 0 16px; font-size: clamp(24px, 6.6vw, 30px); }
   .match-score-card { padding: 16px; }
   .match-score-card .versus-row { gap: 8px; }
@@ -3531,7 +3533,10 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .team-performance-list { display: grid; gap: 12px; }
 .team-performance-card { padding: 16px; border: 1px solid var(--orange); background: var(--black); color: var(--white); clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 12px 100%, 0 calc(100% - 12px)); }
 .team-performance-head { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
-.team-performance-head > span { width: 40px; height: 40px; display: grid; place-items: center; background: var(--blue); color: var(--white); }
+/* `:first-child` nao e detalhe: o selo de fase tambem e um span filho direto,
+   e a regra generica o espremia em 40px quando "Fase de grupos" pede 94.
+   Com `white-space: nowrap` e clip-path por cima, o texto sumia cortado. */
+.team-performance-head > span:first-child { width: 40px; height: 40px; display: grid; place-items: center; background: var(--blue); color: var(--white); }
 .team-performance-head h3 { margin: 2px 0 0; font-family: var(--font-display); font-size: 1.35rem; text-transform: uppercase; }
 .team-performance-head small { color: rgba(247,240,227,.58); }
 .team-performance-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin-top: 14px; }
@@ -3676,3 +3681,84 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .edition-progress-steps li.is-next { border-color: var(--orange); color: var(--white); }
 .edition-progress-hint { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
 .edition-progress .wide-action { margin-top: 0; }
+
+
+/* ==========================================================================
+   ADAPTACOES DE TELA ESTREITA — PRECISAM FICAR NO FIM DO ARQUIVO
+   ==========================================================================
+   Media query nao soma especificidade. Uma regra dentro de `@media` empata com
+   a mesma regra fora dela, e no empate vence a que aparece por ultimo. Como as
+   media queries deste arquivo estavam declaradas ANTES dos blocos de tipografia
+   e de tema, 24 adaptacoes de celular eram silenciosamente anuladas: existiam
+   no codigo, nunca chegavam a tela.
+
+   Foi assim que a tabela de classificacao inteira ficou sem versao compacta, o
+   indicador de sincronia continuou ocupando 109px do nome do torneio, e os
+   campos de regra ficaram em tres colunas de 88px num aparelho de 375px.
+
+   Ordem aqui: do ponto de quebra maior para o menor, para que o mais estreito
+   vença. Ao acrescentar uma adaptacao nova, acrescente NESTE bloco.
+   ========================================================================== */
+
+@media (max-width: 880px) {
+  .brand-panel h1 { font-size: clamp(40px, 11vw, 60px); }
+  .brand-copy { font-size: 16px; }
+}
+
+@media (max-width: 760px) {
+  .public-hero h1 { font-size: clamp(44px, 13vw, 68px); }
+}
+
+@media (max-width: 640px) {
+  .rule-fields,
+  .rule-fields.two-columns,
+  .discipline-rule-summary { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 430px) {
+  /* Classificacao compacta: sem isto a tabela mantinha as colunas de desktop e
+     as estatisticas saiam pela borda do cartao. */
+  .standings-head,
+  .standing-row { grid-template-columns: 30px minmax(0, 1fr) repeat(4, 22px) 32px; gap: 3px; }
+  .standings-head { font-size: 9px; }
+  .standing-row { min-height: 64px; }
+  .standing-row small { font-size: 9px; }
+  .rank-block { width: 28px; height: 36px; }
+  .qualification-note { align-items: flex-start; }
+  .spectator-clock-row { align-items: stretch; }
+  /* O rotulo de sincronia vira so o icone: e informacao secundaria e estava
+     tomando 109px de largura do nome do torneio, que aparecia cortado. */
+  .sync-state { font-size: 0; }
+  /* Na area publica o rotulo FICA: "Resultados ao vivo" e informacao util para
+     o espectador, nao ruido de operacao. Os 6px que faltavam ao nome do torneio
+     saem da quebra de linha, nao do apagamento do rotulo ao lado. */
+  .public-readonly-screen .public-context-bar :is(small, strong) { overflow: visible; white-space: normal; text-overflow: clip; }
+  .theme-teams .team-card .team-mark-logo { width: 62px; height: 62px; min-width: 62px; min-height: 62px; }
+  .theme-teams .team-card .team-copy h2 { font-size: 19px; }
+}
+
+@media (max-width: 390px) {
+  .team-card { grid-template-columns: 68px 1fr 24px; }
+}
+
+@media (max-width: 380px) {
+  /* Reticencia faz sentido em coluna larga e fixa; em 320px ela come 42px de
+     "Atleta da equipe" e 13px do nome do torneio. Espaco vertical e barato
+     aqui: o texto desce uma linha em vez de sumir. */
+  .roster-athlete-copy small,
+  .context-bar small,
+  .context-copy small,
+  .context-copy strong,
+  :is(.staff-card, .athlete-card) p,
+  .standing-row strong,
+  .overall-ranking-row > div strong { overflow: visible; white-space: normal; text-overflow: clip; }
+  /* O selo "Gestor de modalidade" pede 205px e a coluna de conteudo tem 195.
+     Quem cede e o avatar: em 320px o rotulo do papel vale mais que 12px de
+     foto. */
+  .staff-role { flex-wrap: wrap; row-gap: 6px; }
+  .staff-card { grid-template-columns: 42px minmax(0, 1fr) auto; }
+  /* O espacamento entre letras soma ~29px num rotulo de 20 caracteres — mais
+     do que os 10px que faltavam. Apertar a letra preserva a palavra inteira,
+     que e o que importa. */
+  .status-badge { letter-spacing: .03em; }
+}
