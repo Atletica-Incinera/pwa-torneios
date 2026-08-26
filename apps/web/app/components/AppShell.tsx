@@ -8,6 +8,7 @@ import { AdminRouteGuard } from './AdminRouteGuard';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { ConnectionBadge } from './ConnectionBadge';
+import { appPath } from '../lib/base-path';
 
 type NavKey = 'home' | 'tournaments' | 'matches' | 'teams' | 'profile';
 
@@ -116,9 +117,14 @@ export function StatusBadge({ children, tone = 'neutral' }: { children: React.Re
 }
 
 export function TeamMark({ initial, tone = 'blue', small = false, logo }: { initial: string; tone?: string; small?: boolean; logo?: string }) {
+  // O logotipo pode ser um arquivo publicado com o app (`/teams/x.webp`) ou uma
+  // URL absoluta do storage. Só o primeiro precisa do prefixo: em produção o
+  // app vive sob /intereng, e `/teams/x.webp` sem prefixo cai no site vizinho,
+  // que responde 404 — o escudo sumiria sem erro nenhum no console.
+  const src = logo && logo.startsWith('/') ? appPath(logo) : logo;
   return (
     <span className={`team-mark mark-${tone} ${small ? 'team-mark-small' : ''} ${logo ? 'team-mark-logo' : ''}`}>
-      {logo ? <img src={logo} alt="" /> : initial}
+      {src ? <img src={src} alt="" /> : initial}
     </span>
   );
 }

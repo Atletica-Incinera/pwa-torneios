@@ -19,7 +19,7 @@
  *   $env:INTERENG_SENHA="..."; node scripts/importar-dados.mjs --email ana@ufpe.br
  *   $env:INTERENG_SENHA="..."; node scripts/importar-dados.mjs --email ana@ufpe.br --aplicar
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
 const args = process.argv.slice(2);
@@ -48,8 +48,31 @@ const chave = (texto) => String(texto ?? '')
 /** Id no mesmo formato que o app gera: prefixo mais sufixo aleatório curto. */
 const novoId = (prefixo) => prefixo + '-' + randomUUID().replace(/-/g, '').slice(0, 12);
 
+/**
+ * Escudo da equipe, entre os arquivos publicados com o app.
+ *
+ * As dezesseis logos vivem em `public/teams/` e sobem a cada deploy — nao
+ * dependem do storage nem de rota no gateway. O nome do arquivo raramente bate
+ * com o nome digitado na planilha ("Atletica Alcateia" contra `alcateia.webp`),
+ * entao tentamos o nome inteiro e depois cada palavra dele. Sem correspondencia,
+ * a equipe fica sem escudo e o app mostra a inicial — nada quebra.
+ */
+const PASTA_LOGOS = 'public/teams';
+const logosDisponiveis = existsSync(PASTA_LOGOS)
+  ? new Set(readdirSync(PASTA_LOGOS).filter((f) => f.endsWith('.webp')).map((f) => f.slice(0, -'.webp'.length)))
+  : new Set();
+
+const comoArquivo = (texto) => chave(texto).replace(/[^a-z0-9]+/g, '');
+
+function acharLogo(nome, informada) {
+  if (informada) return informada.startsWith('/') ? informada : `/teams/${informada}`;
+  const candidatos = [comoArquivo(nome), ...chave(nome).split(/[^a-z0-9]+/).filter(Boolean)];
+  const achado = candidatos.find((c) => logosDisponiveis.has(c));
+  return achado ? `/teams/${achado}.webp` : undefined;
+}
+
 function modelo() {
-  writeFileSync(ARQ_EQUIPES, 'nome;sigla;responsavel\nAtlética Exemplo;AEX;Fulano de Tal\n', 'utf8');
+  writeFileSync(ARQ_EQUIPES, 'nome;sigla;responsavel;logo\nAtlética Exemplo;AEX;Fulano de Tal;\n', 'utf8');
   writeFileSync(ARQ_ATLETAS, 'equipe;atleta;modalidades\nAEX;Sicrano da Silva;Futsal\nAEX;Beltrano Souza;Futsal|Basquete\n', 'utf8');
   console.log('Modelos escritos: ' + ARQ_EQUIPES + ' e ' + ARQ_ATLETAS);
   console.log('Preencha e rode de novo sem --modelo. O Excel em português salva com ; — o script aceita ; ou ,.');
@@ -209,6 +232,7 @@ function planejar(equipesCsv, atletasCsv, estado) {
       sigla,
       responsavel: linha.responsavel || '',
       tom: TONS[equipes.length % TONS.length],
+      logo: acharLogo(nome, linha.logo),
     });
     const siglaJaVista = porSigla.has(chave(sigla)) || siglasAmbiguas.has(chave(sigla));
     registrar(id, nome, sigla);
@@ -279,7 +303,16 @@ async function principal() {
   console.log('  modalidades da edicao: ' + (plano.modalidadesValidas.join(', ') || '(nenhuma)'));
   console.log('');
   console.log('A criar: ' + plano.equipes.length + ' equipes, ' + plano.atletas.length + ' atletas');
-  for (const e of plano.equipes) console.log('  equipe  ' + e.nome + ' (' + e.sigla + ')');
+  for (const e of plano.equipes) {
+    console.log('  equipe  ' + e.nome + ' (' + e.sigla + ')' + (e.logo ? '  escudo: ' + e.logo : '  SEM ESCUDO'));
+  }
+  const semEscudo = plano.equipes.filter((e) => !e.logo);
+  if (semEscudo.length) {
+    console.log('');
+    console.log(semEscudo.length + ' equipe(s) sem escudo. O app mostra a inicial no lugar.');
+    console.log('Para resolver: ponha o arquivo em apps/web/public/teams/<nome>.webp e rode de novo,');
+    console.log('ou acrescente uma coluna logo na planilha com o nome do arquivo.');
+  }
   for (const a of plano.atletas.slice(0, 20)) {
     console.log('  atleta  ' + a.nome + '  [' + (a.modalidades.join(', ') || 'sem modalidade') + ']');
   }
@@ -307,7 +340,14 @@ async function principal() {
         type: 'team/create',
         payload: {
           id: e.id,
-          team: { name: e.nome, initials: e.sigla, responsible: e.responsavel, tone: e.tom, created: true },
+          team: {
+            name: e.nome,
+            initials: e.sigla,
+            responsible: e.responsavel,
+            tone: e.tom,
+            created: true,
+            ...(e.logo ? { logo: e.logo } : {}),
+          },
         },
         audit: { action: 'Equipe cadastrada', entity: e.nome },
       });
