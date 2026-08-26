@@ -223,13 +223,35 @@ test('a migalha do cadastro de atleta não leva a lugar nenhum', async ({ page }
   await expect(page.getByRole('heading', { name: 'ALCATEIA', exact: true })).toBeVisible();
 });
 
+test('gestor cadastra atleta, e apenas na modalidade dele', async ({ page }) => {
+  // O elenco deixou de ser exclusivo do admin da edição. O que continua travado
+  // é o alcance: o formulário oferece só a modalidade do gestor, porque o
+  // servidor recusa qualquer outra — oferecer a lista inteira seria deixar a
+  // pessoa preencher tudo para receber erro no fim.
+  await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
+  await page.goto('/teams/alcateia/athletes/new');
+  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'NOVO ATLETA' })).toBeVisible();
+
+  await page.getByLabel('Nome completo').fill('Atleta do Gestor');
+  await page.getByRole('button', { name: 'Cadastrar e continuar' }).click();
+
+  const modalidades = page.locator('.modality-check');
+  await expect(modalidades).toHaveCount(1);
+  await expect(modalidades.first()).toContainText('Futsal');
+  // Sem "Pular por enquanto": salvar sem modalidade seria recusado pelo servidor.
+  await expect(page.getByRole('button', { name: 'Pular por enquanto' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Concluir cadastro' }).click();
+  await expect(page).toHaveURL(/\/teams\/alcateia/);
+  await expect(page.getByText('Atleta do Gestor')).toBeVisible();
+});
+
 test('gestor fica restrito à própria modalidade', async ({ page }) => {
   await loginAs(page, 'bruno@ufpe.br', 'futsal2026');
   await page.goto('/competitions');
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
   await page.goto('/teams/new');
-  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
-  await page.goto('/teams/alcateia/athletes/new');
   await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
   // Pedir a agenda de outra modalidade não leva o gestor para fora do escopo:
   // a tela volta para a modalidade dele, e o agendamento oferecido é o dela.

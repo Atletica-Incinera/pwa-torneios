@@ -27,8 +27,11 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   // um super admin que também tem um card "Admin da edição" revogado era
   // expulso do app inteiro por ele.
   const revoked = !isSuperAdmin(session) && matchingStaffRoles.length > 0 && matchingStaffRoles.every((member) => member.revoked);
-  const rosterCreation = /^\/teams\/[^/]+\/athletes\/new$/.test(pathname);
-  const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && (rosterCreation || editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix))))
+  // O gestor cadastra atleta na propria modalidade: a tela de elenco deixou de
+  // ser exclusiva do admin da edicao. O alcance real e travado no servidor —
+  // `athlete/create` so aceita a modalidade atribuida ao gestor —, e o
+  // formulario ja oferece apenas ela.
+  const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix)))
     // A auditoria é do super admin: nem o organizador entra.
     || (pathname.startsWith('/audit') && Boolean(session) && !canReadAudit(session))
     || (superAdminOnlyPrefixes.some((prefix) => pathname.startsWith(prefix)) && Boolean(session) && !isSuperAdmin(session));
