@@ -40,6 +40,14 @@ test(`nenhuma tela esconde ou recorta conteudo a ${largura}px`, async ({ page })
     } catch {
       continue;
     }
+    // Sem animação: as listas entram com `translateY` (`card-in`, 340ms) e, no
+    // meio do trajeto, uma linha cobre o texto logo abaixo dela. Medir ali
+    // acusaria sobreposição que não existe no layout assentado — foi o que
+    // reprovou este teste uma vez, apontando um defeito já corrigido.
+    await page.addStyleTag({
+      content: '*, *::before, *::after { animation: none !important; transition: none !important; }',
+    });
+
     // A pagina inteira, nao so a primeira dobra: a sobreposicao de 8px entre a
     // lista de edicoes e o texto abaixo dela vivia em 1181px, fora do visor, e
     // por isso passou batido na primeira varredura.
