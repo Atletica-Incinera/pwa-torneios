@@ -13,6 +13,7 @@ import { listAllTeams } from '../lib/edition-catalog';
 import { randomSuffix } from '../lib/create-id';
 import { MAX_SOURCE_IMAGE_BYTES, type OptimizedImage } from '../lib/image-utils';
 import { uploadTeamLogo } from '../lib/repositories/logo-upload';
+import { acharEscudo } from '../lib/escudos';
 
 function slugify(value: string) {
   return value
@@ -34,6 +35,9 @@ export function TeamCreationForm() {
   const [fileInputKey, setFileInputKey] = useState(0);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // Escudo correspondente ao nome digitado, entre os publicados com o app.
+  // O upload manual, quando existir, continua tendo precedência.
+  const escudoPublicado = pendingLogo ? undefined : acharEscudo(name);
   useUnsavedChanges(Boolean(name || initials || responsible || pendingLogo) && !submitting);
 
   function chooseLogo(event: ChangeEvent<HTMLInputElement>) {
@@ -88,7 +92,16 @@ export function TeamCreationForm() {
             // No modo HTTP o logotipo só existe depois que a equipe existe no
             // servidor (o presign exige o teamId); no local/mock não há essa
             // dependência, então já entra junto na criação.
-            ...(pendingLogo && source !== 'http' ? { logo: pendingLogo.previewUrl } : {}),
+            //
+            // O escudo publicado com o app é a exceção: é arquivo, não objeto
+            // de storage, então entra já na criação nos dois modos. Sem ele a
+            // equipe nasceria sem escudo sempre que o upload falhasse — e o
+            // upload falha hoje, porque o gateway não tem rota para o storage.
+            ...(pendingLogo && source !== 'http'
+              ? { logo: pendingLogo.previewUrl }
+              : escudoPublicado
+                ? { logo: escudoPublicado }
+                : {}),
           },
         },
         audit: { action: 'Equipe cadastrada', entity: name.trim(), after: 'Ativa' },
@@ -175,6 +188,17 @@ export function TeamCreationForm() {
             <button type="button" className="danger-button danger-button-inline" onClick={removeLogo}>
               <Trash2 size={16} aria-hidden="true" /> Remover logotipo
             </button>
+          </div>
+        ) : null}
+        {escudoPublicado ? (
+          /* Mostrar antes de salvar: preencher sozinho e não avisar seria
+             mágica invisível — a pessoa só descobriria o escudo depois. */
+          <div className="logo-preview-row">
+            <TeamMark initial={(initials || name || 'E')[0]} tone="blue" logo={escudoPublicado} />
+            <p className="form-hint">
+              Escudo encontrado para <strong>{name.trim()}</strong>. Ele será usado no cadastro. Para
+              outro, escolha uma imagem acima.
+            </p>
           </div>
         ) : null}
         {error ? (

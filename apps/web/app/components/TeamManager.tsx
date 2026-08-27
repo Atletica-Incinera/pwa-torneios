@@ -11,6 +11,7 @@ import { MAX_SOURCE_IMAGE_BYTES, optimizeImageFile, type OptimizedImage } from '
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { athletesOfTeam, type TeamView } from '../lib/edition-catalog';
 import { uploadTeamLogo } from '../lib/repositories/logo-upload';
+import { acharEscudo } from '../lib/escudos';
 
 export function TeamManager({ team, readOnly = false }: { team: TeamView; readOnly?: boolean }) {
   const { state, dispatch, source } = useFrontendState();
@@ -61,11 +62,17 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
     setSubmitting(true);
     setError('');
     try {
+      // Upload manual tem precedência. Sem ele, e com a equipe ainda sem
+      // escudo, vale o publicado com o app: é assim que uma equipe criada
+      // antes desta mudança — quando o upload falhava em silêncio — ganha o
+      // escudo sem precisar ser apagada e recriada.
       const logo = pendingLogo
         ? source === 'http'
           ? await uploadTeamLogo(team.id, pendingLogo.blob)
           : pendingLogo.previewUrl
-        : undefined;
+        : current.logo
+          ? undefined
+          : acharEscudo(draft.name);
       const saved = await dispatch({
         type: 'team/update',
         payload: {
