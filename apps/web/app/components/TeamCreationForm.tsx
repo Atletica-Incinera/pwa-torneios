@@ -14,6 +14,7 @@ import { randomSuffix } from '../lib/create-id';
 import { MAX_SOURCE_IMAGE_BYTES, type OptimizedImage } from '../lib/image-utils';
 import { uploadTeamLogo } from '../lib/repositories/logo-upload';
 import { acharEscudo } from '../lib/escudos';
+import { EscudoPicker } from './EscudoPicker';
 
 function slugify(value: string) {
   return value
@@ -37,7 +38,9 @@ export function TeamCreationForm() {
   const [submitting, setSubmitting] = useState(false);
   // Escudo correspondente ao nome digitado, entre os publicados com o app.
   // O upload manual, quando existir, continua tendo precedência.
-  const escudoPublicado = pendingLogo ? undefined : acharEscudo(name);
+  const [escudoEscolhido, setEscudoEscolhido] = useState<string | undefined>(undefined);
+  // Sugestao pelo nome, que a escolha manual sobrepoe.
+  const escudoPublicado = pendingLogo ? undefined : (escudoEscolhido ?? acharEscudo(name));
   useUnsavedChanges(Boolean(name || initials || responsible || pendingLogo) && !submitting);
 
   function chooseLogo(event: ChangeEvent<HTMLInputElement>) {
@@ -190,21 +193,17 @@ export function TeamCreationForm() {
 
             Para reativar quando a rota existir: apagar esta condicao. O resto
             do caminho de envio continua inteiro. */}
-        {source === 'http' ? (
-          <p className="form-hint">
-            O escudo da atlética é aplicado pelo nome da equipe ao salvar. O envio de imagem
-            própria está temporariamente indisponível.
-          </p>
-        ) : (
+        <EscudoPicker valor={escudoPublicado} nomeDaEquipe={name} onEscolher={setEscudoEscolhido} />
+        {source !== 'http' ? (
           <FileField
-            label="Logotipo"
+            label="Outra imagem"
             accept="image/png,image/jpeg,image/webp"
             fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-            hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho — só escolha uma imagem se quiser outra."
+            hint="Opcional, para escudo fora da lista acima."
             onChange={chooseLogo}
             inputKey={fileInputKey}
           />
-        )}
+        ) : null}
         {pendingLogo ? (
           <div className="logo-preview-row">
             <TeamMark initial={(initials || name || 'E')[0]} tone="blue" logo={pendingLogo.previewUrl} />
