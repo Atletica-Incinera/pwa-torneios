@@ -7,6 +7,7 @@ import { AppShell, EmptyState } from '../components/AppShell';
 import { TeamCard } from '../components/TeamCard';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { listAllTeams } from '../lib/edition-catalog';
+import { casaComBusca } from '../lib/busca';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
 
 export default function TeamsPage() {
@@ -17,16 +18,23 @@ export default function TeamsPage() {
   const activeEdition = getActiveEdition(state);
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
   const allTeams = useMemo(() => listAllTeams(state), [state]);
+  // Busca por nome OU sigla, sem acento: "caotica" achava zero equipes, e
+  // "EGR" tambem, porque so o nome entrava na conta e o acento contava como
+  // caractere diferente.
   const filteredTeams = useMemo(() => allTeams.filter((team) => {
-    const matchesQuery = team.name.toLocaleLowerCase('pt-BR').includes(query.trim().toLocaleLowerCase('pt-BR'));
+    const matchesQuery = casaComBusca(query, [team.name, team.initials]);
     return matchesQuery && (showArchived || !team.archived);
   }), [query, showArchived, allTeams]);
+  // Sem nenhuma equipe arquivada o botao nao tinha o que mostrar e parecia
+  // quebrado: clicava e a lista ficava igual. Desabilitado com o motivo no
+  // titulo, ele para de prometer o que nao pode entregar.
+  const arquivadas = useMemo(() => allTeams.filter((team) => team.archived).length, [allTeams]);
 
   return (
     <AppShell active="teams" eyebrow={`${(competition?.name ?? 'INTERENG').toLocaleUpperCase('pt-BR')} · EDIÇÃO ${activeEdition?.year ?? ''}`} title="EQUIPES" subtitle={`${allTeams.length} equipes cadastradas`} actionHref={canManageEdition(session) ? '/teams/new' : undefined} actionLabel="Cadastrar nova equipe" actionShortLabel="Equipe">
       <div className="toolbar-row">
         <label className="search-field cut-field"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Buscar equipe" aria-label="Buscar equipe" /></label>
-        <button type="button" className={`square-filter${showArchived ? ' active' : ''}`} onClick={() => setShowArchived((value) => !value)} aria-pressed={showArchived} aria-label="Mostrar equipes arquivadas"><Filter size={21} /></button>
+        <button type="button" className={`square-filter${showArchived ? ' active' : ''}`} onClick={() => setShowArchived((value) => !value)} disabled={!arquivadas} aria-pressed={showArchived} aria-label={arquivadas ? `Mostrar as ${arquivadas} equipes arquivadas` : 'Mostrar equipes arquivadas'} title={arquivadas ? `Mostrar as ${arquivadas} ${arquivadas === 1 ? 'equipe arquivada' : 'equipes arquivadas'}` : 'Nenhuma equipe arquivada nesta edição'}><Filter size={21} /></button>
       </div>
 
       <section className="team-list" aria-label="Lista de equipes">

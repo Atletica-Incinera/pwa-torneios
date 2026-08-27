@@ -6,18 +6,17 @@ import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { findTeam, listAthletes } from '../lib/edition-catalog';
+import { casaComBusca } from '../lib/busca';
 
 export default function AthletesPage() {
   const [query, setQuery] = useState('');
   const { state } = useFrontendState();
   const total = useMemo(() => listAthletes(state).length, [state]);
-  const filteredAthletes = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase('pt-BR');
-    return listAthletes(state).filter((athlete) => {
-      const team = findTeam(state, athlete.teamId)?.name ?? 'Sem equipe';
-      return [athlete.name, team, ...athlete.modalities].some((value) => value.toLocaleLowerCase('pt-BR').includes(normalized));
-    });
-  }, [query, state]);
+  // Sem acento na comparacao: "joao" nao encontrava o Joao Pedro.
+  const filteredAthletes = useMemo(() => listAthletes(state).filter((athlete) => {
+    const team = findTeam(state, athlete.teamId)?.name ?? 'Sem equipe';
+    return casaComBusca(query, [athlete.name, team, ...athlete.modalities]);
+  }), [query, state]);
 
   return (
     <AppShell active="teams" eyebrow="CATÁLOGO GLOBAL" title="ATLETAS" subtitle={`${filteredAthletes.length} pessoas encontradas`}>
