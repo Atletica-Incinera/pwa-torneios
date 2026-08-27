@@ -25,7 +25,13 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
     archived: team.archived,
   };
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(current);
+  // Equipe sem escudo, tendo um publicado para o nome, abre a edicao ja com ele
+  // aplicado. Sem isto o botao Salvar nasce desabilitado — `dirty` compara o
+  // rascunho com o salvo — e nao havia como aplicar o escudo a uma equipe
+  // criada antes desta mudanca sem alterar algum outro campo de proposito.
+  const [draft, setDraft] = useState(
+    current.logo ? current : { ...current, logo: acharEscudo(current.name) ?? current.logo },
+  );
   const [pendingLogo, setPendingLogo] = useState<OptimizedImage | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -147,7 +153,9 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
   return (
     <>
       <section className={`team-hero team-detail-heading${current.archived ? ' is-archived' : ''}`}>
-        <TeamMark initial={current.name[0]} tone={team.tone} logo={current.logo} />
+        {/* Em edicao mostra o rascunho: e assim que a pessoa ve o escudo que
+            sera gravado antes de confirmar. */}
+        <TeamMark initial={current.name[0]} tone={team.tone} logo={editing ? draft.logo : current.logo} />
         <div>
           <h2>{current.name}</h2>
           <p>
@@ -185,13 +193,23 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
               placeholder="Nome do responsável"
             />
           </label>
-          <FileField
-            label="Logotipo"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
-            fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-            hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho ao salvar — só escolha uma imagem se quiser outra."
-            onChange={chooseLogo}
-          />
+          {/* Mesmo motivo da tela de cadastro: o envio depende de uma rota de
+              storage que o gateway ainda nao tem (issue api#11) e devolve 404.
+              Para reativar quando a rota existir: apagar esta condicao. */}
+          {source === 'http' ? (
+            <p className="form-hint">
+              O escudo da atlética é aplicado pelo nome da equipe ao salvar. O envio de imagem
+              própria está temporariamente indisponível.
+            </p>
+          ) : (
+            <FileField
+              label="Logotipo"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              fileName={pendingLogo ? 'Imagem selecionada' : undefined}
+              hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho ao salvar — só escolha uma imagem se quiser outra."
+              onChange={chooseLogo}
+            />
+          )}
           {error ? (
             <p className="form-error" role="alert">
               {error}

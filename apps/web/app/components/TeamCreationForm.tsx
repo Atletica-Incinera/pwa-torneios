@@ -183,14 +183,28 @@ export function TeamCreationForm() {
             required
           />
         </label>
-        <FileField
-          label="Logotipo"
-          accept="image/png,image/jpeg,image/webp"
-          fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-          hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho — só escolha uma imagem se quiser outra."
-          onChange={chooseLogo}
-          inputKey={fileInputKey}
-        />
+        {/* O envio de imagem sobe para o storage por uma rota que o gateway
+            ainda nao tem (issue api#11): o pedido devolve 404 e a equipe ficava
+            sem escudo. Oferecer um controle que nao funciona e pior do que nao
+            oferecer nenhum — a pessoa gasta o tempo dela e sai sem o escudo.
+
+            Para reativar quando a rota existir: apagar esta condicao. O resto
+            do caminho de envio continua inteiro. */}
+        {source === 'http' ? (
+          <p className="form-hint">
+            O escudo da atlética é aplicado pelo nome da equipe ao salvar. O envio de imagem
+            própria está temporariamente indisponível.
+          </p>
+        ) : (
+          <FileField
+            label="Logotipo"
+            accept="image/png,image/jpeg,image/webp"
+            fileName={pendingLogo ? 'Imagem selecionada' : undefined}
+            hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho — só escolha uma imagem se quiser outra."
+            onChange={chooseLogo}
+            inputKey={fileInputKey}
+          />
+        )}
         {pendingLogo ? (
           <div className="logo-preview-row">
             <TeamMark initial={(initials || name || 'E')[0]} tone="blue" logo={pendingLogo.previewUrl} />
