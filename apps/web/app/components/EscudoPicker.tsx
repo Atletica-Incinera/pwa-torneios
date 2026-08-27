@@ -1,6 +1,6 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, ImageOff } from 'lucide-react';
 import { appPath } from '../lib/base-path';
 import { caminhoDoEscudo, escudosPublicados } from '../lib/escudos';
 
@@ -14,10 +14,8 @@ import { caminhoDoEscudo, escudosPublicados } from '../lib/escudos';
  * campo de propósito, o que é contorno, não funcionalidade.
  *
  * Aqui a escolha é explícita: clicar num escudo muda o rascunho e o botão de
- * salvar habilita. Trocar funciona quantas vezes for preciso; remover não, e
- * quem monta o formulário decide o que fazer com `undefined` — na edição de
- * equipe que já tem escudo, ele volta ao que estava gravado, porque
- * `team/update` recusa logotipo vazio.
+ * salvar habilita. Trocar e remover funcionam quantas vezes for preciso —
+ * remover chega ao servidor como `logo: null`.
  */
 export function EscudoPicker({
   valor,
@@ -56,9 +54,15 @@ export function EscudoPicker({
           );
         })}
       </div>
-      {/* Sem botao de remover: `team/update` recusa logotipo vazio (o campo tem
-          minimo de 1 caractere), entao "ficar sem escudo" falharia no servidor.
-          Trocar por outro funciona; limpar exigiria mudanca na API. */}
+      {valor ? (
+        <button
+          type="button"
+          className="secondary-button escudo-remover"
+          onClick={() => onEscolher(undefined)}
+        >
+          <ImageOff size={16} aria-hidden="true" /> Ficar sem escudo
+        </button>
+      ) : null}
     </fieldset>
   );
 }
