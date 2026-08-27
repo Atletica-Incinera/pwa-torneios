@@ -437,12 +437,18 @@ ul.form-feedback li { line-height: 1.45; }
 .minute-pink { background: var(--pink); }
 .minute-orange { background: var(--orange); color: #000; }
 
-.bottom-nav { position: fixed !important; inset-block-end: 0; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(100%, 520px); min-height: 76px; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(2,39,52,.96); backdrop-filter: blur(16px); display: grid; grid-template-columns: repeat(5, minmax(44px, auto)); justify-content: space-between; }
+.bottom-nav { position: fixed !important; inset-block-end: 0; left: 50%; transform: translateX(-50%); z-index: 1000; width: min(100%, 520px); min-height: 76px; padding: 8px 10px max(8px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(2,39,52,.96); backdrop-filter: blur(16px); display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
 /* `min-width: 0` e o que impede o item de grid de estourar a propria celula:
    sem ele, `Modalidades` transbordava 32px em 320px e ficava POR CIMA de
    `Jogos`. O rotulo agora encolhe um ponto antes de colidir. */
 .nav-item { text-decoration: none; color: rgba(251,254,249,.48); display: grid; place-items: center; align-content: center; gap: 5px; min-width: 0; font-size: 11px; font-weight: 700; }
-.nav-item > span { max-width: 100%; font-size: clamp(9px, 2.9vw, 11px); line-height: 1.15; text-align: center; overflow-wrap: break-word; hyphens: manual; }
+/* `overflow-wrap: normal` com `hyphens: auto`: a unica quebra permitida e a
+   hifenizada, em silaba e com hifen visivel ("Modalida-des"). `anywhere`
+   quebraria em qualquer letra ("Modalidad/es") e ja foi recusado antes; sem
+   quebra nenhuma, "Modalidades" nao cabe numa coluna de cinco em tela estreita
+   e era o que desalinhava os icones. `lang="pt-BR"` no <html> e o que da a
+   silabacao correta. */
+.nav-item > span { max-width: 100%; font-size: clamp(9px, 2.9vw, 11px); line-height: 1.15; text-align: center; overflow-wrap: normal; hyphens: auto; }
 .nav-icon { width: 36px; height: 30px; display: grid; place-items: center; }
 .nav-item.active { color: var(--white); }
 .nav-item.active .nav-icon { background: var(--orange); color: var(--black); clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
@@ -1221,18 +1227,37 @@ small,
   font-size: max(1rem, var(--type-body));
 }
 
+/*
+ * Colunas iguais, uma por item. Antes eram `repeat(5, minmax(44px, auto))`
+ * com `space-between`: cada coluna ficava do tamanho do proprio rotulo, entao
+ * "Modalidades" ocupava o dobro de "Mais" e os icones desalinhavam --
+ * medidos em 32, 146, 259, 355 e 450px, com vaos de 114, 113, 96 e 95.
+ *
+ * `grid-auto-columns` em vez de `grid-template-columns` porque a barra
+ * publica tem tres itens e a de gestao tem cinco; template fixo em cinco
+ * deixaria a publica encostada a esquerda, com duas colunas vazias a direita.
+ */
 .bottom-nav {
   min-height: 78px;
   padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
 }
 
+/*
+ * Faixa do icone com altura fixa e conteudo ancorado no topo. Com as linhas
+ * centralizadas, um rotulo que quebra em duas linhas -- "Modalidades" nas
+ * telas estreitas -- empurrava o proprio icone para cima, e os cinco icones
+ * deixavam de dividir a mesma linha. Agora o rotulo cresce para baixo e a
+ * altura da faixa e a mesma para todos.
+ */
 .nav-item {
   --nav-accent: var(--orange);
   --nav-on-accent: var(--black);
   min-width: 0;
   min-height: 56px;
+  grid-template-rows: 30px auto;
+  align-content: start;
   gap: 4px;
-  padding: 4px 2px;
+  padding: 8px 2px 4px;
   font-size: clamp(.7rem, .65rem + .2vw, .78rem);
   font-weight: 400;
   line-height: 1.1;

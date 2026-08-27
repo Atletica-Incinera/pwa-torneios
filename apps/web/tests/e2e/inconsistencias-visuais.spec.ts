@@ -8,21 +8,70 @@ import { loginAs } from './helpers';
  */
 
 
-test('rótulo da navegação não parte a palavra no meio', async ({ page }) => {
-  // `overflow-wrap: anywhere` quebrava "Modalidades" em "Modalidad/es". Além de
-  // feio, `anywhere` encolhe a largura mínima da caixa — era ele que fazia a
-  // célula caber em 68px quando a palavra pede 91px.
+test('rótulo da navegação só quebra em sílaba, nunca no meio da palavra', async ({ page }) => {
+  // `overflow-wrap: anywhere` quebrava "Modalidades" em "Modalidad/es". O que
+  // ficou proibido e a quebra arbitraria, nao a quebra: com cinco colunas de
+  // largura igual, "Modalidades" nao cabe numa linha em tela estreita, e
+  // insistir nisso era o que desalinhava os icones. `hyphens: auto` com
+  // `lang="pt-BR"` quebra na silaba e mostra o hifen.
   await page.setViewportSize({ width: 375, height: 812 });
   await loginAs(page);
   await expect(page.locator('.nav-item').first()).toBeVisible();
-  const linhas = await page.locator('.nav-item > span').evaluateAll((spans) =>
+  const rotulos = await page.locator('.nav-item > span:not(.nav-icon)').evaluateAll((spans) =>
     spans.filter((s) => s.textContent?.trim()).map((s) => {
       const cs = getComputedStyle(s);
       const altura = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2;
-      return { texto: s.textContent?.trim(), linhas: Math.round(s.getBoundingClientRect().height / altura) };
+      const caixa = s.getBoundingClientRect();
+      const item = (s.parentElement as HTMLElement).getBoundingClientRect();
+      return {
+        texto: s.textContent?.trim(),
+        linhas: Math.round(caixa.height / altura),
+        quebraArbitraria: cs.overflowWrap,
+        hifenizacao: cs.hyphens,
+        transborda: Math.round(Math.max(0, item.left - caixa.left, caixa.right - item.right)),
+      };
     }));
-  expect(linhas.length).toBeGreaterThan(0);
-  for (const item of linhas) expect(item.linhas, `"${item.texto}" quebrou em ${item.linhas} linhas`).toBe(1);
+  expect(rotulos.length).toBeGreaterThan(0);
+  for (const item of rotulos) {
+    expect(item.quebraArbitraria, `"${item.texto}" pode quebrar em qualquer letra`).not.toMatch(
+      /anywhere|break-word/,
+    );
+    expect(item.hifenizacao, `"${item.texto}" sem hifenização`).toBe('auto');
+    expect(item.linhas, `"${item.texto}" ocupou ${item.linhas} linhas`).toBeLessThanOrEqual(2);
+    expect(item.transborda, `"${item.texto}" transborda a própria coluna`).toBe(0);
+  }
+});
+
+test('ícones da navegação ficam igualmente espaçados e na mesma linha', async ({ page }) => {
+  // As colunas eram `repeat(5, minmax(44px, auto))` com `space-between`: cada
+  // uma ficava do tamanho do proprio rotulo, entao "Modalidades" ocupava o
+  // dobro de "Mais". Medidos na producao, os centros caiam em 32, 146, 259,
+  // 355 e 450px -- vaos de 114, 113, 96 e 95.
+  await loginAs(page);
+  for (const largura of [480, 375, 320]) {
+    await page.setViewportSize({ width: largura, height: 812 });
+    await expect(page.locator('.nav-item').first()).toBeVisible();
+    const icones = await page.locator('.bottom-nav .nav-item').evaluateAll((itens) =>
+      itens.map((el) => {
+        const caixa = el.getBoundingClientRect();
+        const svg = (el.querySelector('svg') as SVGElement).getBoundingClientRect();
+        return {
+          centro: svg.x + svg.width / 2,
+          topo: Math.round(svg.y),
+          desvio: Math.round(svg.x + svg.width / 2 - (caixa.x + caixa.width / 2)),
+        };
+      }));
+    expect(icones.length).toBe(5);
+    const topos = new Set(icones.map((i) => i.topo));
+    expect(topos.size, `a ${largura}px os ícones estão em ${topos.size} alturas diferentes`).toBe(1);
+    for (const icone of icones) {
+      expect(Math.abs(icone.desvio), `ícone fora do centro da própria coluna a ${largura}px`).toBeLessThanOrEqual(1);
+    }
+    const vaos = icones.slice(1).map((icone, i) => Math.round(icone.centro - icones[i].centro));
+    const maior = Math.max(...vaos);
+    const menor = Math.min(...vaos);
+    expect(maior - menor, `a ${largura}px os vãos entre ícones variam: ${vaos.join(', ')}`).toBeLessThanOrEqual(1);
+  }
 });
 
 test('título da tela cabe em uma linha ao lado do botão de ação', async ({ page }) => {

@@ -38,6 +38,9 @@ const ARQ_ATLETAS = opcao('atletas', 'atletas.csv');
 
 const TONS = ['blue', 'pink', 'orange'];
 
+/** Preenchimento para a coluna responsavel em branco. Ver planejar(). */
+const SEM_RESPONSAVEL = 'A definir';
+
 /** Acentos e caixa fora do caminho: "Atlética" e "atletica" viram a mesma chave. */
 const chave = (texto) => String(texto ?? '')
   .normalize('NFD')
@@ -230,7 +233,12 @@ function planejar(equipesCsv, atletasCsv, estado) {
       id,
       nome,
       sigla,
-      responsavel: linha.responsavel || '',
+      // `team/create` recusa responsavel vazio (exige de 2 a 160 caracteres) e
+      // a planilha costuma chegar com a coluna em branco, porque quem monta a
+      // lista de equipes raramente sabe o contato de cada atletica. Um
+      // marcador visivel resolve: a carga acontece e o campo fica pedindo
+      // correcao na tela, em vez de 10 erros 400 e nenhuma equipe criada.
+      responsavel: linha.responsavel?.trim() || SEM_RESPONSAVEL,
       tom: TONS[equipes.length % TONS.length],
       logo: acharLogo(nome, linha.logo),
     });
@@ -305,6 +313,12 @@ async function principal() {
   console.log('A criar: ' + plano.equipes.length + ' equipes, ' + plano.atletas.length + ' atletas');
   for (const e of plano.equipes) {
     console.log('  equipe  ' + e.nome + ' (' + e.sigla + ')' + (e.logo ? '  escudo: ' + e.logo : '  SEM ESCUDO'));
+  }
+  const semResponsavel = plano.equipes.filter((e) => e.responsavel === SEM_RESPONSAVEL);
+  if (semResponsavel.length) {
+    console.log('');
+    console.log(semResponsavel.length + ' equipe(s) sem responsavel na planilha. Vao entrar como "' + SEM_RESPONSAVEL + '".');
+    console.log('Para resolver antes: preencha a coluna responsavel em ' + ARQ_EQUIPES + ' e rode de novo.');
   }
   const semEscudo = plano.equipes.filter((e) => !e.logo);
   if (semEscudo.length) {
