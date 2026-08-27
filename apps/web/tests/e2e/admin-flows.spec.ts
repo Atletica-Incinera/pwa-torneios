@@ -244,7 +244,11 @@ test('gestor cadastra atleta, e apenas na modalidade dele', async ({ page }) => 
 
   await page.getByRole('button', { name: 'Concluir cadastro' }).click();
   await expect(page).toHaveURL(/\/teams\/alcateia/);
-  await expect(page.getByText('Atleta do Gestor')).toBeVisible();
+  // Presença no elenco, não visibilidade: os grupos por modalidade são um
+  // acordeão e só o primeiro nasce aberto (`open={index === 0}`). Se o atleta
+  // cair num grupo fechado ele existe e fica oculto, e o teste reprovaria por
+  // um detalhe de apresentação que não é o que ele verifica.
+  await expect(page.locator('.roster-manage-row', { hasText: 'Atleta do Gestor' })).toHaveCount(1);
 });
 
 test('gestor fica restrito à própria modalidade', async ({ page }) => {
