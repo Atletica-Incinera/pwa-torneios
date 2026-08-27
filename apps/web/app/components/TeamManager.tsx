@@ -66,13 +66,27 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
       // escudo, vale o publicado com o app: é assim que uma equipe criada
       // antes desta mudança — quando o upload falhava em silêncio — ganha o
       // escudo sem precisar ser apagada e recriada.
-      const logo = pendingLogo
-        ? source === 'http'
-          ? await uploadTeamLogo(team.id, pendingLogo.blob)
-          : pendingLogo.previewUrl
-        : current.logo
-          ? undefined
-          : acharEscudo(draft.name);
+      const escudoDoNome = acharEscudo(draft.name);
+      let logo: string | undefined;
+      if (pendingLogo && source === 'http') {
+        try {
+          logo = await uploadTeamLogo(team.id, pendingLogo.blob);
+        } catch (falha) {
+          // O envio depende de uma rota de storage que o gateway ainda nao tem
+          // (issue api#11) e devolve 404. Deixar a equipe sem escudo por causa
+          // disso e o pior desfecho possivel: se o nome tem escudo publicado
+          // com o app, usa ele e explica o que houve.
+          if (!escudoDoNome) throw falha;
+          logo = escudoDoNome;
+          setError(
+            'O envio de imagem está indisponível no momento. Foi aplicado o escudo da atlética publicado com o app.',
+          );
+        }
+      } else if (pendingLogo) {
+        logo = pendingLogo.previewUrl;
+      } else if (!current.logo) {
+        logo = escudoDoNome;
+      }
       const saved = await dispatch({
         type: 'team/update',
         payload: {
@@ -175,7 +189,7 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
             label="Logotipo"
             accept="image/png,image/jpeg,image/webp,image/svg+xml"
             fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-            hint="A imagem é reduzida e convertida para WebP antes de ser armazenada."
+            hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho ao salvar — só escolha uma imagem se quiser outra."
             onChange={chooseLogo}
           />
           {error ? (
