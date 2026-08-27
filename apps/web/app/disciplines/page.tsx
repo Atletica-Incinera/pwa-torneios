@@ -14,6 +14,11 @@ export default function DisciplinesPage() {
   // O gestor de modalidade só enxerga a modalidade do seu escopo.
   const disciplines = listDisciplines(state, activeEdition?.id).filter((item) => canManageDiscipline(session, item.name));
   const enabled = disciplines.filter((item) => item.enabled);
+  // Modalidade desativada sai da lista principal. Antes ficava no meio das
+  // ativas com uma tarja "REMOVIDA" — a tela anunciava as modalidades da
+  // edicao e mostrava justamente as que nao sao. O grupo recolhido abaixo e o
+  // caminho para reativar, que so existe entrando na modalidade.
+  const desativadas = disciplines.filter((item) => !item.enabled);
 
   return (
     <AppShell
@@ -31,7 +36,7 @@ export default function DisciplinesPage() {
           começo. O gestor de modalidade cai no mesmo vazio por outro motivo — a
           modalidade do escopo dele ainda não foi habilitada — e precisa de outra
           explicação, não de um convite que ele não pode aceitar. */}
-      {!disciplines.length ? <div className="empty-state">
+      {!enabled.length ? <div className="empty-state">
         <strong>NENHUMA MODALIDADE HABILITADA</strong>
         <p>{canManageEdition(session)
           ? 'Adicione a primeira modalidade e o regulamento dela para liberar categorias, inscrições e jogos.'
@@ -41,11 +46,11 @@ export default function DisciplinesPage() {
         {canManageEdition(session) ? <Link href="/disciplines/new" className="secondary-button"><Plus size={16} aria-hidden="true" /> Adicionar primeira modalidade</Link> : null}
       </div> : null}
       <section className="poster-list">
-        {disciplines.map((discipline, index) => (
-          <Link href={disciplineHref(discipline.name)} className={`discipline-card accent-${discipline.tone}${discipline.enabled ? '' : ' is-disabled'}`} key={discipline.name}>
+        {enabled.map((discipline, index) => (
+          <Link href={disciplineHref(discipline.name)} className={`discipline-card accent-${discipline.tone}`} key={discipline.name}>
             <span className="discipline-index">{String(index + 1).padStart(2, '0')}</span>
             <div>
-              <StatusBadge tone={discipline.enabled ? discipline.tone : 'neutral'}>{discipline.enabled ? discipline.mode : 'Removida'}</StatusBadge>
+              <StatusBadge tone={discipline.tone}>{discipline.mode}</StatusBadge>
               <h2>{discipline.name}</h2>
               <p>{discipline.config}</p>
               <small><Users size={14} /> {discipline.categories.length} {discipline.categories.length === 1 ? 'categoria' : 'categorias'}</small>
@@ -54,6 +59,22 @@ export default function DisciplinesPage() {
           </Link>
         ))}
       </section>
+      {desativadas.length ? <details className="grupo-inativos">
+        <summary>Desativadas ({desativadas.length})</summary>
+        <section className="poster-list">
+          {desativadas.map((discipline) => (
+            <Link href={disciplineHref(discipline.name)} className="discipline-card accent-neutral is-disabled" key={discipline.name}>
+              <div>
+                <StatusBadge tone="neutral">Desativada</StatusBadge>
+                <h2>{discipline.name}</h2>
+                <p>Abra para reativar ou excluir de vez.</p>
+                <small><Users size={14} /> {discipline.categories.length} {discipline.categories.length === 1 ? 'categoria' : 'categorias'}</small>
+              </div>
+              <ChevronRight size={22} />
+            </Link>
+          ))}
+        </section>
+      </details> : null}
     </AppShell>
   );
 }

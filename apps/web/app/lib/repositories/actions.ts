@@ -41,7 +41,13 @@ export type CategoryAction =
 
 /** Operações de modalidade (o esporte e seu regulamento). */
 export type DisciplineAction =
-  WithAudit & { type: 'discipline/update'; payload: { name: string; patch: Partial<DisciplineState> } };
+  | (WithAudit & { type: 'discipline/update'; payload: { name: string; patch: Partial<DisciplineState> } })
+  /**
+   * Exclusao de verdade, distinta de `enabled: false`. A API recusa quando algo
+   * ainda depende da modalidade e diz o que e — categoria, elenco, gestor com
+   * escopo nela ou pontuacao no ranking geral.
+   */
+  | (WithAudit & { type: 'discipline/delete'; payload: { name: string } });
 
 /**
  * Operações de equipe e de atleta.
@@ -116,6 +122,8 @@ export type EditionAction =
  */
 export type StaffAction =
   | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState } })
+  /** Exclusao de verdade, distinta de `revoked: true`. */
+  | (WithAudit & { type: 'staff/remove'; payload: { email: string } })
   /**
    * Super admin não é um papel de edição — é a flag global da conta, sem
    * escopo nem modalidade. Cria a conta se o e-mail ainda não existir.

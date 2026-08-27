@@ -6,6 +6,7 @@ import { DisciplineRule, useFrontendState } from '../lib/repositories/browser-re
 import { formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
 import { describeTiebreakers, regulationFromRule } from '../lib/regulation';
 import { RegulationFields } from './RegulationFields';
+import { useRouter } from 'next/navigation';
 import { useUi } from './UiProvider';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
@@ -14,6 +15,7 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
   const { state, dispatch } = useFrontendState();
   const { session } = useFrontendSession();
   const { confirm } = useUi();
+  const router = useRouter();
   const allowed = canManageDiscipline(session, name);
   const stored = state.disciplines[name] ?? {};
   const enabled = stored.enabled !== false;
@@ -43,10 +45,26 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
     setEditing(false);
   }
 
+  /**
+   * Excluir de verdade, distinto de desativar. A API recusa quando algo ainda
+   * depende da modalidade e diz o que e; aqui so cabe avisar que nao ha
+   * desfazer.
+   */
+  async function excluir() {
+    if (!(await confirm({
+      title: `Excluir ${name}?`,
+      message: 'A modalidade é apagada da edição, não fica marcada como removida. Se ainda houver categoria, atleta inscrito ou gestor com escopo nela, a exclusão é recusada e nada muda. Não dá para desfazer.',
+      confirmLabel: 'Excluir',
+      danger: true,
+    }))) return;
+    await dispatch({ type: 'discipline/delete', payload: { name }, audit: { action: 'Modalidade excluída', entity: name, before: enabled ? 'Habilitada' : 'Desativada', after: 'Excluída' } });
+    router.push('/disciplines');
+  }
+
   async function toggleEnabled() {
     const next = !enabled;
-    if (!next && !(await confirm({ title: 'Remover modalidade?', message: 'Ela ficará indisponível em novos jogos, mas partidas já criadas preservarão as regras originais.', confirmLabel: 'Remover', danger: true }))) return;
-    await dispatch({ type: 'discipline/update', payload: { name, patch: { config, rules: rule, enabled: next } }, audit: { action: next ? 'Modalidade restaurada' : 'Modalidade removida da edição', entity: name, before: enabled ? 'Habilitada' : 'Removida', after: next ? 'Habilitada' : 'Removida' } });
+    if (!next && !(await confirm({ title: 'Desativar modalidade?', message: 'Ela sai da lista principal e fica indisponível em novos jogos, mas partidas já criadas preservam as regras originais. Dá para reativar depois.', confirmLabel: 'Desativar', danger: true }))) return;
+    await dispatch({ type: 'discipline/update', payload: { name, patch: { config, rules: rule, enabled: next } }, audit: { action: next ? 'Modalidade reativada' : 'Modalidade desativada', entity: name, before: enabled ? 'Habilitada' : 'Desativada', after: next ? 'Habilitada' : 'Desativada' } });
   }
 
   return <>
@@ -71,6 +89,6 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
       </div>
       <RegulationFields discipline={name} rule={draft} onChange={setDraft} />
       <div className="form-actions"><button type="button" className="secondary-button" onClick={() => setEditing(false)}>Cancelar</button><button type="submit" className="primary-button">Salvar regras</button></div>
-    </form> : allowed ? <div className="form-actions">{canManageEdition(session) ? <button type="button" className={enabled ? 'danger-button' : 'secondary-button'} onClick={toggleEnabled} title={enabled ? 'Tirar a modalidade desta edição' : 'Voltar a habilitar a modalidade'}>{enabled ? <><Trash2 size={16} aria-hidden="true" /> Remover da edição</> : 'Restaurar modalidade'}</button> : null}{enabled ? <button type="button" className="primary-button" onClick={() => { setDraft(rule); setEditing(true); }}>Editar regras</button> : null}</div> : null}
+    </form> : allowed ? <div className="form-actions">{canManageEdition(session) ? <button type="button" className={enabled ? 'danger-button' : 'secondary-button'} onClick={toggleEnabled} title={enabled ? 'Tirar a modalidade desta edição' : 'Voltar a habilitar a modalidade'}>{enabled ? 'Desativar' : 'Reativar modalidade'}</button> : null}{canManageEdition(session) ? <button type="button" className="danger-button" onClick={excluir} disabled={tournaments > 0} title={tournaments > 0 ? `${name} tem ${tournaments} ${tournaments === 1 ? 'categoria configurada' : 'categorias configuradas'}. Exclua as categorias antes, ou apenas desative a modalidade.` : 'Apagar a modalidade desta edição'}><Trash2 size={16} aria-hidden="true" /> Excluir</button> : null}{enabled ? <button type="button" className="primary-button" onClick={() => { setDraft(rule); setEditing(true); }}>Editar regras</button> : null}</div> : null}
   </>;
 }
