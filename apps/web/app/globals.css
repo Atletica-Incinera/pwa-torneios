@@ -3936,3 +3936,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 
   .theme-teams .team-card .team-copy h2 { font-size: 27px; }
 }
+
+/* Filtro sem nada para filtrar fica visivelmente inerte, em vez de aceitar o
+   clique e nao mudar a lista. */
+.square-filter:disabled { opacity: .42; cursor: not-allowed; }
