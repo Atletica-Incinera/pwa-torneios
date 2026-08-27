@@ -447,3 +447,29 @@ test('equipe cadastrada pela tela sai com o escudo publicado', async ({ page }) 
   await expect(page).toHaveURL(/\/teams\/tormenta/);
   await expect(page.locator('.team-mark-logo img').first()).toHaveAttribute('src', /\/teams\/tormenta\.webp$/);
 });
+
+test('escudo da equipe pode ser escolhido e trocado na edição', async ({ page }) => {
+  // Antes, a unica forma de aplicar um escudo era o preenchimento automatico
+  // pelo nome — que so gravava se algum OUTRO campo mudasse. Corrigir um
+  // escudo exigia alterar, por exemplo, o nome do responsável. Contorno, não
+  // funcionalidade.
+  await loginAs(page);
+  await page.goto('/teams/alcateia');
+  await page.getByRole('button', { name: /editar/i }).first().click();
+
+  const salvar = page.getByRole('button', { name: 'Salvar' });
+  await expect(salvar).toBeDisabled();
+
+  // Escolher um escudo basta para habilitar a gravação: nada mais precisa mudar.
+  await page.getByRole('button', { name: 'Usar o escudo tormenta' }).click();
+  await expect(page.getByRole('button', { name: 'Usar o escudo tormenta' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(salvar).toBeEnabled();
+
+  // E dá para trocar de ideia antes de gravar.
+  await page.getByRole('button', { name: 'Usar o escudo voraz' }).click();
+  await expect(page.getByRole('button', { name: 'Usar o escudo voraz' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Usar o escudo tormenta' })).toHaveAttribute('aria-pressed', 'false');
+
+  await salvar.click();
+  await expect(page.locator('.team-mark-logo img').first()).toHaveAttribute('src', /\/teams\/voraz\.webp$/);
+});

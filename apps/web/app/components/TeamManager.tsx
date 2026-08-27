@@ -3,6 +3,7 @@
 import { Archive, Pencil, Save } from 'lucide-react';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { TeamMark } from './AppShell';
+import { EscudoPicker } from './EscudoPicker';
 import { FileField } from './FileField';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { useUi } from './UiProvider';
@@ -25,13 +26,7 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
     archived: team.archived,
   };
   const [editing, setEditing] = useState(false);
-  // Equipe sem escudo, tendo um publicado para o nome, abre a edicao ja com ele
-  // aplicado. Sem isto o botao Salvar nasce desabilitado — `dirty` compara o
-  // rascunho com o salvo — e nao havia como aplicar o escudo a uma equipe
-  // criada antes desta mudanca sem alterar algum outro campo de proposito.
-  const [draft, setDraft] = useState(
-    current.logo ? current : { ...current, logo: acharEscudo(current.name) ?? current.logo },
-  );
+  const [draft, setDraft] = useState(current);
   const [pendingLogo, setPendingLogo] = useState<OptimizedImage | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -72,26 +67,28 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
       // escudo, vale o publicado com o app: é assim que uma equipe criada
       // antes desta mudança — quando o upload falhava em silêncio — ganha o
       // escudo sem precisar ser apagada e recriada.
-      const escudoDoNome = acharEscudo(draft.name);
       let logo: string | undefined;
       if (pendingLogo && source === 'http') {
         try {
           logo = await uploadTeamLogo(team.id, pendingLogo.blob);
         } catch (falha) {
           // O envio depende de uma rota de storage que o gateway ainda nao tem
-          // (issue api#11) e devolve 404. Deixar a equipe sem escudo por causa
-          // disso e o pior desfecho possivel: se o nome tem escudo publicado
-          // com o app, usa ele e explica o que houve.
-          if (!escudoDoNome) throw falha;
-          logo = escudoDoNome;
+          // (issue api#11) e devolve 404. Se a pessoa tinha escolhido um
+          // escudo da lista, ele vale — melhor que perder tudo por causa do
+          // envio.
+          if (!draft.logo) throw falha;
+          logo = draft.logo;
           setError(
-            'O envio de imagem está indisponível no momento. Foi aplicado o escudo da atlética publicado com o app.',
+            'O envio de imagem está indisponível no momento. Foi mantido o escudo escolhido na lista.',
           );
         }
       } else if (pendingLogo) {
         logo = pendingLogo.previewUrl;
-      } else if (!current.logo) {
-        logo = escudoDoNome;
+      } else if (draft.logo && draft.logo !== current.logo) {
+        // O escudo escolhido no seletor. Sem esta linha a escolha era
+        // descartada em toda equipe que ja tivesse um — que e justamente o
+        // caso de quem quer TROCAR o escudo.
+        logo = draft.logo;
       }
       const saved = await dispatch({
         type: 'team/update',
@@ -193,23 +190,24 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
               placeholder="Nome do responsável"
             />
           </label>
-          {/* Mesmo motivo da tela de cadastro: o envio depende de uma rota de
-              storage que o gateway ainda nao tem (issue api#11) e devolve 404.
-              Para reativar quando a rota existir: apagar esta condicao. */}
-          {source === 'http' ? (
-            <p className="form-hint">
-              O escudo da atlética é aplicado pelo nome da equipe ao salvar. O envio de imagem
-              própria está temporariamente indisponível.
-            </p>
-          ) : (
+          <EscudoPicker
+            valor={draft.logo}
+            nomeDaEquipe={draft.name}
+            onEscolher={(escudo) => setDraft((valor) => ({ ...valor, logo: escudo ?? '' }))}
+          />
+          {/* O envio de imagem propria sobe para o storage por uma rota que o
+              gateway ainda nao tem (issue api#11) e devolve 404. Enquanto isso
+              o seletor acima e o caminho; quando a rota existir, apagar esta
+              condicao devolve o campo de arquivo ao lado dele. */}
+          {source !== 'http' ? (
             <FileField
-              label="Logotipo"
+              label="Outra imagem"
               accept="image/png,image/jpeg,image/webp,image/svg+xml"
               fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-              hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho ao salvar — só escolha uma imagem se quiser outra."
+              hint="Opcional, para escudo fora da lista acima."
               onChange={chooseLogo}
             />
-          )}
+          ) : null}
           {error ? (
             <p className="form-error" role="alert">
               {error}
