@@ -67,7 +67,9 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
       // escudo, vale o publicado com o app: é assim que uma equipe criada
       // antes desta mudança — quando o upload falhava em silêncio — ganha o
       // escudo sem precisar ser apagada e recriada.
-      let logo: string | undefined;
+      // `null` remove o escudo; `undefined` deixa como esta. A API distingue
+      // os dois desde que passou a aceitar remocao.
+      let logo: string | null | undefined;
       if (pendingLogo && source === 'http') {
         try {
           logo = await uploadTeamLogo(team.id, pendingLogo.blob);
@@ -84,11 +86,10 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
         }
       } else if (pendingLogo) {
         logo = pendingLogo.previewUrl;
-      } else if (draft.logo && draft.logo !== current.logo) {
-        // O escudo escolhido no seletor. Sem esta linha a escolha era
-        // descartada em toda equipe que ja tivesse um — que e justamente o
-        // caso de quem quer TROCAR o escudo.
-        logo = draft.logo;
+      } else if (draft.logo !== current.logo) {
+        // O escudo escolhido no seletor. Vazio vira `null`: e assim que a
+        // remocao chega ao servidor, e sem isso desmarcar nao removia nada.
+        logo = draft.logo || null;
       }
       const saved = await dispatch({
         type: 'team/update',
@@ -99,7 +100,7 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
             initials: draft.initials.trim().toUpperCase(),
             responsible: draft.responsible,
             archived: draft.archived,
-            ...(logo ? { logo } : {}),
+            ...(logo !== undefined ? { logo } : {}),
           },
         },
         audit: {
@@ -193,12 +194,7 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
           <EscudoPicker
             valor={draft.logo}
             nomeDaEquipe={draft.name}
-            // Desmarcar volta ao escudo ja gravado em vez de esvaziar. Esvaziar
-            // habilitava o Salvar e nao removia nada -- `team/update` recusa
-            // logotipo vazio -- entao o clique parecia fazer algo e nao fazia.
-            // Em equipe que ainda nao tem escudo, `current.logo` e vazio e
-            // desmarcar continua limpando de verdade.
-            onEscolher={(escudo) => setDraft((valor) => ({ ...valor, logo: escudo ?? current.logo ?? '' }))}
+            onEscolher={(escudo) => setDraft((valor) => ({ ...valor, logo: escudo ?? '' }))}
           />
           {/* O envio de imagem propria sobe para o storage por uma rota que o
               gateway ainda nao tem (issue api#11) e devolve 404. Enquanto isso

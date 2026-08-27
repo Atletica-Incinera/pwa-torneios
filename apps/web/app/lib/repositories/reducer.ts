@@ -1,4 +1,4 @@
-import { initialFrontendState, type FrontendState, type MatchState } from '../frontend-state.ts';
+import { initialFrontendState, type FrontendState, type MatchState, type TeamState } from '../frontend-state.ts';
 import { createId } from '../create-id.ts';
 import { clearDownstream, progressTournament } from '../tournament-progression.ts';
 import { evaluateOperatorLock } from '../match-lifecycle.ts';
@@ -51,8 +51,14 @@ function reduce(current: FrontendState, action: Action): FrontendState {
     case 'team/create':
       return { ...current, teams: { ...current.teams, [action.payload.id]: action.payload.team } };
 
-    case 'team/update':
-      return { ...current, teams: { ...current.teams, [action.payload.id]: { ...current.teams[action.payload.id], ...action.payload.patch } } };
+    case 'team/update': {
+      // `logo: null` chega do formulario como remocao; no estado local isso e
+      // simplesmente ausencia de escudo, que e o que os componentes esperam.
+      const { logo, ...resto } = action.payload.patch;
+      const patch: Partial<TeamState> =
+        logo === null ? { ...resto, logo: undefined } : { ...resto, ...(logo !== undefined ? { logo } : {}) };
+      return { ...current, teams: { ...current.teams, [action.payload.id]: { ...current.teams[action.payload.id], ...patch } } };
+    }
 
     case 'athlete/create':
       return { ...current, athletes: { ...current.athletes, [action.payload.id]: action.payload.athlete } };

@@ -51,7 +51,13 @@ export type DisciplineAction =
  */
 export type TeamAction =
   | (WithAudit & { type: 'team/create'; payload: { id: string; team: TeamState } })
-  | (WithAudit & { type: 'team/update'; payload: { id: string; patch: Partial<TeamState> } });
+  | (WithAudit & {
+      type: 'team/update';
+      // `logo: null` remove o escudo. Precisa ser distinto de omitir o campo:
+      // patch sem `logo` nao mexe no escudo. `TeamState` sozinho nao expressa
+      // isso, porque la o escudo e string ou ausente.
+      payload: { id: string; patch: Omit<Partial<TeamState>, 'logo'> & { logo?: string | null } };
+    });
 
 export type AthleteAction =
   | (WithAudit & { type: 'athlete/create'; payload: { id: string; athlete: AthleteState } })
