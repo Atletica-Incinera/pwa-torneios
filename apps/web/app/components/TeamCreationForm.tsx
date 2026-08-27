@@ -120,9 +120,18 @@ export function TeamCreationForm() {
             audit: { action: 'Logotipo cadastrado', entity: name.trim() },
           });
         } catch {
-          // A equipe já foi criada; só o logotipo falhou em subir. Segue para
-          // a equipe criada em vez de travar o cadastro — dá para tentar de
-          // novo na tela de edição.
+          // O envio depende de uma rota de storage que o gateway ainda não tem
+          // (issue api#11) e devolve 404. A equipe já foi criada; o que não
+          // pode é ela ficar sem escudo por causa disso quando existe um
+          // publicado com o app para este nome.
+          const escudo = acharEscudo(name);
+          if (escudo) {
+            await dispatch({
+              type: 'team/update',
+              payload: { id, patch: { logo: escudo } },
+              audit: { action: 'Escudo da atlética aplicado', entity: name.trim() },
+            });
+          }
         }
       }
       router.push(`/teams/${id}`);
@@ -174,14 +183,28 @@ export function TeamCreationForm() {
             required
           />
         </label>
-        <FileField
-          label="Logotipo"
-          accept="image/png,image/jpeg,image/webp"
-          fileName={pendingLogo ? 'Imagem selecionada' : undefined}
-          hint="Escolha uma imagem para recortar e ajustar ao formato usado no app — ela é convertida para WebP antes de ser armazenada."
-          onChange={chooseLogo}
-          inputKey={fileInputKey}
-        />
+        {/* O envio de imagem sobe para o storage por uma rota que o gateway
+            ainda nao tem (issue api#11): o pedido devolve 404 e a equipe ficava
+            sem escudo. Oferecer um controle que nao funciona e pior do que nao
+            oferecer nenhum — a pessoa gasta o tempo dela e sai sem o escudo.
+
+            Para reativar quando a rota existir: apagar esta condicao. O resto
+            do caminho de envio continua inteiro. */}
+        {source === 'http' ? (
+          <p className="form-hint">
+            O escudo da atlética é aplicado pelo nome da equipe ao salvar. O envio de imagem
+            própria está temporariamente indisponível.
+          </p>
+        ) : (
+          <FileField
+            label="Logotipo"
+            accept="image/png,image/jpeg,image/webp"
+            fileName={pendingLogo ? 'Imagem selecionada' : undefined}
+            hint="Opcional. Sendo uma atlética do InterEng, o escudo entra sozinho — só escolha uma imagem se quiser outra."
+            onChange={chooseLogo}
+            inputKey={fileInputKey}
+          />
+        )}
         {pendingLogo ? (
           <div className="logo-preview-row">
             <TeamMark initial={(initials || name || 'E')[0]} tone="blue" logo={pendingLogo.previewUrl} />
