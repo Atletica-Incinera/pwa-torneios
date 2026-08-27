@@ -3868,3 +3868,71 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .grupo-inativos > summary:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 .grupo-inativos > :not(summary) { margin-top: 12px; }
 .empty-inline { margin: 10px 2px; color: var(--muted, rgba(247, 240, 227, .62)); font-size: .92rem; }
+
+/* ==========================================================================
+   ESCUDO E NOME DA ATLETICA EM DESTAQUE
+   ==========================================================================
+   Precisa vir DEPOIS do bloco de tela estreita acima: media query nao soma
+   especificidade, e o tamanho do escudo estava definido em seis lugares
+   diferentes -- `.theme-teams .team-card`, a variante do modo leitura, e
+   quatro pontos de quebra. Ajustar so um deles nao muda nada em metade das
+   larguras.
+
+   Ordem interna, como no bloco acima: do mais largo para o mais estreito.
+   ========================================================================== */
+.theme-teams .team-card,
+.public-readonly-screen.theme-teams .team-card {
+  grid-template-columns: 150px minmax(0, 1fr) 26px;
+}
+
+.theme-teams .team-card .team-mark-logo {
+  width: 150px;
+  height: 150px;
+  min-width: 150px;
+  min-height: 150px;
+}
+
+.theme-teams .team-card .team-copy h2 {
+  font-size: 40px;
+  line-height: .95;
+  /* `.team-copy h2` corta com reticencia, e nesse tamanho "Cangaceiros" perdia
+     36px -- a atletica aparecia com o nome pela metade justamente no cartao
+     que existe para mostra-la. Aqui o nome desce uma linha: o cartao tem
+     altura de sobra e o nome nao e informacao secundaria. */
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 430px) {
+  .theme-teams .team-card,
+  .public-readonly-screen.theme-teams .team-card {
+    grid-template-columns: 116px minmax(0, 1fr) 20px;
+  }
+
+  .theme-teams .team-card .team-mark-logo {
+    width: 116px;
+    height: 116px;
+    min-width: 116px;
+    min-height: 116px;
+  }
+
+  .theme-teams .team-card .team-copy h2 { font-size: 32px; }
+}
+
+@media (max-width: 350px) {
+  .theme-teams .team-card,
+  .public-readonly-screen.theme-teams .team-card {
+    grid-template-columns: 98px minmax(0, 1fr) 18px;
+  }
+
+  .theme-teams .team-card .team-mark-logo {
+    width: 98px;
+    height: 98px;
+    min-width: 98px;
+    min-height: 98px;
+  }
+
+  .theme-teams .team-card .team-copy h2 { font-size: 27px; }
+}
