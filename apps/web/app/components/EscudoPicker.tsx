@@ -13,8 +13,11 @@ import { caminhoDoEscudo, escudosPublicados } from '../lib/escudos';
  * formulário mudar. Quem precisasse corrigir um escudo tinha que alterar outro
  * campo de propósito, o que é contorno, não funcionalidade.
  *
- * Aqui a escolha é explícita: clicar num escudo muda o rascunho, o botão de
- * salvar habilita, e dá para trocar ou remover quantas vezes quiser.
+ * Aqui a escolha é explícita: clicar num escudo muda o rascunho e o botão de
+ * salvar habilita. Trocar funciona quantas vezes for preciso; remover não, e
+ * quem monta o formulário decide o que fazer com `undefined` — na edição de
+ * equipe que já tem escudo, ele volta ao que estava gravado, porque
+ * `team/update` recusa logotipo vazio.
  */
 export function EscudoPicker({
   valor,

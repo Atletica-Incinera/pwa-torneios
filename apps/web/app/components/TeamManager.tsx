@@ -193,7 +193,12 @@ export function TeamManager({ team, readOnly = false }: { team: TeamView; readOn
           <EscudoPicker
             valor={draft.logo}
             nomeDaEquipe={draft.name}
-            onEscolher={(escudo) => setDraft((valor) => ({ ...valor, logo: escudo ?? '' }))}
+            // Desmarcar volta ao escudo ja gravado em vez de esvaziar. Esvaziar
+            // habilitava o Salvar e nao removia nada -- `team/update` recusa
+            // logotipo vazio -- entao o clique parecia fazer algo e nao fazia.
+            // Em equipe que ainda nao tem escudo, `current.logo` e vazio e
+            // desmarcar continua limpando de verdade.
+            onEscolher={(escudo) => setDraft((valor) => ({ ...valor, logo: escudo ?? current.logo ?? '' }))}
           />
           {/* O envio de imagem propria sobe para o storage por uma rota que o
               gateway ainda nao tem (issue api#11) e devolve 404. Enquanto isso
