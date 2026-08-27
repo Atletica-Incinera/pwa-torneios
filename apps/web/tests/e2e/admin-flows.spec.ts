@@ -426,3 +426,24 @@ test('categoria vai ao ar sem equipe inscrita, e o sorteio é que cobra', async 
   // ali — foi o que este próprio teste verificou acima.
   await expect(page.getByRole('combobox', { name: 'Situação da categoria' })).toHaveValue('Publicado');
 });
+
+test('equipe cadastrada pela tela sai com o escudo publicado', async ({ page }) => {
+  // O caminho que a organização usa de fato. Antes, o formulário só conhecia o
+  // upload para o storage — que falha porque o gateway não tem rota — e a
+  // equipe nascia sem escudo, em silêncio.
+  await loginAs(page);
+  await page.goto('/teams/new');
+
+  await page.getByLabel('Nome da equipe').fill('Tormenta');
+  await page.getByLabel('Sigla').fill('TOR');
+  await page.getByLabel('Responsável').fill('Pessoa Responsável');
+
+  // O escudo aparece ANTES de salvar: preencher em silêncio seria trocar um
+  // problema invisível por outro.
+  const previa = page.locator('.logo-preview-row img');
+  await expect(previa).toHaveAttribute('src', /\/teams\/tormenta\.webp$/);
+
+  await page.getByRole('button', { name: 'Cadastrar equipe' }).click();
+  await expect(page).toHaveURL(/\/teams\/tormenta/);
+  await expect(page.locator('.team-mark-logo img').first()).toHaveAttribute('src', /\/teams\/tormenta\.webp$/);
+});
