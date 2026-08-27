@@ -3851,3 +3851,20 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .escudo-opcao.is-escolhido svg { position: absolute; right: 3px; bottom: 3px; padding: 2px; background: var(--orange); color: var(--black); }
 .escudo-opcao:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 .escudo-remover { margin-top: 12px; }
+
+/* Grupo recolhido dos inativos: modalidade desativada, acesso revogado. Fica
+   no fim da tela e fechado por padrao — nao e conteudo da lista, e o caminho
+   de volta para quem precisa reativar. */
+.grupo-inativos { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 14px; }
+.grupo-inativos > summary {
+  cursor: pointer;
+  padding: 8px 2px;
+  color: var(--muted, rgba(247, 240, 227, .62));
+  font-size: .82rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.grupo-inativos > summary:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.grupo-inativos > :not(summary) { margin-top: 12px; }
+.empty-inline { margin: 10px 2px; color: var(--muted, rgba(247, 240, 227, .62)); font-size: .92rem; }

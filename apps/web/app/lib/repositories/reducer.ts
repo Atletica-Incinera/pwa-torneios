@@ -84,6 +84,12 @@ function reduce(current: FrontendState, action: Action): FrontendState {
       return { ...current, disciplines: { ...current.disciplines, [name]: { ...current.disciplines[name], ...patch } } };
     }
 
+    case 'discipline/delete': {
+      // Sai do estado, nao vira marca: e o que distingue excluir de desativar.
+      const { [action.payload.name]: excluida, ...restantes } = current.disciplines;
+      return { ...current, disciplines: restantes };
+    }
+
     case 'competition/create': {
       const { competition, edition } = action.payload;
       return { ...current, competitions: [...current.competitions, competition], editions: [edition, ...current.editions] };
@@ -107,6 +113,11 @@ function reduce(current: FrontendState, action: Action): FrontendState {
 
     case 'staff/upsert':
       return { ...current, staff: { ...current.staff, [action.payload.email]: action.payload.member } };
+
+    case 'staff/remove': {
+      const { [action.payload.email]: removido, ...restante } = current.staff;
+      return { ...current, staff: restante };
+    }
 
     // O modo local não modela super admin como uma entrada de state.staff — é
     // o usuário de demonstração fixo em demoUsers, fora deste estado. Só a
