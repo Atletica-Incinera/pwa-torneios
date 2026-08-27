@@ -473,3 +473,22 @@ test('escudo da equipe pode ser escolhido e trocado na edição', async ({ page 
   await salvar.click();
   await expect(page.locator('.team-mark-logo img').first()).toHaveAttribute('src', /\/teams\/voraz\.webp$/);
 });
+
+test('clicar no escudo ja marcado nao habilita um salvamento vazio', async ({ page }) => {
+  // Desmarcar esvaziava o rascunho: o Salvar habilitava e o salvamento nao
+  // removia escudo nenhum, porque `team/update` recusa logotipo vazio. O
+  // clique prometia uma acao que o servidor nao executa.
+  await loginAs(page);
+  await page.goto('/teams/alcateia');
+  await page.getByRole('button', { name: /editar/i }).first().click();
+
+  const salvar = page.getByRole('button', { name: 'Salvar' });
+  await expect(salvar).toBeDisabled();
+
+  const marcado = page.locator('.escudo-opcao.is-escolhido');
+  await expect(marcado).toHaveCount(1);
+  await marcado.click();
+
+  await expect(page.locator('.escudo-opcao.is-escolhido')).toHaveCount(1);
+  await expect(salvar).toBeDisabled();
+});
