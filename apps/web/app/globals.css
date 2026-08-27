@@ -493,10 +493,13 @@ ul.form-feedback li { line-height: 1.45; }
 .status-orange { background: var(--status-warning-bg); color: var(--status-warning-text); }
 .status-neutral { background: var(--status-neutral-bg); color: var(--status-neutral-text); }
 .team-mark { width: 64px; height: 70px; display: grid; place-items: center; flex: 0 0 auto; font-size: 22px; font-weight: 900; color: var(--white); clip-path: polygon(50% 0,94% 18%,86% 76%,50% 100%,14% 76%,6% 18%); }
-.mark-blue { background: var(--blue); }
-.mark-pink { background: var(--pink); }
-.mark-orange { background: var(--orange); color: #000; }
-.team-mark-logo { background: var(--white); overflow: hidden; }
+/* A cor de fundo identifica a equipe quando so aparece a inicial. Escudo real
+   nao leva fundo: a arte ja traz a propria moldura, e o retangulo colorido
+   atras dela virava uma segunda moldura briga com a primeira. */
+.mark-blue:not(.team-mark-logo) { background: var(--blue); }
+.mark-pink:not(.team-mark-logo) { background: var(--pink); }
+.mark-orange:not(.team-mark-logo) { background: var(--orange); color: #000; }
+.team-mark-logo { background: none; overflow: visible; }
 .team-mark-logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
 .team-mark-small { width: 42px; height: 48px; font-size: 16px; }
 /* `minmax(0, 1fr)`, e nao `1fr`: o minimo automatico de `1fr` e min-content,
@@ -1454,7 +1457,16 @@ small,
 .theme-matches.live-screen .score-pink { color: var(--white); }
 .theme-matches.live-screen .score-numbers span { color: var(--white); }
 
-.theme-matches :is(.team-mark, .shield-shape, .timeline-minute, .event-btn, .game-clock, .sport-toast) {
+.theme-matches :is(.shield-shape, .timeline-minute, .event-btn, .game-clock, .sport-toast) {
+  background: var(--pink);
+  color: var(--white);
+}
+
+/* `.team-mark` sai do :is() acima so para poder poupar o escudo sem inflar a
+   especificidade dos outros seletores da lista -- `:is()` adota a
+   especificidade do argumento mais forte, entao um `:not()` la dentro mudaria
+   a cascata de todos eles. */
+.theme-matches .team-mark:not(.team-mark-logo) {
   background: var(--pink);
   color: var(--white);
 }
@@ -1653,8 +1665,8 @@ small,
   color: var(--white);
 }
 
-.theme-matches .match-score-card .mark-blue { background: var(--blue); }
-.theme-matches .match-score-card .mark-pink { background: var(--pink); }
+.theme-matches .match-score-card .mark-blue:not(.team-mark-logo) { background: var(--blue); }
+.theme-matches .match-score-card .mark-pink:not(.team-mark-logo) { background: var(--pink); }
 .theme-matches .match-score-card .status-orange { background: var(--pink); color: var(--white); }
 .theme-matches .match-score-card .status-blue { background: var(--blue); color: var(--white); }
 .theme-matches .match-score-card .status-neutral { background: var(--black); color: var(--white); }
@@ -1982,7 +1994,16 @@ small,
   height: 68px;
 }
 
-/* Logos reais usam um recorte circular, sem a moldura de escudo. */
+/*
+ * Os escudos das atleticas sao brasoes com formato proprio (contorno de
+ * escudo, faixa com o nome embaixo) e fundo ja transparente. O recorte
+ * circular que existia aqui cortava justamente os cantos da faixa: o nome da
+ * atletica aparecia mutilado. O disco branco tambem era do CSS, nao da
+ * imagem.
+ *
+ * Caixa quadrada de lado fixo mais `object-fit: contain` da o mesmo tamanho de
+ * referencia para todos, seja o brasao alto ou largo, sem cortar nada.
+ */
 .team-mark-logo,
 .theme-teams .team-card .team-mark-logo {
   width: 58px;
@@ -1991,9 +2012,13 @@ small,
   min-width: 58px;
   min-height: 58px;
   clip-path: none;
-  border-radius: 50%;
-  background: var(--white);
-  overflow: hidden;
+  border-radius: 0;
+  background: none;
+  overflow: visible;
+  /* Bloco, nao grid: `.team-mark` e grid de linha automatica, e ali qualquer
+     percentual de altura na imagem resolve contra uma linha que a propria
+     imagem dimensiona. Com bloco, os 100% da imagem resolvem contra a caixa. */
+  display: block;
 }
 
 .team-mark-small.team-mark-logo {
@@ -2003,11 +2028,21 @@ small,
   min-height: 42px;
 }
 
+/*
+ * Limite em vez de percentual, de proposito. `.team-mark` e um grid de linha
+ * automatica: `height: 100%` na imagem resolvia contra a linha, e a linha era
+ * dimensionada pela propria imagem. O resultado era a imagem ficar mais alta
+ * que a caixa (112x118 num quadro de 112x112) e sobrar para o `overflow:
+ * hidden` cortar -- era essa a mutilacao da faixa com o nome da atletica.
+ *
+ * Com max-width/max-height o brasao cabe inteiro na caixa, mantem a proporcao
+ * original e fica centrado pelo `place-items: center` herdado de `.team-mark`.
+ */
 .team-mark-logo img {
   width: 100%;
   height: 100%;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 0;
+  border-radius: 0;
   object-fit: contain;
   object-position: center;
 }
@@ -2354,7 +2389,7 @@ small,
   box-shadow: inset 0 0 0 1px var(--blue);
 }
 
-.management-screen.theme-matches .match-score-card :is(.mark-blue, .mark-pink) {
+.management-screen.theme-matches .match-score-card :is(.mark-blue, .mark-pink):not(.team-mark-logo) {
   background: var(--blue);
 }
 
@@ -2705,7 +2740,7 @@ small,
 .public-app-theme .match-score-card .status-pink { background: var(--pink); color: var(--white); }
 .public-app-theme .match-score-card .status-orange { background: var(--orange); color: var(--black); }
 .public-app-theme .match-score-card .versus-mark small { color: rgba(247, 240, 227, .62); }
-.public-app-theme .match-score-card .team-mark-logo { background: var(--orange); }
+.public-app-theme .match-score-card .team-mark-logo { background: none; }
 
 .public-app-theme .public-section {
   width: min(1180px, calc(100% - 40px));
@@ -2894,7 +2929,7 @@ small,
   box-shadow: inset 0 0 0 1px var(--blue);
 }
 
-.public-readonly-screen.theme-matches:not(.public-live-readonly) .match-score-card :is(.mark-blue, .mark-pink) { background: var(--blue); }
+.public-readonly-screen.theme-matches:not(.public-live-readonly) .match-score-card :is(.mark-blue, .mark-pink):not(.team-mark-logo) { background: var(--blue); }
 .public-readonly-screen.theme-matches:not(.public-live-readonly) .match-score-card .status-blue { background: var(--blue); color: var(--white); }
 
 .public-readonly-screen .public-static-card { cursor: default; }
@@ -2966,7 +3001,7 @@ small,
   height: 76px;
   min-width: 76px;
   min-height: 76px;
-  background: var(--orange);
+  background: none;
 }
 .spectator-live-screen .timeline-block { margin-top: 30px; }
 .spectator-live-screen .timeline-item { background: var(--black); border-color: var(--orange); }
