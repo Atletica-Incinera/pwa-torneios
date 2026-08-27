@@ -118,7 +118,14 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     const step = statusOrder.indexOf(status);
     const pending: string[] = [];
     if (step >= statusOrder.indexOf(tournamentStatus.published)) {
-      if (setup.participants.length < 2) pending.push('inscreva ao menos 2 participantes na Etapa 1');
+      // Publicar NAO exige participantes. A categoria pode ir ao ar anunciada e
+      // receber as equipes depois — a area publica ja tem o estado "Inscricao
+      // pendente" para isso. Exigir inscricao aqui obrigava a cadastrar todas as
+      // equipes antes de conseguir mostrar qualquer coisa, o que inverte a
+      // ordem natural: primeiro se anuncia a disputa, depois se inscreve nela.
+      //
+      // Quem precisa de equipe e o sorteio automatico, e a Etapa 4 ja cobra
+      // isso com mensagem propria.
       if (!setup.phases.length) pending.push('configure ao menos uma fase na Etapa 2');
     }
     if (step >= statusOrder.indexOf(tournamentStatus.running)) {
