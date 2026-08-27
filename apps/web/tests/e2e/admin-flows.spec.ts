@@ -398,3 +398,31 @@ test('preferência do aparelho não vira operação da edição', async ({ page 
   await page.goto('/audit');
   await expect(page.getByText(/preferência/i)).toHaveCount(0);
 });
+
+test('categoria vai ao ar sem equipe inscrita, e o sorteio é que cobra', async ({ page }) => {
+  // A ordem natural é anunciar a disputa e depois inscrever quem disputa.
+  // Exigir inscrição para publicar invertia isso: obrigava a cadastrar todas as
+  // equipes antes de conseguir mostrar qualquer coisa ao público.
+  await loginAs(page);
+  await page.goto('/tournaments/xadrez?aba=regras');
+  await expect(page.getByRole('heading', { name: 'PUBLICAÇÃO' })).toBeVisible();
+
+  // Sem participantes, quem cobra é a etapa do sorteio — e diz o porquê.
+  await expect(page.getByText(/Inscreva ao menos 2 participantes na Etapa 1/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'MONTAR OS JOGOS' })).toBeDisabled();
+
+  // Publicar, porém, não é bloqueado por isso.
+  await page.getByRole('combobox', { name: 'Situação da categoria' }).selectOption('Publicado');
+  // A mudança de estado passa por confirmação — é ela que prova que a
+  // publicação não foi barrada por falta de inscritos.
+  // O diálogo de confirmação é a prova: se houvesse pendência, `setStatus`
+  // teria mostrado um aviso de erro e voltado sem abrir nada.
+  const confirmacao = page.locator('[role=alertdialog]');
+  await expect(confirmacao).toContainText('Mudar para Publicado?');
+  await confirmacao.getByRole('button', { name: 'Confirmar' }).click();
+
+  // A prova é a categoria ter mudado de estado. Não dá para exigir que a
+  // mensagem suma da tela: ela pertence à etapa do sorteio e continua correta
+  // ali — foi o que este próprio teste verificou acima.
+  await expect(page.getByRole('combobox', { name: 'Situação da categoria' })).toHaveValue('Publicado');
+});
