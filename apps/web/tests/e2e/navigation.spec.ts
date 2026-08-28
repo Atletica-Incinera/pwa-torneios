@@ -49,7 +49,9 @@ test('espectador navega por três destinos e vê as abas da categoria', async ({
   await expect(page.getByText(/registrar gol|editar partida|configurações/i)).toHaveCount(0);
 
   const nav = page.getByRole('navigation', { name: 'Navegação pública' });
-  await expect(nav.getByRole('link')).toHaveCount(3);
+  // Quatro desde que a artilharia ganhou aba propria: ao vivo, modalidades,
+  // equipes e artilharia.
+  await expect(nav.getByRole('link')).toHaveCount(4);
 
   await nav.getByRole('link', { name: 'Modalidades' }).click();
   await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
