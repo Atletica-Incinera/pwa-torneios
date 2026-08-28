@@ -466,7 +466,9 @@ function LiveMatchContent() {
 
   const displayClock = hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, clock)) : 'SEM CRONÔMETRO';
   const actionDisabled = !live || (hasClock && paused) || finished;
-  const eventTime = (event: MatchEventState) => hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, event.periodElapsedSeconds ?? event.elapsedSeconds)) : `#${event.elapsedSeconds + 1}`;
+  // Sem cronometro nao ha minutagem para exibir na sumula, e `#3` so parece
+  // uma. A etapa continua identificando o lance.
+  const eventTime = (event: MatchEventState) => hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, event.periodElapsedSeconds ?? event.elapsedSeconds)) : '';
   const tiedAtRegulationEnd = completion.mode === 'periods' && !completion.allowDraw && homeScore === awayScore && currentPeriod >= totalPeriods && overtimePeriods > 0 && currentPeriod < totalPeriods + overtimePeriods;
   const setLabel = isSets && completion.mode === 'sets' ? `${setTarget(regulation, currentPeriod)} pontos · vantagem ${completion.minAdvantage}` : '';
 
@@ -488,7 +490,10 @@ function LiveMatchContent() {
           <div className="score-numbers"><strong className={`score-blue ${impact === 'blue' ? 'score-pop' : ''}`}>{homeScore}</strong><span>—</span><strong className={`score-pink ${impact === 'pink' ? 'score-pop' : ''}`}>{awayScore}</strong></div>
           <small className="game-period">{isSets ? `SETS · ${periodLabel.toUpperCase()} ${currentPeriod} DE ${totalPeriods}` : `${currentPeriod}º ${periodLabel.toUpperCase()}${inOvertime ? '' : ` DE ${totalPeriods}`}`}</small>
           {isSets ? <div className="set-scoreboard" aria-label={`Pontos do ${regulation.base.periodLabel.toLowerCase()} atual`}><strong>{periodScoreA}</strong><small>{setLabel}</small><strong>{periodScoreB}</strong></div> : null}
-          <div className="game-clock" aria-label={`${periodLabel} ${currentPeriod}, cronômetro ${displayClock}`}><Clock3 size={19} />{displayClock}</div>
+          {/* Sem cronometro, o lugar do relogio some em vez de anunciar
+              "SEM CRONOMETRO": o aviso ocupava o mesmo destaque do placar
+              para dizer que nao ha o que mostrar. */}
+          {hasClock ? <div className="game-clock" aria-label={`${periodLabel} ${currentPeriod}, cronômetro ${displayClock}`}><Clock3 size={19} />{displayClock}</div> : null}
         </div>
         <div className="score-team score-team-pink"><TeamMark initial={match.entryB[0]} tone="pink" logo={match.logoB} /><strong>{match.entryB}</strong></div>
       </section>
