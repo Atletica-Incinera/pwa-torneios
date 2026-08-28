@@ -127,7 +127,13 @@ export type EditionAction =
  * staff vem semeada da edição e ainda não existe no estado quando é alterada.
  */
 export type StaffAction =
-  | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState } })
+  /**
+   * `initialPassword` so viaja na criacao de um acesso novo: o responsavel de
+   * atletica e convidado um a um, por fora, e a senha de convite compartilhada
+   * nao serve para doze pessoas de fora da organizacao. Ela nao fica no estado
+   * local -- e enviada e esquecida.
+   */
+  | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState & { initialPassword?: string } } })
   /** Exclusao de verdade, distinta de `revoked: true`. */
   | (WithAudit & { type: 'staff/remove'; payload: { email: string } })
   /**

@@ -17,11 +17,29 @@ const editionAdminPrefixes = ['/competitions', '/disciplines/new', '/staff', '/a
 // global), mas sem bloquear aqui a pessoa preenche o formulário inteiro só
 // para receber um erro genérico no fim.
 const superAdminOnlyPrefixes = ['/staff/promote'];
+/*
+ * Responsavel de atletica alcanca o elenco da propria equipe e mais nada. A
+ * lista e do que ELE pode, e nao do que nao pode: o papel e o mais estreito do
+ * app, e enumerar proibicoes deixaria qualquer tela nova aberta por omissao.
+ *
+ * O alcance de verdade e travado no servidor -- `authorizeTeamManager` recusa
+ * qualquer acao fora de `athlete/create` e `athlete/update` na propria equipe.
+ * Aqui e para a pessoa nao percorrer uma tela inteira ate levar um erro.
+ */
+const teamManagerPrefixes = ['/teams', '/dashboard', '/profile', '/public', '/offline'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, status, error, refresh } = useFrontendState();
+  // A equipe do responsavel vem pelo nome no escopo; a rota usa o id.
+  const equipeDoResponsavel = session?.role === 'TEAM_MANAGER'
+    ? Object.entries(state.teams).find(([, equipe]) => equipe.name === session.scope)?.[0] ?? '__sem-equipe__'
+    : '';
   const matchingStaffRoles = session?.email ? Object.values(state.staff).filter((member) => (
     member.email === session.email
-    && (session.role === 'DISCIPLINE_MANAGER' ? member.role === 'Gestor de modalidade' && member.scope === session.scope : member.role === 'Admin da edição')
+    && (session.role === 'DISCIPLINE_MANAGER'
+      ? member.role === 'Gestor de modalidade' && member.scope === session.scope
+      : session.role === 'TEAM_MANAGER'
+        ? member.role === 'Responsável da atlética' && member.scope === session.scope
+        : member.role === 'Admin da edição')
   )) : [];
   // Revogação é estado de papel de edição e não alcança a flag global da conta:
   // um super admin que também tem um card "Admin da edição" revogado era
@@ -32,6 +50,9 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   // `athlete/create` so aceita a modalidade atribuida ao gestor —, e o
   // formulario ja oferece apenas ela.
   const forbidden = (session?.role === 'DISCIPLINE_MANAGER' && editionAdminPrefixes.some((prefix) => pathname.startsWith(prefix)))
+    || (session?.role === 'TEAM_MANAGER' && !teamManagerPrefixes.some((prefix) => pathname.startsWith(prefix)))
+    // Dentro de /teams, so a propria: a lista e o detalhe das outras ficam fora.
+    || (session?.role === 'TEAM_MANAGER' && pathname.startsWith('/teams') && !pathname.startsWith(`/teams/${equipeDoResponsavel}`))
     // A auditoria é do super admin: nem o organizador entra.
     || (pathname.startsWith('/audit') && Boolean(session) && !canReadAudit(session))
     || (superAdminOnlyPrefixes.some((prefix) => pathname.startsWith(prefix)) && Boolean(session) && !isSuperAdmin(session));

@@ -1,4 +1,9 @@
-export type FrontendRole = 'SUPER_ADMIN' | 'EDITION_ADMIN' | 'DISCIPLINE_MANAGER';
+export type FrontendRole =
+  | 'SUPER_ADMIN'
+  | 'EDITION_ADMIN'
+  | 'DISCIPLINE_MANAGER'
+  /** Responsável de atlética: alcança uma equipe só, e nela apenas o elenco. */
+  | 'TEAM_MANAGER';
 
 export type FrontendEditionRole = {
   roleAssignmentId: string;
@@ -7,6 +12,8 @@ export type FrontendEditionRole = {
   editionDisciplineId: string | null;
   disciplineId: string | null;
   disciplineName: string | null;
+  teamId: string | null;
+  teamName: string | null;
   role: Exclude<FrontendRole, 'SUPER_ADMIN'>;
 };
 

@@ -3972,3 +3972,16 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .artilharia-gols small { font-size: .72rem; color: rgba(247, 240, 227, .55); }
 .artilharia-lacuna { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: .82rem; color: rgba(247, 240, 227, .58); }
 .artilharia-lacuna-forte { margin: 14px 0 0; padding: 13px 15px; background: var(--surface); border: 1px solid var(--line); font-size: .9rem; color: rgba(247, 240, 227, .72); }
+
+/* Acesso do responsavel da atletica, na propria tela da equipe. */
+.acesso-atletica .acesso-lista { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.acesso-atletica .acesso-lista li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--surface); }
+.acesso-atletica .acesso-lista li.is-revoked { opacity: .55; }
+.acesso-atletica .acesso-lista div { display: grid; gap: 3px; min-width: 0; }
+.acesso-atletica .acesso-lista strong { font-size: .98rem; }
+.acesso-atletica .acesso-lista small { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: rgba(247, 240, 227, .62); overflow-wrap: anywhere; }
+.acesso-atletica .acesso-lista button { padding: 8px; min-height: 44px; min-width: 44px; background: none; border: 1px solid var(--line); color: var(--pink); cursor: pointer; }
+.acesso-atletica .acesso-lista button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.acesso-revogado { font-size: .76rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(247, 240, 227, .55); }
+.acesso-form { margin-top: 16px; }
+.acesso-form .form-hint { display: flex; align-items: center; gap: 7px; }
