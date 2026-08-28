@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Radio, Shield, Trophy } from 'lucide-react';
+import { Radio, Shield, Target, Trophy } from 'lucide-react';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { PageNavigation } from './AppShell';
 import { ConnectionBadge } from './ConnectionBadge';
@@ -9,7 +9,7 @@ import { ErrorScreen } from './ErrorScreen';
 import { LoadingScreen } from './LoadingScreen';
 
 /** Três destinos: o que acontece agora, as modalidades e as equipes. */
-type PublicNavKey = 'live' | 'disciplines' | 'teams';
+type PublicNavKey = 'live' | 'disciplines' | 'teams' | 'scorers';
 
 type PublicAppShellProps = {
   active: PublicNavKey;
@@ -23,12 +23,14 @@ const themes: Record<PublicNavKey, string> = {
   live: 'theme-matches public-live-readonly',
   disciplines: 'theme-tournaments',
   teams: 'theme-teams',
+  scorers: 'theme-tournaments',
 };
 
 const navItems = [
   { key: 'live', label: 'Ao vivo', href: '/public', icon: Radio },
   { key: 'disciplines', label: 'Modalidades', href: '/public/tournaments', icon: Trophy },
   { key: 'teams', label: 'Equipes', href: '/public/teams', icon: Shield },
+  { key: 'scorers', label: 'Artilharia', href: '/public/scorers', icon: Target },
 ] as const;
 
 export function PublicAppShell({ active, eyebrow, title, subtitle, children }: PublicAppShellProps) {

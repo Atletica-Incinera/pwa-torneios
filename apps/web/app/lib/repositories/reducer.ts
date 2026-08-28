@@ -173,6 +173,19 @@ function reduce(current: FrontendState, action: Action): FrontendState {
       return patchMatch(current, id, { ...patch, periodResults, events: [event, ...(stored.events ?? [])] });
     }
 
+    case 'match/attributeEvent': {
+      const { id, eventId, athleteId } = action.payload;
+      const stored = current.matches[id] ?? {};
+      return patchMatch(current, id, {
+        events: (stored.events ?? []).map((event) => {
+          if (event.id !== eventId) return event;
+          // `null` limpa: quem errou o nome corrige sem desfazer o gol.
+          const { athleteId: anterior, ...resto } = event;
+          return athleteId ? { ...resto, athleteId } : resto;
+        }),
+      });
+    }
+
     case 'match/undoEvent': {
       const { id, eventId, restore } = action.payload;
       const stored = current.matches[id] ?? {};

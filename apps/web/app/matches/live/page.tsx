@@ -3,14 +3,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CircleDot, Clock3, Flag, Goal, Handshake, KeyRound, Pause, Play, PlayCircle, RotateCcw, Scale, SkipForward, Square, TimerReset, Volume2, VolumeX } from 'lucide-react';
+import { CircleDot, Clock3, Flag, Goal, Handshake, KeyRound, Pause, Play, PlayCircle, RotateCcw, Scale, SkipForward, Square, TimerReset, UserRound, Volume2, VolumeX, X } from 'lucide-react';
 import { BottomNav } from '../../components/BottomNav';
 import { PageNavigation, TeamMark } from '../../components/AppShell';
 import { AdminRouteGuard } from '../../components/AdminRouteGuard';
 import { useUi } from '../../components/UiProvider';
 import { MatchEventState, MatchScoreSnapshot, MatchTiebreakState, useFrontendState } from '../../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../../lib/frontend-session';
-import { findMatch, listMatches, type MatchView } from '../../lib/edition-catalog';
+import { eligibleAthletes, findMatch, findTeamByName, listMatches, type MatchView } from '../../lib/edition-catalog';
 import { formatClock } from '../../lib/tournament-engine';
 import { matchClockLabel } from '../../lib/discipline-rules';
 import { describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod } from '../../lib/regulation';
@@ -84,6 +84,8 @@ function LiveMatchContent() {
   const periodLabel = inOvertime ? 'Prorrogação' : regulation.base.periodLabel;
   const [clock, setClock] = useState(0);
   const [impact, setImpact] = useState<EventTone | null>(null);
+  /** Lance pontuado aguardando o nome de quem marcou. Some sozinho ao trocar de lance. */
+  const [atribuindo, setAtribuindo] = useState<{ eventId: string; side: 'home' | 'away'; rotulo: string; equipe: string } | null>(null);
   const [tiebreakOpen, setTiebreakOpen] = useState(false);
   const [tiebreakDraft, setTiebreakDraft] = useState({ method: regulation.knockout.method as KnockoutMethod, scoreA: '', scoreB: '', winner: '', reason: '' });
 
@@ -242,12 +244,41 @@ function LiveMatchContent() {
       const nextA = homeScore + (side === 'home' ? points : 0);
       const nextB = awayScore + (side === 'away' ? points : 0);
       // A parcial da etapa acompanha o placar para render o histórico por tempo.
-      const { moment } = writeEvent(actionLabel, team, side, { scoreA: nextA, scoreB: nextB, periodScoreA: periodScoreA + (side === 'home' ? points : 0), periodScoreB: periodScoreB + (side === 'away' ? points : 0) }, points);
+      const { event: registrado, moment } = writeEvent(actionLabel, team, side, { scoreA: nextA, scoreB: nextB, periodScoreA: periodScoreA + (side === 'home' ? points : 0), periodScoreB: periodScoreB + (side === 'away' ? points : 0) }, points);
+      // A pergunta vem DEPOIS do gol entrar. Um seletor antes seria placar
+      // errado toda vez que a mesa se distraisse no meio da escolha.
+      setAtribuindo({ eventId: registrado.id, side, rotulo: actionLabel, equipe: team });
       announce(`${actionLabel} para ${team} em ${moment}. Placar: ${match.entryA}, ${nextA}; ${match.entryB}, ${nextB}.`);
       playSound(impactSoundForEvent(actionLabel, match.discipline));
     }
     showImpact(tone);
     window.setTimeout(() => { operationLock.current = false; }, 350);
+  }
+
+  const elencoDoLado = useMemo(() => {
+    if (!atribuindo) return [];
+    const equipe = findTeamByName(state, atribuindo.equipe);
+    if (!equipe) return [];
+    return eligibleAthletes(state, equipe.id, match.discipline);
+  }, [atribuindo, state, match.discipline]);
+
+  /**
+   * Registra quem fez o lance que ja entrou no placar.
+   *
+   * `null` fecha sem atribuir: a artilharia e desejavel, nao obrigatoria. Se
+   * ninguem viu quem desviou, o gol continua valendo sem autor.
+   */
+  function atribuirAutor(athleteId: string | null) {
+    const alvo = atribuindo;
+    setAtribuindo(null);
+    if (!alvo || !athleteId) return;
+    const atleta = elencoDoLado.find((item) => item.id === athleteId);
+    void dispatch({
+      type: 'match/attributeEvent',
+      payload: { id: match.id, eventId: alvo.eventId, athleteId },
+      audit: { action: `${alvo.rotulo} atribuído`, entity: `${match.entryA} × ${match.entryB}`, after: `${atleta?.name ?? 'Atleta'} (${alvo.equipe})` },
+    });
+    announce(`${alvo.rotulo} de ${atleta?.name ?? 'atleta'}.`);
   }
 
   function registerSecondary(actionLabel: string, side: 'home' | 'away' | 'neutral', allowedWhenStopped: boolean) {
@@ -497,6 +528,29 @@ function LiveMatchContent() {
         </div>
         <div className="score-team score-team-pink"><TeamMark initial={match.entryB[0]} tone="pink" logo={match.logoB} /><strong>{match.entryB}</strong></div>
       </section>
+
+      {/* O gol ja esta no placar; isto so pergunta o autor. Fechar sem escolher
+          e um caminho legitimo -- artilharia e desejavel, nao obrigatoria. */}
+      {atribuindo ? (
+        <section className="autor-do-lance" aria-label={`Quem marcou o ${atribuindo.rotulo.toLocaleLowerCase('pt-BR')} de ${atribuindo.equipe}`}>
+          <header>
+            <span><UserRound size={16} aria-hidden="true" /> Quem marcou pelo {atribuindo.equipe}?</span>
+            <button type="button" onClick={() => atribuirAutor(null)} aria-label="Não identificar quem marcou"><X size={16} aria-hidden="true" /></button>
+          </header>
+          {elencoDoLado.length ? (
+            <div className="autor-opcoes">
+              {elencoDoLado.map((atleta) => (
+                <button type="button" key={atleta.id} className="autor-chip" onClick={() => atribuirAutor(atleta.id)}>
+                  {atleta.name}
+                </button>
+              ))}
+              <button type="button" className="autor-chip autor-pular" onClick={() => atribuirAutor(null)}>Não identificar</button>
+            </div>
+          ) : (
+            <p>Nenhum atleta desta equipe está inscrito em {match.discipline}. O lance vale do mesmo jeito, sem autor.</p>
+          )}
+        </section>
+      ) : null}
 
       {persisted.periodResults?.length ? <p className="period-results">Parciais: {persisted.periodResults.map((item) => `${item.scoreA}-${item.scoreB}`).join(' · ')}</p> : null}
 
