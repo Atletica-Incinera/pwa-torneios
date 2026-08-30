@@ -16,7 +16,10 @@ export function DisciplineCreationForm() {
   const { state, dispatch } = useFrontendState();
   const [name, setName] = useState('');
   const [mode, setMode] = useState<'Coletiva' | 'Individual'>('Coletiva');
-  const [rule, setRule] = useState<DisciplineRule>(resolveDisciplineRule('Futsal'));
+  // A organizacao opera a mesa sem relogio: modalidade nova ja nasce assim, e
+  // quem precisar de cronometro troca no proprio formulario. O preset do
+  // Futsal continua valendo para o resto do regulamento.
+  const [rule, setRule] = useState<DisciplineRule>({ ...resolveDisciplineRule('Futsal'), clockMode: 'none' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   useUnsavedChanges(Boolean(name) && !submitting);

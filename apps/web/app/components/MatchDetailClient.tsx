@@ -43,10 +43,12 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
     <div className="sr-only" aria-live="polite" aria-atomic="true">{scoreAnnouncement}</div>
     {isLive(current.status) || operation.events?.length ? (
       <section className="spectator-match-state">
-        <div className="spectator-clock-row"><small>{currentPeriod}º {rules.periodLabel.toUpperCase()} DE {rules.periodCount}</small><div className="game-clock" aria-label={`Tempo de partida: ${formatClock(matchClockLabel(rules, clock))}`}><Clock3 size={18} aria-hidden="true" />{rules.clockMode === 'none' ? 'SEM CRONÔMETRO' : formatClock(matchClockLabel(rules, clock))}</div></div>
+        {/* Modalidade sem cronometro nao mostra relogio nem aviso de que nao
+            ha relogio: a etapa em andamento ja diz onde a partida esta. */}
+        <div className="spectator-clock-row"><small>{currentPeriod}º {rules.periodLabel.toUpperCase()} DE {rules.periodCount}</small>{rules.clockMode === 'none' ? null : <div className="game-clock" aria-label={`Tempo de partida: ${formatClock(matchClockLabel(rules, clock))}`}><Clock3 size={18} aria-hidden="true" />{formatClock(matchClockLabel(rules, clock))}</div>}</div>
         <div className="event-timeline">
           {operation.events?.length ? operation.events.map((event) => (
-            <article className="timeline-item" key={event.id}><span className="timeline-minute"><small>{event.period ?? 1}º {rules.periodLabel.slice(0, 1)}</small>{rules.clockMode === 'none' ? `#${event.elapsedSeconds + 1}` : formatClock(matchClockLabel(rules, event.periodElapsedSeconds ?? event.elapsedSeconds))}</span><div><strong>{event.type}</strong><p>{event.detail}</p></div></article>
+            <article className="timeline-item" key={event.id}><span className="timeline-minute"><small>{event.period ?? 1}º {rules.periodLabel.slice(0, 1)}</small>{rules.clockMode === 'none' ? null : formatClock(matchClockLabel(rules, event.periodElapsedSeconds ?? event.elapsedSeconds))}</span><div><strong>{event.type}</strong><p>{event.detail}</p></div></article>
           )) : <p className="match-filter-empty">A partida começou; aguardando o primeiro evento.</p>}
         </div>
       </section>
