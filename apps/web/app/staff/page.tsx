@@ -1,25 +1,23 @@
 'use client';
 
-import Link from 'next/link';
-import { KeyRound, Mail, ShieldAlert, ShieldCheck, Trash2, UserX, UserCheck } from 'lucide-react';
+import { KeyRound, Mail, ShieldCheck, Trash2, UserX, UserCheck } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, SectionTitle, StatusBadge } from '../components/AppShell';
 import { getActiveEdition, StaffState, useFrontendState } from '../lib/repositories/browser-repository';
 import { listDisciplines } from '../lib/edition-catalog';
 import { useUi } from '../components/UiProvider';
-import { canGrantRole, isSuperAdmin, superAdminGrantAvailable, useFrontendSession } from '../lib/frontend-session';
+import { canGrantRole, isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
 
 export default function StaffPage() {
   const { state, dispatch } = useFrontendState();
   const { confirm, toast } = useUi();
   const { session } = useFrontendSession();
-  // Só o super admin mexe em quem é (ou vira) Admin da edição. E ninguém edita
-  // papel de edição de um super admin por aqui: o acesso dele não é da edição, e
-  // gravar um papel criaria uma atribuição fantasma.
+  // Só quem tem permissão global mexe em Admin da edição. Entradas marcadas
+  // internamente como acesso global não pertencem ao produto e ficam fora da UI.
   const canEdit = (member: StaffState) => !member.superAdmin && canGrantRole(session, member.role);
   const [editing, setEditing] = useState<string | null>(null);
   const members = useMemo(() => Object.entries(state.staff)
-    .filter(([, member]) => member.email)
+    .filter(([, member]) => member.email && !member.superAdmin)
     .map(([key, member]) => ({ key, member })), [state.staff]);
   // Quem teve o acesso revogado sai da lista principal. Antes ficava no meio de
   // quem tem acesso, com uma tarja "REVOGADO" — a tela dizia "estes sao os
@@ -31,7 +29,7 @@ export default function StaffPage() {
 
   function save(member: StaffState, patch: Partial<StaffState>, action = 'Permissão alterada') {
     const next = { ...member, ...patch };
-    if (!canEdit(member) || !canGrantRole(session, next.role)) { toast('Somente o super administrador do app altera acessos de admin da edição.', 'error'); return; }
+    if (!canEdit(member) || !canGrantRole(session, next.role)) { toast('Você não tem permissão para alterar acessos de admin da edição.', 'error'); return; }
     // O escopo do admin é a edição em que ele foi promovido, não um texto fixo:
     // gravado à mão, ele congelava "InterEng 2026" em qualquer edição futura.
     if (next.role === 'Admin da edição') next.scope = getActiveEdition(state)?.name ?? 'Edição ativa';
@@ -43,7 +41,7 @@ export default function StaffPage() {
   }
 
   async function remover(member: StaffState) {
-    if (!canEdit(member)) { toast('Somente o super administrador do app altera acessos de admin da edição.', 'error'); return; }
+    if (!canEdit(member)) { toast('Você não tem permissão para alterar acessos de admin da edição.', 'error'); return; }
     if (!(await confirm({
       title: `Excluir o acesso de ${member.name}?`,
       message: 'A atribuição é apagada, não fica marcada como revogada. Se essa conta nunca operou um jogo nem deixou registro na auditoria, ela também é apagada. Não dá para desfazer.',
@@ -73,25 +71,14 @@ export default function StaffPage() {
         <button type="button" onClick={() => setEditing(editing === key ? null : key)} aria-label={`Editar acesso de ${member.name}`} title="Editar papel e escopo" aria-expanded={editing === key}><KeyRound size={18} aria-hidden="true" /></button>
         <button type="button" className={member.revoked ? undefined : 'staff-revoke-button'} onClick={() => toggleRevoked(member)} aria-label={`${member.revoked ? 'Restaurar' : 'Revogar'} acesso de ${member.name}`} title={member.revoked ? 'Restaurar acesso' : 'Revogar acesso'}>{member.revoked ? <UserCheck size={18} aria-hidden="true" /> : <UserX size={18} aria-hidden="true" />}</button>
         <button type="button" className="staff-revoke-button" onClick={() => remover(member)} aria-label={`Excluir acesso de ${member.name}`} title="Excluir acesso"><Trash2 size={18} aria-hidden="true" /></button>
-      </> : <span className="staff-locked" title="Somente o super administrador do app"><ShieldCheck size={16} /></span>}</div>
+      </> : <span className="staff-locked" title="Edição bloqueada para seu papel"><ShieldCheck size={16} /></span>}</div>
     </article>;
   }
 
   return <AppShell active="profile" eyebrow="ACESSO" title="STAFF" subtitle="Papéis e permissões da edição" actionHref="/staff/new" actionLabel="Convidar membro para o staff" actionShortLabel="Membro">
     <div className="info-banner"><ShieldCheck size={20} /><p>Administradores controlam a edição. Gestores atuam somente na modalidade atribuída.</p></div>
-    {isSuperAdmin(session) && superAdminGrantAvailable() ? <Link href="/staff/promote" className="secondary-button"><ShieldAlert size={17} aria-hidden="true" /> Conceder super admin</Link> : null}
-    {/* Super admin não tem atribuição de edição, então não aparecia em lugar
-        nenhum da lista: depois de conceder, a tela ficava idêntica e a pessoa
-        concluía que a função não tinha funcionado. */}
-    {state.superAdmins.length ? <section className="section-block"><SectionTitle eyebrow="ACESSO GLOBAL" title="SUPER ADMINISTRADORES" /><div className="staff-list">
-      {state.superAdmins.map((admin, index) => <article className="staff-card is-global" key={admin.id}>
-        <span className={`avatar-frame avatar-${index % 3}`}>{admin.initials}</span>
-        <div><h2>{admin.name}</h2><p><Mail size={14} /> {admin.email}</p><div className="staff-role"><StatusBadge tone="orange">Super administrador</StatusBadge><span>Todas as competições</span></div></div>
-        <span className="staff-locked" title="Acesso global: não é papel desta edição"><ShieldCheck size={16} /></span>
-      </article>)}
-    </div></section> : null}
     <section className="section-block no-top"><SectionTitle eyebrow="EQUIPE" title="ACESSOS" /><div className="staff-list">
-      {ativos.length ? ativos.map(({ key, member }, index) => cartao(key, member, index)) : <p className="empty-inline">Ninguém com acesso nesta edição além dos super administradores.</p>}
+      {ativos.length ? ativos.map(({ key, member }, index) => cartao(key, member, index)) : <p className="empty-inline">Ninguém com acesso nesta edição.</p>}
     </div></section>
     {/* Recolhido e no fim: quem foi revogado nao e um acesso da edicao, mas o
         restaurar mora aqui — sem este grupo, revogar seria irreversivel pela

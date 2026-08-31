@@ -193,34 +193,26 @@ test('o endpoint de bootstrap recusa quando já existe alguma competição', asy
   expect(response.status()).toBe(409);
 });
 
-test('super admin concede super admin a outra conta, e a concessão aparece', async ({ page }) => {
+test('super admins não aparecem nem têm fluxo visual no staff', async ({ page }) => {
   await login(page, 'super@intereng.com', 'super2026');
   await page.goto('/staff');
-  await page.getByRole('link', { name: 'Conceder super admin' }).click();
-  await page.waitForURL(/\/staff\/promote/);
+  await expect(page.getByRole('link', { name: /super admin/i })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /super administradores/i })).toHaveCount(0);
+  await expect(page.getByText('super@intereng.com')).toHaveCount(0);
+  await expect(page.getByText(/super administrador/i)).toHaveCount(0);
 
-  const action = page.waitForRequest((item) => item.url().includes('/editions/active/actions') && item.method() === 'POST');
-  await page.getByLabel('Nome').fill('Novo Super Admin');
-  await page.getByLabel('E-mail').fill('novo-super@intereng.com');
-  await page.getByRole('button', { name: 'Conceder super admin' }).click();
-  expect(JSON.parse((await action).postData() ?? '{}').type).toBe('staff/promoteSuperAdmin');
+  await page.goto('/profile');
+  await expect(page.getByText(/super admin/i)).toHaveCount(0);
 
-  await page.waitForURL(/\/staff$/);
-  // Achado em produção: a concessão gravava a flag no servidor e a tela ficava
-  // idêntica, porque a lista de staff é montada só das atribuições de edição —
-  // e super admin não tem nenhuma. Do ponto de vista de quem concedeu, a função
-  // não funcionava.
-  await expect(page.getByRole('heading', { name: 'SUPER ADMINISTRADORES' })).toBeVisible();
-  await expect(page.getByText('novo-super@intereng.com')).toBeVisible();
+  await page.goto('/staff/promote');
+  await expect(page.getByRole('heading', { name: /novo super admin/i })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'TELA NÃO ENCONTRADA' })).toBeVisible();
 });
 
-test('admin da edição não alcança a concessão de super admin', async ({ page }) => {
-  // staff/promoteSuperAdmin é ação global (só super admin) do lado da API;
-  // sem bloquear a rota também no front, a pessoa preenche o formulário
-  // inteiro só para receber um erro genérico no fim.
+test('admin da edição não alcança tela de concessão global', async ({ page }) => {
   await login(page);
   await page.goto('/staff/promote');
-  await expect(page.getByRole('heading', { name: 'ACESSO RESTRITO' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'TELA NÃO ENCONTRADA' })).toBeVisible();
 });
 
 test('sem tempo real, a barra de contexto avisa em vez de congelar', async ({ page }) => {

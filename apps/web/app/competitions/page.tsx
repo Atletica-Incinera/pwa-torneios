@@ -30,9 +30,8 @@ export default function CompetitionsPage() {
   const [draft, setDraft] = useState({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); const [dates, setDates] = useState({ start: '', end: '' });
   useUnsavedChanges((creating && Boolean(draft.start || draft.end)) || Boolean(editing && dates.start));
   // Todas as mutações desta tela (competition/*, edition/*) são ações globais no
-  // servidor: exclusivas do super administrador. O admin da edição via a tela
-  // inteira e cada botão terminava em 403 com aviso genérico — ela agora é
-  // legível para ele, e editável só para quem o servidor deixa editar.
+  // servidor. A tela é legível para a staff, e editável só para quem o servidor
+  // deixa editar.
   const canConfigure = isSuperAdmin(session);
 
   // A partir daqui o resto da página indexa `activeCompetition.id`/`.name` sem
@@ -43,7 +42,7 @@ export default function CompetitionsPage() {
       <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
     </AppShell>;
   }
-  const staff = Object.values(state.staff).filter((member) => !member.revoked);
+  const staff = Object.values(state.staff).filter((member) => !member.revoked && !member.superAdmin);
 
   function createEdition(event: FormEvent) { event.preventDefault(); if (!draft.year || !draft.start || !draft.end) { toast('Preencha ano e período da edição.', 'error'); return; } if (draft.end < draft.start) { toast('A data final deve ser posterior ao início.', 'error'); return; } if (editions.some((edition) => edition.year === Number(draft.year))) { toast('Já existe uma edição neste ano.', 'error'); return; } const edition: EditionState = { id: createId('edition'), name: draft.year, year: Number(draft.year), start: draft.start, end: draft.end, status: 'Planejamento', active: false, competitionId: activeCompetition.id }; void dispatch({ type: 'edition/create', payload: { edition }, audit: { action: 'Edição criada', entity: `${activeCompetition.name} ${edition.year}`, after: 'Planejamento' } }); setCreating(false); setDraft({ year: String(new Date().getFullYear() + 1), start: '', end: '' }); }
   /** Corrigir o nome do torneio: sem isso, um erro de digitação fica para sempre. */
@@ -62,7 +61,7 @@ export default function CompetitionsPage() {
   function saveDates(edition: EditionState) { if (!dates.start || !dates.end || dates.end < dates.start) { toast('Informe um período válido.', 'error'); return; } void dispatch({ type: 'edition/update', payload: { id: edition.id, patch: { ...dates } }, audit: { action: 'Período da edição alterado', entity: edition.name, before: `${edition.start} a ${edition.end}`, after: `${dates.start} a ${dates.end}` } }); setEditing(null); }
 
   return <AppShell active="profile" eyebrow="CONTEXTO" title="INTERENG" subtitle={canConfigure ? 'Configure o torneio e escolha o ano da edição ativa' : 'Torneio e edição em vigor no aplicativo'} actionHref={canConfigure ? '/competitions/new' : undefined} actionLabel="Criar novo torneio" actionShortLabel="Torneio">
-    {!canConfigure ? <div className="info-banner"><Lock size={20} aria-hidden="true" /><p>Torneio e edição são definidos pelo super administrador do app. Aqui você confere o contexto em vigor; a gestão da edição fica em Modalidades, Staff e Classificação geral.</p></div> : null}
+    {!canConfigure ? <div className="info-banner"><Lock size={20} aria-hidden="true" /><p>Torneio e edição são definidos pela configuração do aplicativo. Aqui você confere o contexto em vigor; a gestão da edição fica em Modalidades, Staff e Classificação geral.</p></div> : null}
     <div className="competition-switcher" aria-label="Torneio ativo">{state.competitions.map((item) => <button type="button" className={item.id === activeCompetition.id ? 'active' : ''} aria-pressed={item.id === activeCompetition.id} onClick={() => void selectCompetition(item.id)} key={item.id} disabled={!canConfigure}>{item.name}</button>)}{canConfigure ? <button type="button" className="competition-rename" onClick={() => setRenaming(renaming === null ? activeCompetition.name : null)} aria-label={`Renomear ${activeCompetition.name}`} title="Renomear torneio"><Pencil size={16} aria-hidden="true" /></button> : null}</div>{renaming !== null ? <form className="entity-form inline-management-form" onSubmit={renameCompetition}><label><span>Nome do torneio</span><input value={renaming} onChange={(event) => setRenaming(event.target.value)} autoFocus required /></label><div className="form-actions"><button type="button" className="secondary-button" onClick={() => setRenaming(null)}>Cancelar</button><button type="submit" className="primary-button"><Save size={16} aria-hidden="true" /> Salvar nome</button></div></form> : null}
     {activeEdition ? <section className="featured-context"><div className="context-number">{String(activeEdition.year).slice(-2)}</div><div><StatusBadge tone="orange">{activeEdition.status}</StatusBadge><p>TORNEIO · {activeCompetition.name}</p><h2>EDIÇÃO {activeEdition.year}</h2><span><CalendarRange size={16} /> {formatDateKey(activeEdition.start)} a {formatDateKey(activeEdition.end)}</span></div><Check className="context-check" size={22} /></section> : <EmptyState title="SEM EDIÇÕES" copy="Crie a primeira edição deste torneio." />}
     <section className="section-block"><SectionTitle eyebrow="HISTÓRICO" title="EDIÇÕES" />{canConfigure ? <button type="button" className="wide-action button-reset" onClick={() => setCreating(!creating)} aria-expanded={creating}><Plus size={18} aria-hidden="true" /> NOVA EDIÇÃO <span aria-hidden="true">›</span></button> : null}

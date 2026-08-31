@@ -19,7 +19,7 @@ export function StaffAccessForm() {
   // A lista chega com o estado: a modalidade escolhida é derivada, não congelada.
   const chosenScope = options.includes(scope) ? scope : options.includes(state.preferences.selectedDiscipline) ? state.preferences.selectedDiscipline : options[0] ?? '';
   async function submit(event: FormEvent) { event.preventDefault(); if (submitting) return; const key = email.trim().toLowerCase(); if (!name.trim() || !/^\S+@\S+\.\S+$/.test(key) || (role === 'Gestor de modalidade' && !chosenScope)) { setError('Informe nome, um e-mail válido e o escopo do acesso.'); return; }
-    if (!canGrantRole(session, role)) { setError('Somente o super administrador do app pode conceder acesso de admin da edição.'); return; }
+    if (!canGrantRole(session, role)) { setError('Você não tem permissão para conceder acesso de admin da edição.'); return; }
     const duplicatedRole = Object.values(state.staff).some((member) => member.email === key && member.role === role && member.scope === (role === 'Admin da edição' ? (state.editions.find((edition) => edition.active)?.name ?? 'Edição ativa') : chosenScope) && !member.revoked);
     if (duplicatedRole) { setError('Este e-mail já possui este acesso ativo.'); return; }
     const member: StaffState = { name: name.trim(), email: key, initials: initialsFrom(name), role, scope: role === 'Admin da edição' ? (state.editions.find((edition) => edition.active)?.name ?? 'Edição ativa') : chosenScope }; setSubmitting(true); const saved = await dispatch({ type: 'staff/upsert', payload: { email: key, member }, audit: { action: 'Acesso concedido', entity: member.name, after: `${member.role} · ${member.scope}` } }); if (saved.ok) router.push('/staff'); else setSubmitting(false); }

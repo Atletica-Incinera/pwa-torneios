@@ -59,7 +59,9 @@ export function normalizeSnapshot(payload: Partial<FrontendState>, revision?: nu
     tournaments: payload.tournaments ?? {},
     matches: payload.matches ?? {},
     staff: payload.staff ?? {},
-    superAdmins: payload.superAdmins ?? [],
+    // A lista pode existir no contrato interno da API, mas não compõe o estado
+    // consumido pela interface do produto.
+    superAdmins: [],
     audit: payload.audit ?? [],
     overallRanking: {
       metrics: payload.overallRanking?.metrics ?? initialFrontendState.overallRanking.metrics,
