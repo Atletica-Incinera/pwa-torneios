@@ -1,5 +1,5 @@
-import { PromoteSuperAdminForm } from '../../components/PromoteSuperAdminForm';
+import { notFound } from 'next/navigation';
 
-export default function PromoteSuperAdminPage() {
-  return <PromoteSuperAdminForm />;
+export default function HiddenStaffPromotePage() {
+  notFound();
 }

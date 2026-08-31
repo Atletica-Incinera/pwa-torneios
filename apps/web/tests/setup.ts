@@ -9,4 +9,21 @@ import { afterEach } from 'vitest';
 // Quem for testar o modo integrado sobrescreve isto no próprio arquivo.
 process.env.NEXT_PUBLIC_DATA_SOURCE ??= 'local';
 
+function memoryStorage(): Storage {
+  let entries = new Map<string, string>();
+  return {
+    get length() { return entries.size; },
+    clear: () => { entries = new Map(); },
+    getItem: (key) => entries.get(key) ?? null,
+    key: (index) => Array.from(entries.keys())[index] ?? null,
+    removeItem: (key) => { entries.delete(key); },
+    setItem: (key, value) => { entries.set(key, value); },
+  };
+}
+
+if (typeof window !== 'undefined') {
+  if (!window.localStorage) Object.defineProperty(window, 'localStorage', { value: memoryStorage(), configurable: true });
+  if (!window.sessionStorage) Object.defineProperty(window, 'sessionStorage', { value: memoryStorage(), configurable: true });
+}
+
 afterEach(() => cleanup());

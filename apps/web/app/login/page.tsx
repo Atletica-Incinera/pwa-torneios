@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signIn } from '../lib/frontend-session';
+import { signIn, visibleSessionName } from '../lib/frontend-session';
 import { resolveDataSource } from '../lib/repositories/state-adapter';
 import { useUi } from '../components/UiProvider';
 
@@ -37,7 +37,7 @@ export default function LoginPage() {
     const result = await signIn(email, password, remember);
     if (!result.session) { setMessage(result.error ?? 'Não foi possível entrar.'); setSubmitting(false); return; }
     const redirect = new URL(window.location.href).searchParams.get('redirect');
-    toast(`Bem-vindo, ${result.session.name}.`);
+    toast(`Bem-vindo, ${visibleSessionName(result.session)}.`);
     router.push(redirect?.startsWith('/') ? redirect : '/dashboard');
   }
 
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
           <div className="access-note">
             <span className="live-dot" />
-            <p>Acesso exclusivo para Super Admin e Staff.</p>
+            <p>Acesso exclusivo para Staff.</p>
             <Link href="/">Ver área pública</Link>
           </div>
           {resolveDataSource() === 'local' ? <details className="demo-access"><summary>Acessos de demonstração</summary><p>Admin: ana@ufpe.br - intereng2026</p><p>Gestor: bruno@ufpe.br - futsal2026</p></details> : null}

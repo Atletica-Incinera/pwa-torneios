@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-  test: { environment: 'jsdom', setupFiles: ['./tests/setup.ts'], include: ['tests/components/**/*.test.tsx'], css: false },
+  test: { environment: 'jsdom', environmentOptions: { jsdom: { url: 'http://localhost' } }, setupFiles: ['./tests/setup.ts'], include: ['tests/components/**/*.test.tsx'], css: false },
 });

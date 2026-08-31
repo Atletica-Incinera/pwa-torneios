@@ -62,13 +62,6 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** Só há senha para trocar quando quem autentica é a API. */
 export function passwordChangeAvailable() { return resolveDataSource() === 'http'; }
 
-/**
- * Conceder super admin exige o servidor: a flag é da conta, e o modo local não
- * tem conta para promover — o reducer é um no-op deliberado. Sem esta guarda a
- * tela mostrava aviso de sucesso e redirecionava sem ter feito nada.
- */
-export function superAdminGrantAvailable() { return resolveDataSource() === 'http'; }
-
 /** A conta ainda está com a senha inicial e não alcança o resto do sistema. */
 export function mustChangePassword(session: FrontendSession | null) { return session?.mustChangePassword === true; }
 
@@ -135,3 +128,11 @@ export function canGrantRole(session: FrontendSession | null, role: 'Admin da ed
 /** A auditoria completa da edição é exclusiva do super admin. */
 export function canReadAudit(session: FrontendSession | null) { return isSuperAdmin(session); }
 export function canManageDiscipline(session: FrontendSession | null, discipline?: string) { return canManageEdition(session) || (session?.role === 'DISCIPLINE_MANAGER' && (!discipline || session.scope === discipline)); }
+
+export function visibleSessionName(session: FrontendSession | null) {
+  return isSuperAdmin(session) ? 'Usuário do app' : session?.name ?? 'Usuário';
+}
+
+export function visibleSessionEmail(session: FrontendSession | null) {
+  return isSuperAdmin(session) ? undefined : session?.email;
+}

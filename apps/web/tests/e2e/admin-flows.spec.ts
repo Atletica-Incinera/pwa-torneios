@@ -199,12 +199,11 @@ test('renomeia categoria e torneio, e a correção aparece nas listas', async ({
   await expect(page.getByText('Futsal Masculino A')).toBeVisible();
 
   // Renomear o torneio é ação global no servidor (competition/rename está em
-  // GLOBAL_ACTIONS): o admin da edição via a tela inteira e cada botão dela
-  // terminava em 403 com aviso genérico. Agora a tela é legível para ele e
-  // editável só para quem o servidor deixa editar.
+  // GLOBAL_ACTIONS): a tela é legível para o admin da edição e editável só para
+  // quem o servidor deixa editar.
   await page.goto('/competitions');
   await expect(page.getByRole('button', { name: /Renomear InterEng/i })).toHaveCount(0);
-  await expect(page.getByText(/definidos pelo super administrador/i)).toBeVisible();
+  await expect(page.getByText(/definidos pela configuração do aplicativo/i)).toBeVisible();
 
   await loginAs(page, 'super@intereng.com', 'super2026');
   await page.goto('/competitions');
