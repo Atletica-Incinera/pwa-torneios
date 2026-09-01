@@ -23,7 +23,7 @@ export function createLocalAuthAdapter(): AuthAdapter {
       if (stored?.revoked) throw new AuthError('Este acesso foi revogado pelo administrador da edição.');
       const demo = demoUsers.find((user) => user.email === normalized && user.password === password.trim());
       const invited = stored && password === 'intereng2026'
-        ? { email: normalized, name: stored.name, role: stored.role === 'Admin da edição' ? 'EDITION_ADMIN' as const : 'DISCIPLINE_MANAGER' as const, scope: stored.scope }
+        ? { email: normalized, name: stored.name, role: stored.role === 'Admin da edição' ? 'EDITION_ADMIN' as const : stored.role === 'Responsável da atlética' ? 'TEAM_MANAGER' as const : 'DISCIPLINE_MANAGER' as const, scope: stored.scope }
         : undefined;
       const user = demo ?? invited;
       if (!user) throw new AuthError('E-mail ou senha inválidos.');
@@ -40,6 +40,8 @@ export function createLocalAuthAdapter(): AuthAdapter {
           editionDisciplineId: user.role === 'DISCIPLINE_MANAGER' ? `local:${user.scope}` : null,
           disciplineId: user.role === 'DISCIPLINE_MANAGER' ? `local:${user.scope}` : null,
           disciplineName: user.role === 'DISCIPLINE_MANAGER' ? user.scope : null,
+          teamId: user.role === 'TEAM_MANAGER' ? `local:${user.scope}` : null,
+          teamName: user.role === 'TEAM_MANAGER' ? user.scope ?? null : null,
           role: user.role,
         }],
         selectedRoleAssignmentId: user.role === 'SUPER_ADMIN' ? undefined : `local-role:${user.email}:${user.role}`,

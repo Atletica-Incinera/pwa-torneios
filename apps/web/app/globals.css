@@ -3940,3 +3940,48 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 /* Filtro sem nada para filtrar fica visivelmente inerte, em vez de aceitar o
    clique e nao mudar a lista. */
 .square-filter:disabled { opacity: .42; cursor: not-allowed; }
+
+/* Quem marcou: aparece depois do lance entrar no placar, nunca antes.
+   Cabe numa faixa para nao empurrar os botoes de lance para fora da tela --
+   a mesa opera de pe, com o polegar. */
+.autor-do-lance { margin-top: 14px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--orange); }
+.autor-do-lance > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.autor-do-lance > header span { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.autor-do-lance > header button { padding: 4px; background: none; border: 0; color: inherit; cursor: pointer; }
+.autor-do-lance > header button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.autor-do-lance p { margin: 8px 0 0; font-size: .88rem; color: rgba(247, 240, 227, .68); }
+.autor-opcoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+.autor-chip { padding: 9px 13px; min-height: 44px; background: var(--black); border: 1px solid var(--line); color: var(--white); font-size: .9rem; font-weight: 600; cursor: pointer; }
+.autor-chip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.autor-chip.autor-pular { border-style: dashed; color: rgba(247, 240, 227, .68); font-weight: 400; }
+
+/* Artilharia publica: lista curta, lida de relance no ginasio. */
+.artilharia-bloco + .artilharia-bloco { margin-top: 34px; }
+.artilharia-cabecalho { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 2px solid var(--orange); }
+.artilharia-cabecalho h2 { margin: 0; font-family: var(--font-display); font-size: 1.5rem; letter-spacing: .02em; }
+.artilharia-cabecalho span { font-size: .74rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(247, 240, 227, .6); }
+.artilharia-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.artilharia-linha { display: grid; grid-template-columns: 38px 46px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 13px; background: var(--surface); }
+.artilharia-posicao { font-family: var(--font-display); font-size: 1.15rem; font-variant-numeric: tabular-nums; color: var(--orange); }
+.artilharia-linha .team-mark { width: 46px; height: 46px; min-width: 46px; min-height: 46px; }
+.artilharia-nome { min-width: 0; display: grid; gap: 2px; }
+.artilharia-nome strong { font-size: 1rem; overflow-wrap: anywhere; }
+.artilharia-nome small { font-size: .8rem; color: rgba(247, 240, 227, .62); }
+.artilharia-gols { display: grid; justify-items: end; gap: 2px; }
+.artilharia-gols strong { font-family: var(--font-display); font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.artilharia-gols small { font-size: .72rem; color: rgba(247, 240, 227, .55); }
+.artilharia-lacuna { display: flex; align-items: center; gap: 7px; margin: 10px 0 0; font-size: .82rem; color: rgba(247, 240, 227, .58); }
+.artilharia-lacuna-forte { margin: 14px 0 0; padding: 13px 15px; background: var(--surface); border: 1px solid var(--line); font-size: .9rem; color: rgba(247, 240, 227, .72); }
+
+/* Acesso do responsavel da atletica, na propria tela da equipe. */
+.acesso-atletica .acesso-lista { margin: 16px 0 0; padding: 0; list-style: none; display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.acesso-atletica .acesso-lista li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: var(--surface); }
+.acesso-atletica .acesso-lista li.is-revoked { opacity: .55; }
+.acesso-atletica .acesso-lista div { display: grid; gap: 3px; min-width: 0; }
+.acesso-atletica .acesso-lista strong { font-size: .98rem; }
+.acesso-atletica .acesso-lista small { display: flex; align-items: center; gap: 6px; font-size: .82rem; color: rgba(247, 240, 227, .62); overflow-wrap: anywhere; }
+.acesso-atletica .acesso-lista button { padding: 8px; min-height: 44px; min-width: 44px; background: none; border: 1px solid var(--line); color: var(--pink); cursor: pointer; }
+.acesso-atletica .acesso-lista button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+.acesso-revogado { font-size: .76rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(247, 240, 227, .55); }
+.acesso-form { margin-top: 16px; }
+.acesso-form .form-hint { display: flex; align-items: center; gap: 7px; }
