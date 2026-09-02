@@ -24,6 +24,26 @@ export function dependeDeResultado(nome: string): boolean;
 export function lerMataMata(grade: string[][], colunaDosJogos?: number): Jogo[];
 export function ordemNoChaveamento(id: string): number;
 
+export type JogoPlanejado = Jogo & {
+  casa?: string;
+  fora?: string;
+  rotuloCasa?: string;
+  rotuloFora?: string;
+  grupo: string;
+};
+export function planejar(
+  grade: string[][],
+  estado: { teams?: Record<string, { name?: string }> },
+): {
+  grupos: Grupo[];
+  jogos: Jogo[];
+  modalidades: Modalidade[];
+  daFaseDeGrupos: JogoPlanejado[];
+  doMataMata: VagaDaChave[];
+  avisos: string[];
+  participantes: string[];
+};
+
 export type Plano = { grupos: Grupo[]; participantes: string[] };
 export function montarConfiguracao(
   plano: Plano,
@@ -44,3 +64,22 @@ export function colunaDosJogos(grade: string[][]): number;
 export function emCaixaDeTitulo(texto: string): string;
 
 export function lerDias(grade: string[][], ano: number): Map<string, string>;
+
+export type Colocacao =
+  | { tipo: 'grupo'; grupo: string; posicao: number }
+  | { tipo: 'melhor-terceiro'; posicao: number };
+export function lerColocacao(rotulo: string): Colocacao | null;
+
+export function dependeDeOutroJogo(nome: string): boolean;
+
+export function rotuloDoConfronto(nome: string): string;
+
+export type VagaDaChave = Jogo & {
+  rodada: number;
+  vaga: number | null;
+  /** O que vai depois do id da categoria: `advanced-r2-1`, `advanced-third`. */
+  sufixo: string;
+  rotuloA: string;
+  rotuloB: string;
+};
+export function vagasDoMataMata(jogos: Jogo[]): { vagas: VagaDaChave[]; sobraram: Jogo[] };

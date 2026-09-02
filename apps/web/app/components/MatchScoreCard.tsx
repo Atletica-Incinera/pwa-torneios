@@ -13,6 +13,9 @@ type MatchScoreCardProps = {
   teamALogo?: string;
   teamB: string;
   teamBLogo?: string;
+  /** O lado é um rótulo do chaveamento ("Vencedor do Jogo 3"), não uma equipe. */
+  aDefinirA?: boolean;
+  aDefinirB?: boolean;
   scoreA: number | null;
   scoreB: number | null;
   venue: string;
@@ -29,6 +32,8 @@ export function MatchScoreCard({
   teamALogo,
   teamB,
   teamBLogo,
+  aDefinirA = false,
+  aDefinirB = false,
   scoreA,
   scoreB,
   venue,
@@ -47,16 +52,18 @@ export function MatchScoreCard({
         <StatusBadge tone={statusTone}>{getMatchStatusLabel(status)}</StatusBadge>
       </div>
       <div className="versus-row">
-        <div className="team-side">
-          <TeamMark initial={teamA[0]} tone="blue" logo={teamALogo} />
+        <div className={`team-side${aDefinirA ? ' team-side-a-definir' : ''}`}>
+          {/* Sem escudo e sem inicial: "V" num círculo azul faria "Vencedor do
+              Jogo 3" parecer uma atlética chamada assim. */}
+          <TeamMark initial={aDefinirA ? '?' : teamA[0]} tone={aDefinirA ? 'neutral' : 'blue'} logo={aDefinirA ? undefined : teamALogo} />
           <strong>{teamA}</strong>
         </div>
         <div className="versus-mark">
           <span>{scoreA ?? '–'} — {scoreB ?? '–'}</span>
           <small>{venue}</small>
         </div>
-        <div className="team-side align-right">
-          <TeamMark initial={teamB[0]} tone="pink" logo={teamBLogo} />
+        <div className={`team-side align-right${aDefinirB ? ' team-side-a-definir' : ''}`}>
+          <TeamMark initial={aDefinirB ? '?' : teamB[0]} tone={aDefinirB ? 'neutral' : 'pink'} logo={aDefinirB ? undefined : teamBLogo} />
           <strong>{teamB}</strong>
         </div>
       </div>

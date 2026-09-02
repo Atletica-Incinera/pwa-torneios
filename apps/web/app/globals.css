@@ -504,6 +504,11 @@ ul.form-feedback li { line-height: 1.45; }
    atras dela virava uma segunda moldura briga com a primeira. */
 .mark-blue:not(.team-mark-logo) { background: var(--blue); }
 .mark-pink:not(.team-mark-logo) { background: var(--pink); }
+/* Confronto do mata-mata que ainda espera um resultado. O rótulo é da chave, não
+   de uma atlética: fica sem cor de equipe e um pouco apagado, para o olho não o
+   ler como um time e para o cartão continuar tendo o mesmo tamanho dos outros. */
+.mark-neutral:not(.team-mark-logo) { background: var(--muted, #9aa3af); color: #fff; }
+.team-side-a-definir strong { opacity: 0.72; font-style: italic; }
 .mark-orange:not(.team-mark-logo) { background: var(--orange); color: #000; }
 .team-mark-logo { background: none; overflow: visible; }
 .team-mark-logo img { width: 100%; height: 100%; display: block; object-fit: contain; }

@@ -93,6 +93,9 @@ export type MatchView = {
   logoA: string;
   entryB: string;
   logoB: string;
+  /** O lado ainda depende de um resultado: o nome é um rótulo da chave. */
+  aDefinirA?: boolean;
+  aDefinirB?: boolean;
   scoreA: number | null;
   scoreB: number | null;
   date: string;
@@ -115,6 +118,8 @@ function matchView(id: string, match: MatchState): MatchView {
     logoA: match.logoA ?? '',
     entryB: match.entryB ?? 'Equipe B',
     logoB: match.logoB ?? '',
+    aDefinirA: match.aDefinirA ?? false,
+    aDefinirB: match.aDefinirB ?? false,
     scoreA: match.scoreA ?? null,
     scoreB: match.scoreB ?? null,
     date: match.date ?? 'A definir',

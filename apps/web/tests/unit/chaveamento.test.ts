@@ -20,7 +20,9 @@ import {
  * simplificação — é a única forma de saber que a leitura aguenta o que a
  * organização de fato exporta.
  */
-const planilha = join(dirname(fileURLToPath(import.meta.url)), '../fixtures/chaveamento-futsal-masculino.csv');
+const fixture = (nome: string) =>
+  join(dirname(fileURLToPath(import.meta.url)), `../fixtures/chaveamento-${nome}.csv`);
+const planilha = fixture('futsal-masculino');
 const grade = lerGrade(planilha);
 
 test('lê as oito modalidades e quantas equipes cada uma tem', () => {
@@ -254,4 +256,125 @@ test('a agenda diz o dia de cada categoria', async () => {
   // é a tradução de nome, não esta leitura.
   assert.equal(dias.get('volei masculino'), '2026-09-05');
   assert.equal(dias.get('voleibol masculino'), undefined);
+});
+
+/*
+ * A tradução do mata-mata é ESTRUTURAL: pela natureza de cada confronto e pela
+ * ordem em que aparecem, nunca pelos números de jogo que a planilha cita.
+ *
+ * Esses números estão errados em duas das três categorias que têm mata-mata, e
+ * os testes abaixo rodam contra as planilhas de verdade justamente para provar
+ * que ler pela estrutura acerta as três.
+ */
+test('o mata-mata do futsal masculino vira as vagas que o app usa', async () => {
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  const grade = lerGrade(fixture('futsal-masculino'));
+  const { vagas, sobraram } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+
+  assert.equal(sobraram.length, 0);
+  assert.deepEqual(
+    vagas.map((v) => v.sufixo),
+    [
+      'advanced-r1-1',
+      'advanced-r1-2',
+      'advanced-r1-3',
+      'advanced-r1-4',
+      'advanced-r2-1',
+      'advanced-r2-2',
+      'advanced-r3-1',
+      'advanced-third',
+    ],
+  );
+  // A planilha diz "VENCEDOR J15 x VENCEDOR J16" nesta semifinal. J15 é um jogo
+  // da FASE DE GRUPOS: a numeração está uma casa deslocada. O rótulo publicado
+  // é reescrito a partir da estrutura, e aponta para as quartas de verdade.
+  const semi = vagas.find((v) => v.sufixo === 'advanced-r2-1');
+  assert.equal(semi?.rotuloA, 'Vencedor do Jogo 16');
+  assert.equal(semi?.rotuloB, 'Vencedor do Jogo 17');
+  // A primeira rodada mantém o texto da planilha: ali os rótulos são
+  // colocações de grupo, estão certos, e são o que a API resolve.
+  assert.equal(vagas[0].rotuloA, '1 GRUPO A');
+  assert.equal(vagas[0].rotuloB, 'MELHOR TERCEIRO COLOCADO');
+  // Horário e ginásio vêm da planilha e são o que vai para a agenda.
+  assert.equal(vagas[0].horario, '08:00');
+  assert.equal(vagas[0].local, 'GINÁSIO A');
+});
+
+test('o mata-mata do basquete masculino cita jogos que não existem, e ainda assim sai certo', async () => {
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  const grade = lerGrade(fixture('basquete-masculino'));
+  const { vagas } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+
+  // As semifinais são J13 e J14; a final da planilha diz "VENCEDOR J19 x
+  // VENCEDOR J20" — jogos que não existem nesta categoria.
+  assert.deepEqual(
+    vagas.map((v) => v.sufixo),
+    ['advanced-r1-1', 'advanced-r1-2', 'advanced-r2-1', 'advanced-third'],
+  );
+  const final = vagas.find((v) => v.sufixo === 'advanced-r2-1');
+  assert.equal(final?.rotuloA, 'Vencedor do Jogo 13');
+  assert.equal(final?.rotuloB, 'Vencedor do Jogo 14');
+  const terceiro = vagas.find((v) => v.sufixo === 'advanced-third');
+  assert.equal(terceiro?.rotuloA, 'Perdedor do Jogo 13');
+  assert.equal(terceiro?.horario, '19:30');
+});
+
+test('o voleibol feminino, que a planilha numerou certo, sai igual', async () => {
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  const grade = lerGrade(fixture('voleibol-feminino'));
+  const { vagas } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+
+  assert.deepEqual(
+    vagas.map((v) => `${v.sufixo} ${v.rotuloA} × ${v.rotuloB}`),
+    [
+      'advanced-r1-1 MELHOR CLASSIFICADO A × SEGUNDO MELHOR B',
+      'advanced-r1-2 MELHOR CLASSIFICADO B × SEGUNDO MELHOR A',
+      'advanced-r2-1 Vencedor do Jogo 7 × Vencedor do Jogo 8',
+      'advanced-third Perdedor do Jogo 7 × Perdedor do Jogo 8',
+    ],
+  );
+});
+
+test('a API entende todos os rótulos da primeira rodada das planilhas', async () => {
+  // Se ela não entender um, a chave inteira cai na semeadura automática — que
+  // monta um cruzamento diferente do publicado. É a checagem que o importador
+  // faz antes de aplicar, aqui feita contra as planilhas de verdade.
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos, lerColocacao } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  for (const arquivo of ['futsal-masculino', 'basquete-masculino', 'voleibol-feminino']) {
+    const grade = lerGrade(fixture(arquivo));
+    const { vagas } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+    for (const vaga of vagas.filter((v) => v.rodada === 1)) {
+      for (const rotulo of [vaga.rotuloA, vaga.rotuloB]) {
+        assert.ok(lerColocacao(rotulo), `${arquivo}: o app não entenderia "${rotulo}"`);
+      }
+    }
+  }
+});
+
+test('grupo de três jogado como mini-chave entra na agenda com rótulo', async () => {
+  // "VORAZ x PERDEDOR J3" tem dia, hora e quadra na planilha. Antes o jogo era
+  // descartado e sumia da agenda; agora entra, com a equipe de um lado e o
+  // rótulo do outro.
+  const { planejar } = await import('../../scripts/importar-chaveamento.mjs');
+  const grade = lerGrade(fixture('futsal-masculino'));
+  const estado = {
+    teams: Object.fromEntries(
+      ['VORAZ', 'ALCATEIA', 'INVASORA'].map((nome, i) => [`t${i}`, { name: nome }]),
+    ),
+  };
+  const plano = planejar(grade, estado);
+  const j12 = plano.daFaseDeGrupos.find((j) => j.numero === 12);
+
+  assert.equal(j12?.casa, 'VORAZ');
+  assert.equal(j12?.fora, undefined);
+  assert.equal(j12?.rotuloFora, 'Perdedor do Jogo 3');
+  assert.equal(j12?.horario, '10:55');
 });

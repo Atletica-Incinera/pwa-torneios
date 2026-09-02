@@ -288,6 +288,149 @@ export function nomeNoApp(daPlanilha) {
 export const dependeDeResultado = (nome) => /vencedor|perdedor|melhor terceiro|^\d+\s+grupo/.test(chave(nome ?? ''));
 
 /**
+ * O rotulo como o publico vai ler: "PERDEDOR J3" vira "Perdedor do Jogo 3".
+ * O texto da planilha e escrito para caber numa celula, nao para ir ao ar.
+ */
+export function rotuloDoConfronto(nome) {
+  const texto = (nome ?? '').trim();
+  const jogo = /^(vencedor|perdedor)\s*(?:do\s*)?(?:jogo\s*)?j?\s*(\d+)$/i.exec(chave(texto));
+  if (!jogo) return texto;
+  const verbo = jogo[1].toLowerCase() === 'vencedor' ? 'Vencedor' : 'Perdedor';
+  return `${verbo} do Jogo ${Number(jogo[2])}`;
+}
+
+/** O lado depende de outro jogo do mata-mata, nao da classificacao dos grupos. */
+export const dependeDeOutroJogo = (nome) => /^(vencedor|perdedor)\b/.test(chave(nome ?? ''));
+
+/**
+ * A colocacao a que o rotulo se refere. Mesma gramatica de
+ * `colocacao-do-chaveamento.ts` na API: aqui ela serve para RECUSAR a planilha
+ * que a API nao saberia resolver, antes de aplicar. Sao repositorios separados,
+ * e sem esta checagem a divergencia so apareceria quando os grupos acabassem --
+ * no meio do evento.
+ */
+export function lerColocacao(rotulo) {
+  // O "º" tem de cair aqui: `chave` nao o remove (nome de equipe pode te-lo), e
+  // sem isso "2º MELHOR TERCEIRO" nao casa com nada. A API normaliza igual.
+  const texto = chave(rotulo ?? '')
+    .toUpperCase()
+    .replace(/[º°ª]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!texto) return null;
+  const ordinais = { PRIMEIRO: 1, SEGUNDO: 2, TERCEIRO: 3, QUARTO: 4 };
+  // Os terceiros primeiro: "MELHOR TERCEIRO COLOCADO" tambem casaria com a
+  // forma "MELHOR <grupo>", e viraria uma busca pelo grupo "TERCEIRO COLOCADO".
+  const terceiro = /^(?:(\d+)|(PRIMEIRO|SEGUNDO|TERCEIRO|QUARTO))?\s*MELHOR(?:ES)? TERCEIROS?(?: COLOCADOS?)?$/.exec(texto);
+  if (terceiro) {
+    const posicao = terceiro[1] ? Number(terceiro[1]) : (ordinais[terceiro[2]] ?? 1);
+    return posicao > 0 ? { tipo: 'melhor-terceiro', posicao } : null;
+  }
+  const porNumero = /^(\d+) GRUPO (.+)$/.exec(texto);
+  if (porNumero) {
+    const posicao = Number(porNumero[1]);
+    return posicao > 0 ? { tipo: 'grupo', grupo: porNumero[2].replace(/^GRUPO\s+/, ''), posicao } : null;
+  }
+  const porAdjetivo = /^(?:(PRIMEIRO|SEGUNDO|TERCEIRO|QUARTO) )?MELHOR(?: CLASSIFICADO)?(?: DO)?(?: GRUPO)? (.+)$/.exec(texto);
+  if (porAdjetivo) {
+    return { tipo: 'grupo', grupo: porAdjetivo[2].replace(/^GRUPO\s+/, ''), posicao: ordinais[porAdjetivo[1]] ?? 1 };
+  }
+  return null;
+}
+
+/**
+ * O mata-mata da planilha, traduzido para as vagas que o app usa.
+ *
+ * A traducao e ESTRUTURAL de proposito: pela natureza de cada confronto e pela
+ * ordem em que aparecem, nunca pelos numeros de jogo que a planilha cita. Esses
+ * numeros estao errados em duas das tres categorias que tem mata-mata:
+ *
+ *   Futsal Masculino: as quartas sao J16..J19, mas a semifinal diz
+ *   "VENCEDOR J15 x VENCEDOR J16" -- uma casa deslocada, e J15 e um jogo da
+ *   fase de grupos.
+ *
+ *   Basquete Masculino: as semifinais sao J13 e J14, e a final diz
+ *   "VENCEDOR J19 x VENCEDOR J20" -- jogos que nao existem nessa categoria.
+ *
+ * Ler pela estrutura acerta as tres. Ler pelos numeros erraria duas.
+ *
+ *   - quem sai da classificacao dos grupos e a primeira rodada, na ordem da
+ *     planilha;
+ *   - quem sai de VENCEDOR preenche as rodadas seguintes, na ordem da planilha,
+ *     metade das vagas a cada rodada;
+ *   - quem sai de PERDEDOR e a disputa de terceiro.
+ *
+ * A ordem das vagas casa com a que o app usa para progredir a chave: o
+ * vencedor da vaga 1 e da vaga 2 se encontram na vaga 1 da rodada seguinte.
+ */
+export function vagasDoMataMata(jogos) {
+  const daClassificacao = jogos.filter((j) => !dependeDeOutroJogo(j.casa) && !dependeDeOutroJogo(j.fora));
+  const deVencedor = jogos.filter((j) => /^vencedor/.test(chave(j.casa)) || /^vencedor/.test(chave(j.fora)));
+  const dePerdedor = jogos.filter((j) => /^perdedor/.test(chave(j.casa)) && /^perdedor/.test(chave(j.fora)));
+
+  const vagas = [];
+  daClassificacao.forEach((jogo, indice) => {
+    vagas.push({ ...jogo, rodada: 1, vaga: indice + 1, sufixo: `advanced-r1-${indice + 1}` });
+  });
+
+  let restantes = daClassificacao.length;
+  let rodada = 1;
+  let proximos = [...deVencedor];
+  while (restantes > 1 && proximos.length) {
+    rodada += 1;
+    restantes = Math.floor(restantes / 2);
+    for (let vaga = 1; vaga <= restantes && proximos.length; vaga += 1) {
+      const jogo = proximos.shift();
+      vagas.push({ ...jogo, rodada, vaga, sufixo: `advanced-r${rodada}-${vaga}` });
+    }
+  }
+  // Sobrou jogo de VENCEDOR sem vaga: a planilha tem mais jogos do que a chave
+  // comporta. Volta como aviso em vez de virar partida solta.
+  const sobraram = proximos;
+
+  for (const jogo of dePerdedor) {
+    vagas.push({ ...jogo, rodada, vaga: null, sufixo: 'advanced-third' });
+  }
+
+  /*
+   * Os rotulos que vao para o publico sao REESCRITOS a partir da estrutura, e
+   * nao copiados da planilha.
+   *
+   * A planilha cita numeros de jogo errados: a semifinal do futsal masculino
+   * diz "VENCEDOR J15", quando J15 e um jogo da fase de grupos e a quartas de
+   * final e a J16. Publicar isso mandaria a torcida conferir o jogo errado.
+   *
+   * A primeira rodada fica como esta: la os rotulos sao colocacoes de grupo
+   * ("1 GRUPO A"), estao certos, e sao justamente o que a API resolve.
+   */
+  const porVaga = new Map(vagas.filter((v) => v.vaga).map((v) => [v.rodada + ':' + v.vaga, v]));
+  const numeroDaOrigem = (rodada, vaga) => porVaga.get(rodada + ':' + vaga)?.numero;
+  const rotulo = (verbo, rodada, vaga) => {
+    const numero = numeroDaOrigem(rodada, vaga);
+    return numero ? `${verbo} do Jogo ${numero}` : null;
+  };
+  const ultimaComDuas = Math.max(
+    0,
+    ...[...porVaga.values()].filter((v) => v.vaga === 2).map((v) => v.rodada),
+  );
+  for (const vaga of vagas) {
+    if (vaga.rodada === 1 && vaga.vaga) {
+      vaga.rotuloA = vaga.casa;
+      vaga.rotuloB = vaga.fora;
+      continue;
+    }
+    if (vaga.sufixo === 'advanced-third') {
+      vaga.rotuloA = rotulo('Perdedor', ultimaComDuas, 1) ?? vaga.casa;
+      vaga.rotuloB = rotulo('Perdedor', ultimaComDuas, 2) ?? vaga.fora;
+      continue;
+    }
+    vaga.rotuloA = rotulo('Vencedor', vaga.rodada - 1, vaga.vaga * 2 - 1) ?? vaga.casa;
+    vaga.rotuloB = rotulo('Vencedor', vaga.rodada - 1, vaga.vaga * 2) ?? vaga.fora;
+  }
+  return { vagas, sobraram };
+}
+
+/**
  * Posicao da partida no chaveamento, a partir do id que o app gera.
  *
  * O app nomeia as partidas geradas por rodada e vaga (`-advanced-r1-2`), com
@@ -402,21 +545,39 @@ export function planejar(grade, estado) {
   // na planilha, e o erro engole uma equipe inteira sem avisar.
   const emJogos = new Set();
   const daFaseDeGrupos = [];
+  /*
+   * Um lado do confronto: equipe inscrita OU rótulo do que ainda será decidido.
+   *
+   * Grupo de três jogado como mini-chave aparece assim na planilha: "VORAZ x
+   * PERDEDOR J3". Antes esses jogos eram descartados — ficavam de fora da
+   * agenda, com dia, hora e quadra que a organização já tinha publicado. Agora
+   * entram com o rótulo, e o participante chega quando o resultado sair.
+   */
+  const lado = (nome) => {
+    if (dependeDeOutroJogo(nome)) return { rotulo: rotuloDoConfronto(nome) };
+    const equipe = resolver(nome);
+    return equipe ? { nome: equipe } : null;
+  };
   for (const jogo of jogos) {
-    if (dependeDeResultado(jogo.casa) || dependeDeResultado(jogo.fora)) {
-      avisos.push(`Jogo ${jogo.numero} depende de resultado ("${jogo.casa} × ${jogo.fora}") — o app monta esse sozinho ao fim dos grupos.`);
-      continue;
-    }
-    const casa = resolver(jogo.casa);
-    const fora = resolver(jogo.fora);
+    const casa = lado(jogo.casa);
+    const fora = lado(jogo.fora);
     if (!casa || !fora) {
       avisos.push(`Jogo ${jogo.numero}: equipe desconhecida em "${jogo.casa} × ${jogo.fora}".`);
       continue;
     }
-    emJogos.add(chave(casa));
-    emJogos.add(chave(fora));
-    const grupo = grupos.find((g) => g.equipes.some((e) => chave(e) === chave(casa)));
-    daFaseDeGrupos.push({ ...jogo, casa, fora, grupo: grupo?.nome ?? '' });
+    if (casa.nome) emJogos.add(chave(casa.nome));
+    if (fora.nome) emJogos.add(chave(fora.nome));
+    // O grupo sai de quem já é equipe: o rótulo ainda não aponta para ninguém.
+    const conhecida = casa.nome ?? fora.nome;
+    const grupo = grupos.find((g) => g.equipes.some((e) => chave(e) === chave(conhecida ?? '')));
+    daFaseDeGrupos.push({
+      ...jogo,
+      casa: casa.nome,
+      fora: fora.nome,
+      rotuloCasa: casa.rotulo,
+      rotuloFora: fora.rotulo,
+      grupo: grupo?.nome ?? '',
+    });
   }
   for (const equipe of inscritas) {
     const resolvida = resolver(equipe);
@@ -425,7 +586,33 @@ export function planejar(grade, estado) {
     }
   }
 
-  return { grupos, jogos, modalidades, daFaseDeGrupos, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
+  const { vagas: doMataMata, sobraram } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+  for (const jogo of sobraram) {
+    avisos.push(`Jogo ${jogo.numero} ("${jogo.casa} × ${jogo.fora}") não coube na chave — confira quantos jogos o mata-mata tem.`);
+  }
+  /*
+   * A primeira rodada do mata-mata é a única que o app resolve sozinho, lendo
+   * os rótulos contra a classificação: "1 GRUPO A" vira quem terminar em
+   * primeiro no grupo A. Rótulo que o app não entende faz a chave inteira cair
+   * na semeadura automática — que monta um cruzamento DIFERENTE do publicado.
+   *
+   * Melhor descobrir isso aqui, com alguém olhando, do que no dia em que a fase
+   * de grupos acabar.
+   */
+  for (const vaga of doMataMata.filter((v) => v.rodada === 1)) {
+    for (const rotulo of [vaga.rotuloA, vaga.rotuloB]) {
+      const colocacao = lerColocacao(rotulo);
+      if (!colocacao) {
+        avisos.push(`O app não entende o rótulo "${rotulo}" (jogo ${vaga.numero}) — com ele, a chave cai na semeadura automática e o cruzamento sai diferente do publicado.`);
+        continue;
+      }
+      if (colocacao.tipo === 'grupo' && !grupos.some((g) => chave(g.nome).toUpperCase().replace(/^GRUPO /, '') === colocacao.grupo)) {
+        avisos.push(`O rótulo "${rotulo}" (jogo ${vaga.numero}) aponta para um grupo que não existe nesta categoria.`);
+      }
+    }
+  }
+
+  return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
 async function importarArquivo(token, ARQUIVO, DATA) {
@@ -470,7 +657,17 @@ async function importarArquivo(token, ARQUIVO, DATA) {
   console.log('');
   console.log(`Jogos da fase de grupos a agendar: ${plano.daFaseDeGrupos.length}`);
   for (const jogo of plano.daFaseDeGrupos) {
-    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${jogo.casa} × ${jogo.fora}  [${jogo.grupo}]`);
+    const casa = jogo.casa ?? jogo.rotuloCasa;
+    const fora = jogo.fora ?? jogo.rotuloFora;
+    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
+  }
+
+  if (plano.doMataMata?.length) {
+    console.log('');
+    console.log(`Mata-mata a agendar: ${plano.doMataMata.length}  (dia ${opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
+    for (const vaga of plano.doMataMata) {
+      console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${vaga.local.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
+    }
   }
 
   if (opcao('categoria-id')) {
@@ -639,42 +836,84 @@ async function importarArquivo(token, ARQUIVO, DATA) {
     console.log('  categoria criada: ' + nomeDaCategoria);
   }
 
-  let agendados = 0;
-  const falhas = [];
-  for (const jogo of plano.daFaseDeGrupos) {
+  const edicaoId = estado.editions?.find((e) => e.active)?.id;
+  /*
+   * Um lado vai como equipe OU como rotulo, nunca os dois: a API recusa a
+   * partida que manda os dois, justamente para um erro de digitacao nao virar
+   * partida fantasma.
+   */
+  const ladoDoPayload = (letra, nome, rotulo) =>
+    nome ? { [`entry${letra}`]: nome } : { [`placeholder${letra}`]: rotulo };
+
+  const agendar = async ({ id, casa, fora, rotuloCasa, rotuloFora, fase, data, horario, local, numero }) => {
+    const descricao = `${casa ?? rotuloCasa} × ${fora ?? rotuloFora}`;
     try {
       await despachar(token, {
         type: 'match/schedule',
         payload: {
-          id: novoId('match'),
+          id,
           match: {
             created: true,
-            editionId: estado.editions?.find((e) => e.active)?.id,
+            editionId: edicaoId,
             tournamentId: categoriaId,
             discipline: modalidade,
-            entryA: jogo.casa,
-            entryB: jogo.fora,
-            phase: jogo.grupo,
-            date: DATA,
-            time: jogo.horario || '08:00',
-            venue: jogo.local || 'A definir',
+            ...ladoDoPayload('A', casa, rotuloCasa),
+            ...ladoDoPayload('B', fora, rotuloFora),
+            phase: fase,
+            date: data,
+            time: horario || '08:00',
+            venue: local || 'A definir',
             status: 'Agendada',
             scoreA: null,
             scoreB: null,
           },
         },
-        audit: { action: 'Jogo agendado', entity: `${jogo.casa} × ${jogo.fora}`, after: `${DATA} ${jogo.horario}` },
+        audit: { action: 'Jogo agendado', entity: descricao, after: `${data} ${horario}` },
       });
-      agendados += 1;
+      return true;
     } catch (erro) {
-      falhas.push(`J${jogo.numero} ${jogo.casa} × ${jogo.fora}: ${erro.message}`);
+      falhas.push(`J${numero} ${descricao}: ${erro.message}`);
+      return false;
     }
+  };
+
+  let agendados = 0;
+  const falhas = [];
+  for (const jogo of plano.daFaseDeGrupos) {
+    if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
+  }
+
+  /*
+   * O mata-mata entra com os IDs que a progressao usa (`<categoria>-advanced-r2-1`).
+   *
+   * E o que faz a partida ja agendada ser a MESMA que o app vai preencher
+   * quando o resultado sair: a chave fica publica desde agora, com o dia, a
+   * hora e o ginasio da planilha, e so o participante muda depois.
+   *
+   * O mata-mata costuma ser no ultimo dia. Sem --dia-mata-mata ele cai na
+   * mesma data dos grupos, que e melhor que nao existir, mas raramente e o
+   * que a organizacao publicou.
+   */
+  const diaDoMataMata = opcao('dia-mata-mata') ?? DATA;
+  let daChave = 0;
+  for (const vaga of plano.doMataMata ?? []) {
+    const feito = await agendar({
+      id: `${categoriaId}-${vaga.sufixo}`,
+      rotuloCasa: vaga.rotuloA,
+      rotuloFora: vaga.rotuloB,
+      fase: 'Mata-mata',
+      data: diaDoMataMata,
+      horario: vaga.horario,
+      local: vaga.local,
+      numero: vaga.numero,
+    });
+    if (feito) daChave += 1;
   }
 
   console.log('');
-  console.log(`Concluido: ${agendados} jogos agendados, ${falhas.length} falhas.`);
+  console.log(`Concluido: ${agendados} jogos da fase de grupos e ${daChave} do mata-mata, ${falhas.length} falhas.`);
   for (const falha of falhas) console.log('  ! ' + falha);
-  console.log('O mata-mata sai sozinho quando a fase de grupos terminar.');
+  if (daChave) console.log(`A chave ja fica publica com os rotulos; o app troca cada rotulo pela equipe quando o resultado sair.`);
 }
 
 // Só executa quando chamado direto: o teste importa as funções de leitura.
