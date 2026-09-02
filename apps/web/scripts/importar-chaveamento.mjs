@@ -321,6 +321,18 @@ async function main() {
     console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${jogo.casa} × ${jogo.fora}  [${jogo.grupo}]`);
   }
 
+  if (opcao('categoria-id')) {
+    const alvo = estado.tournaments?.[opcao('categoria-id')];
+    console.log('');
+    console.log('Vai PREENCHER a categoria que ja existe: ' + (alvo?.name ?? '(nao encontrada)'));
+    if (alvo) {
+      const gruposAtuais = (alvo.phases ?? []).flatMap((f) => f.groups ?? []);
+      console.log('  antes:  ' + (alvo.participants?.length ?? 0) + ' equipes, grupos [' + (gruposAtuais.join(', ') || 'nenhum') + ']');
+      console.log('  depois: ' + plano.participantes.length + ' equipes, grupos [' + plano.grupos.map((g) => g.nome).join(', ') + ']');
+      console.log('  Nome, modalidade e situacao ficam como estao.');
+    }
+  }
+
   if (plano.avisos.length) {
     console.log('');
     console.log(`Avisos (${plano.avisos.length}):`);
@@ -401,7 +413,17 @@ async function main() {
     return;
   }
 
-  const categoriaId = novoId('category');
+  /*
+   * Preencher uma categoria que ja existe, em vez de criar outra.
+   *
+   * A organizacao comecou a montar o Futsal Masculino pela tela e parou no
+   * meio. Criar uma segunda deixaria duas com o mesmo nome na lista, e o app
+   * nao tem exclusao de categoria -- desfazer sairia caro.
+   */
+  const existenteId = opcao('categoria-id');
+  const existente = existenteId ? estado.tournaments?.[existenteId] : undefined;
+  if (existenteId && !existente) throw new Error(`A categoria "${existenteId}" nao existe nesta edicao.`);
+  const categoriaId = existenteId ?? novoId('category');
   const grupos = plano.grupos.map((g) => g.nome);
   const assignments = {};
   for (const grupo of plano.grupos) {
@@ -411,32 +433,54 @@ async function main() {
     }
   }
 
-  await despachar(token, {
-    type: 'category/create',
-    payload: {
-      id: categoriaId,
-      category: {
-        created: true,
-        editionId: estado.editions?.find((e) => e.active)?.id,
-        name: nomeDaCategoria,
-        discipline: modalidade,
-        status: 'Rascunho',
-        participants: plano.participantes,
-        seeds: Object.fromEntries(plano.participantes.map((nome, i) => [nome, i + 1])),
-        assignments,
-        generated: false,
-        phases: [
-          { id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups, qualifiers: 2 },
-          { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 },
-        ],
-        // O mata-mata da planilha: dois por grupo mais os dois melhores
-        // terceiros, cruzamento olímpico e disputa de terceiro lugar.
-        advancement: { perGroup: 2, bestThirds: 2, crossing: 'padrao', thirdPlaceMatch: true },
+  const configuracao = {
+    created: true,
+    editionId: estado.editions?.find((e) => e.active)?.id,
+    name: nomeDaCategoria,
+    discipline: modalidade,
+    status: 'Rascunho',
+    participants: plano.participantes,
+    seeds: Object.fromEntries(plano.participantes.map((nome, i) => [nome, i + 1])),
+    assignments,
+    generated: false,
+    phases: [
+      { id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups, qualifiers: 2 },
+      { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 },
+    ],
+    // O mata-mata da planilha: os dois primeiros de cada grupo mais os dois
+    // melhores terceiros fecham as oito vagas das quartas. Com zero melhores
+    // terceiros sobram seis, e o chaveamento nao fecha.
+    advancement: { perGroup: 2, bestThirds: 2, crossing: 'padrao', thirdPlaceMatch: true },
+  };
+
+  if (existente) {
+    // Nome, modalidade e situacao sao de quem criou a categoria: o importador
+    // preenche a estrutura, nao renomeia o que a organizacao ja decidiu.
+    await despachar(token, {
+      type: 'category/update',
+      payload: {
+        id: categoriaId,
+        setup: {
+          ...existente,
+          participants: configuracao.participants,
+          seeds: configuracao.seeds,
+          assignments: configuracao.assignments,
+          phases: configuracao.phases,
+          advancement: configuracao.advancement,
+          generated: false,
+        },
       },
-    },
-    audit: { action: 'Categoria criada', entity: nomeDaCategoria, after: modalidade },
-  });
-  console.log('  categoria criada: ' + nomeDaCategoria);
+      audit: { action: 'Categoria configurada pelo chaveamento', entity: existente.name ?? nomeDaCategoria, after: `${plano.grupos.length} grupos` },
+    });
+    console.log('  categoria preenchida: ' + (existente.name ?? nomeDaCategoria));
+  } else {
+    await despachar(token, {
+      type: 'category/create',
+      payload: { id: categoriaId, category: configuracao },
+      audit: { action: 'Categoria criada', entity: nomeDaCategoria, after: modalidade },
+    });
+    console.log('  categoria criada: ' + nomeDaCategoria);
+  }
 
   let agendados = 0;
   const falhas = [];
