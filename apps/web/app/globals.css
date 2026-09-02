@@ -1495,8 +1495,13 @@ small,
 /* `.team-mark` sai do :is() acima so para poder poupar o escudo sem inflar a
    especificidade dos outros seletores da lista -- `:is()` adota a
    especificidade do argumento mais forte, entao um `:not()` la dentro mudaria
-   a cascata de todos eles. */
-.theme-matches .team-mark:not(.team-mark-logo) {
+   a cascata de todos eles.
+
+   `.mark-neutral` sai pelo mesmo motivo do escudo: e a marca do confronto que
+   ainda espera um resultado, e pintada de rosa ela vira um time. Tres regras
+   pintavam a marca sem olhar o tom, e cada uma vencia `.mark-neutral` na
+   cascata -- medido no navegador, nao deduzido. */
+.theme-matches .team-mark:not(.team-mark-logo):not(.mark-neutral) {
   background: var(--pink);
   color: var(--white);
 }
@@ -2526,7 +2531,7 @@ small,
   color: var(--black);
 }
 
-.management-screen.theme-matches:has(.scheduled-score) :is(.scheduled-score .team-mark, .detail-card svg) {
+.management-screen.theme-matches:has(.scheduled-score) :is(.scheduled-score .team-mark:not(.mark-neutral), .detail-card svg) {
   background: var(--orange);
   color: var(--black);
 }
@@ -2620,12 +2625,14 @@ small,
   text-align: center;
 }
 
-.match-summary-teams .team-mark {
+.match-summary-teams .team-mark:not(.mark-neutral) {
   width: 70px;
   height: 76px;
   background: var(--orange);
   color: var(--black);
 }
+
+.match-summary-teams .team-mark { width: 70px; height: 76px; }
 
 .match-summary-teams strong {
   max-width: 100%;
