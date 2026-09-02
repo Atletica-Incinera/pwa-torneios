@@ -481,3 +481,79 @@ test('o mata-mata já cadastrado é reconhecido pelo próprio id', async () => {
   const noutra = vagas.filter((vaga) => !jaCadastradas[`cat-2-${vaga.sufixo}`]);
   assert.equal(noutra.length, vagas.length);
 });
+
+/*
+ * A aba do Queimado foge do formato das outras em duas coisas, e cada uma
+ * sozinha já bastava para a categoria inteira ficar de fora do app:
+ *
+ *   os jogos da fase de grupos estão num bloco "RODADAS", um por linha, sem o
+ *   rótulo "JOGO N" que todas as outras abas usam;
+ *
+ *   o bloco do mata-mata não tem a coluna de situação ("A SEGUIR"), então o
+ *   local cai uma casa antes de onde as outras o põem.
+ *
+ * O efeito somado era nove jogos lidos como zero e um mata-mata sem local —
+ * o que fazia a categoria parecer "sem horário nem local" quando, na verdade,
+ * só o horário falta mesmo.
+ */
+test('a aba do Queimado, que foge do formato, é lida inteira', async () => {
+  const { planejar } = await import('../../scripts/importar-chaveamento.mjs');
+  const estado = {
+    teams: Object.fromEntries(
+      ['Voraz', 'Incinera', 'Engenhosa', 'Tormenta', 'Engrenada', 'Tríade', 'Cangaceiros'].map(
+        (nome, i) => [`t${i}`, { name: nome }],
+      ),
+    ),
+  };
+  const plano = planejar(lerGrade(fixture('queimado')), estado);
+
+  assert.equal(plano.avisos.length, 0, plano.avisos.join(' | '));
+  assert.equal(plano.daFaseDeGrupos.length, 9);
+  assert.equal(plano.doMataMata.length, 4);
+
+  // Grupo A tem 4 equipes: os seis confrontos possíveis entre elas.
+  const grupoA = plano.daFaseDeGrupos.filter((j) => j.grupo === 'GRUPO A');
+  assert.equal(grupoA.length, 6);
+  // Grupo B tem 3: uma mini-chave, com dois jogos dependendo do primeiro.
+  const grupoB = plano.daFaseDeGrupos.filter((j) => j.grupo === 'GRUPO B');
+  assert.deepEqual(
+    grupoB.map((j) => `${j.casa ?? j.rotuloCasa} × ${j.fora ?? j.rotuloFora}`),
+    ['Engrenada × Cangaceiros', 'Tríade × Perdedor do Jogo 3', 'Tríade × Vencedor do Jogo 3'],
+  );
+
+  // O local do mata-mata está na aba; era ele que a leitura por posição fixa
+  // perdia. O horário é que não existe em jogo nenhum desta categoria.
+  for (const vaga of plano.doMataMata) {
+    assert.equal(vaga.local, 'QUADRA DE VÔLEI');
+    assert.equal(vaga.horario, '');
+  }
+});
+
+test('a numeração das rodadas segue a ordem em que aparecem', async () => {
+  // As referências da própria aba contam assim: "PERDEDOR J3" é o terceiro da
+  // lista, que é Engrenada × Cangaceiros — o único jogo do Grupo B entre duas
+  // equipes conhecidas.
+  const { lerRodadas } = await import('../../scripts/importar-chaveamento.mjs');
+  const rodadas = lerRodadas(lerGrade(fixture('queimado')));
+
+  assert.equal(rodadas.length, 9);
+  assert.equal(rodadas[2].numero, 3);
+  assert.equal(`${rodadas[2].casa} × ${rodadas[2].fora}`, 'ENGRENADA × CANGACEIROS');
+});
+
+test('as abas que já funcionavam continuam com o mesmo local e horário', async () => {
+  // A leitura de local e horário deixou de ser por posição fixa. Se a nova
+  // busca pegasse a célula errada, seria aqui que apareceria.
+  const { lerMataMata, colunaDosJogos } = await import('../../scripts/importar-chaveamento.mjs');
+  const esperado: Record<string, [string, string]> = {
+    'futsal-masculino': ['08:00', 'GINÁSIO A'],
+    'basquete-masculino': ['18:30', 'GINÁSIO A'],
+    'voleibol-feminino': ['14:00', 'GINÁSIO B'],
+  };
+  for (const [arquivo, [horario, local]] of Object.entries(esperado)) {
+    const grade = lerGrade(fixture(arquivo));
+    const primeira = lerMataMata(grade, colunaDosJogos(grade))[0];
+    assert.equal(primeira.horario, horario, arquivo);
+    assert.equal(primeira.local, local, arquivo);
+  }
+});

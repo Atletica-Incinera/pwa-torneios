@@ -199,6 +199,63 @@ export function lerJogos(grade) {
  * isso são oito reagendamentos manuais por categoria, e são dezesseis
  * categorias.
  */
+const HORA = /^\d{1,2}:\d{2}$/;
+/** Texto que ocupa a celula de horario ou local sem dizer nada. */
+const SEM_INFORMACAO = new Set(['a seguir', 'a definir', 'a confirmar', 'xxxx', '-']);
+
+/**
+ * Local e horario de uma linha do mata-mata, achados pelo que a celula E.
+ *
+ * O bloco nao tem sempre as mesmas colunas: as abas normais trazem uma coluna
+ * de situacao ("A SEGUIR") antes do local, e a do Queimado nao. Lendo por
+ * posicao fixa, o Queimado saia com local e horario vazios -- e foi por isso
+ * que aquela categoria ficou de fora do app.
+ *
+ * A janela e curta de proposito: logo depois dela comeca o bloco da fase de
+ * grupos, e um confronto de la viraria "local" se a busca fosse mais longe.
+ */
+function localEHorario(linha, de, ate) {
+  let local = '';
+  let horario = '';
+  for (let coluna = de; coluna <= ate; coluna += 1) {
+    const valor = (linha[coluna] ?? '').trim();
+    if (!valor || SEM_INFORMACAO.has(chave(valor))) continue;
+    if (HORA.test(valor)) {
+      if (!horario) horario = valor;
+      continue;
+    }
+    if (!local) local = valor;
+  }
+  return { local, horario };
+}
+
+/**
+ * Confrontos de um bloco "RODADAS", sem rotulo de jogo.
+ *
+ * O Queimado lista os jogos da fase de grupos num bloco proprio, um por linha,
+ * sem "JOGO N" e sem horario. Como as referencias da propria aba contam por
+ * essa ordem ("PERDEDOR J3" e o terceiro da lista), a numeracao sai da ordem
+ * em que aparecem.
+ */
+export function lerRodadas(grade) {
+  const cabecalho = acharCelula(grade, (v) => /^rodadas\b/.test(chave(v)));
+  if (!cabecalho) return [];
+  const jogos = [];
+  for (let l = cabecalho.linha + 1; l < grade.length; l += 1) {
+    const confronto = (grade[l][cabecalho.coluna] ?? '').trim();
+    // Linha em branco fecha o bloco: o que vem depois, na mesma coluna, ja e
+    // outra coisa da planilha.
+    if (!confronto) {
+      if (jogos.length) break;
+      continue;
+    }
+    const [casa, fora] = confronto.split(/\s+[x×]\s+/i).map((v) => (v ?? '').trim());
+    if (!casa || !fora) continue;
+    jogos.push({ numero: jogos.length + 1, casa, fora, local: '', horario: '' });
+  }
+  return jogos;
+}
+
 export function lerMataMata(grade, colunaDosJogos) {
   // O mata-mata mora num bloco proprio, numa coluna diferente da fase de
   // grupos. Prender a leitura em "JOGO 16" so funcionava no futsal masculino:
@@ -220,8 +277,7 @@ export function lerMataMata(grade, colunaDosJogos) {
       numero: Number(numero[1]),
       casa,
       fora,
-      local: (grade[l][primeiro.coluna + 6] ?? '').trim(),
-      horario: (grade[l][primeiro.coluna + 9] ?? '').trim(),
+      ...localEHorario(grade[l], primeiro.coluna + 4, primeiro.coluna + 9),
     });
   }
   return jogos.sort((a, b) => a.numero - b.numero);
@@ -647,7 +703,13 @@ export function jaAgendado(estado, categoriaId, jogo, data) {
 export function planejar(grade, estado) {
   const avisos = [];
   const grupos = lerGrupos(grade);
-  const jogos = lerJogos(grade);
+  /*
+   * A aba do Queimado lista os jogos da fase de grupos num bloco "RODADAS",
+   * sem rotulo "JOGO N" -- que e como todas as outras os identificam. Sem esta
+   * alternativa a categoria inteira ficava de fora: nove jogos de grupo lidos
+   * como zero, e um mata-mata que dependeria de uma classificacao inexistente.
+   */
+  const jogos = lerJogos(grade).length ? lerJogos(grade) : lerRodadas(grade);
   const modalidades = lerModalidades(grade);
 
   const equipesDaEdicao = Object.values(estado.teams ?? {}).map((t) => t.name).filter(Boolean);

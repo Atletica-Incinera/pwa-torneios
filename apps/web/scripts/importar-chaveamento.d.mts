@@ -92,3 +92,5 @@ export function jaAgendado(
 ): boolean;
 
 export function lerDiasDeMataMata(grade: string[][], ano: number): Map<string, string>;
+
+export function lerRodadas(grade: string[][]): Jogo[];
