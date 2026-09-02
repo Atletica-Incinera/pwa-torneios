@@ -311,7 +311,16 @@ function LiveMatchContent() {
   async function startMatch() {
     if (!authorized || operationLock.current) return;
     if (operatorConflict) { toast(`${persisted.operatorName ?? 'Outro operador'} está com o placar. Assuma a operação antes de iniciar.`, 'error'); return; }
-    const check = evaluateStart({ status, date: persisted.date ?? match.date, time: persisted.time ?? match.time }, new Date());
+    // As marcas de "a definir" precisam entrar aqui: sem elas a checagem nunca
+    // ve que o adversario ainda depende de um resultado, e a mesa so descobre
+    // pelo erro da API depois de confirmar.
+    const check = evaluateStart({
+      status,
+      date: persisted.date ?? match.date,
+      time: persisted.time ?? match.time,
+      aDefinirA: persisted.aDefinirA ?? match.aDefinirA,
+      aDefinirB: persisted.aDefinirB ?? match.aDefinirB,
+    }, new Date());
     if (!check.allowed) { toast(check.message, 'error'); return; }
     // O desvio de horário é calculado pelo app e vai direto para a auditoria —
     // não faz sentido pedir para o operador redigitar o que já está registrado.

@@ -13,7 +13,7 @@ import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDu
 import { analyzeCorrectionImpact } from '../lib/tournament-progression';
 import { createId } from '../lib/create-id';
 
-type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string };
+type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string; aDefinirA?: boolean; aDefinirB?: boolean; tournamentId?: string };
 
 export function MatchManager({ match }: { match: MatchBase }) {
   const { state, dispatch } = useFrontendState();
@@ -35,6 +35,69 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [correction, setCorrection] = useState({ scoreA: String(override.scoreA ?? 0), scoreB: String(override.scoreB ?? 0), reason: '' });
+
+  /*
+   * Lado que ainda e um rotulo, e que so uma pessoa sabe resolver.
+   *
+   * O mata-mata o app resolve sozinho, lendo a classificacao. Ja o grupo de
+   * tres jogado como mini-chave -- "VORAZ x PERDEDOR J3", que a planilha traz
+   * dentro da fase de grupos -- nao segue regra nenhuma que o app conheca.
+   *
+   * Sem esta tela esses jogos ficam impossiveis de operar: a mesa nao abre
+   * partida sem os dois participantes. E como a geracao do mata-mata exige
+   * TODOS os jogos da fase de grupos encerrados, a chave da categoria inteira
+   * nunca seria montada. Sao doze jogos assim no InterEng 2026, travando
+   * quatro chaveamentos.
+   */
+  const aDefinirA = Boolean(override.aDefinirA ?? match.aDefinirA);
+  const aDefinirB = Boolean(override.aDefinirB ?? match.aDefinirB);
+  const temLadoADefinir = aDefinirA || aDefinirB;
+  const tournamentId = override.tournamentId ?? match.tournamentId;
+  const inscritas = useMemo(() => {
+    const categoria = tournamentId ? state.tournaments[tournamentId] : undefined;
+    return categoria?.participants ?? [];
+  }, [state.tournaments, tournamentId]);
+  const [definindo, setDefinindo] = useState({ entryA: '', entryB: '' });
+  const [definindoErro, setDefinindoErro] = useState('');
+  const [definindoEnviando, setDefinindoEnviando] = useState(false);
+
+  async function definirParticipantes(evento: FormEvent) {
+    evento.preventDefault();
+    const patch: Record<string, string> = {};
+    if (aDefinirA && definindo.entryA) patch.entryA = definindo.entryA;
+    if (aDefinirB && definindo.entryB) patch.entryB = definindo.entryB;
+    if (!Object.keys(patch).length) {
+      setDefinindoErro('Escolha a equipe do lado que ainda está a definir.');
+      return;
+    }
+    const outroLado = aDefinirA && !aDefinirB ? match.entryB : !aDefinirA && aDefinirB ? match.entryA : '';
+    if (outroLado && Object.values(patch).includes(outroLado)) {
+      setDefinindoErro('Os participantes devem ser diferentes.');
+      return;
+    }
+    if (patch.entryA && patch.entryA === patch.entryB) {
+      setDefinindoErro('Os participantes devem ser diferentes.');
+      return;
+    }
+    setDefinindoEnviando(true);
+    setDefinindoErro('');
+    try {
+      await dispatch({
+        type: 'match/update',
+        payload: { id: match.id, patch },
+        audit: {
+          action: 'Participante definido',
+          entity: `${match.entryA} × ${match.entryB}`,
+          after: Object.values(patch).join(' e '),
+        },
+      });
+      toast('Participante definido. A partida já pode ser operada.', 'success');
+    } catch (falha) {
+      setDefinindoErro(falha instanceof Error ? falha.message : 'Não foi possível definir o participante.');
+    } finally {
+      setDefinindoEnviando(false);
+    }
+  }
 
   const requirement = statusRequirements[draft.status];
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
@@ -138,6 +201,18 @@ export function MatchManager({ match }: { match: MatchBase }) {
   if (!allowed) return <div className="info-banner"><p>Seu perfil não pode editar partidas de {match.discipline}.</p></div>;
 
   return <>
+    {temLadoADefinir && !locked ? <form className="entity-form definir-participante" onSubmit={definirParticipantes} noValidate>
+      <div className="form-contract-note"><p>
+        Esta partida depende de um resultado anterior, e por isso ainda não pode ser
+        operada. Diga quem joga para liberá-la — a mesa só abre o placar com os dois
+        participantes definidos.
+      </p></div>
+      {aDefinirA ? <label><span>Quem é &ldquo;{match.entryA}&rdquo;</span><select value={definindo.entryA} onChange={(event) => { setDefinindo((atual) => ({ ...atual, entryA: event.target.value })); setDefinindoErro(''); }}><option value="">Selecione a equipe</option>{inscritas.map((equipe) => <option key={equipe}>{equipe}</option>)}</select></label> : null}
+      {aDefinirB ? <label><span>Quem é &ldquo;{match.entryB}&rdquo;</span><select value={definindo.entryB} onChange={(event) => { setDefinindo((atual) => ({ ...atual, entryB: event.target.value })); setDefinindoErro(''); }}><option value="">Selecione a equipe</option>{inscritas.map((equipe) => <option key={equipe}>{equipe}</option>)}</select></label> : null}
+      {!inscritas.length ? <p className="form-hint">Nenhuma equipe inscrita nesta categoria: inscreva-as na aba Gestão da categoria.</p> : null}
+      {definindoErro ? <p className="form-error" role="alert">{definindoErro}</p> : null}
+      <div className="form-actions"><button type="submit" className="primary-button" disabled={definindoEnviando || !inscritas.length}>{definindoEnviando ? 'Definindo…' : 'Definir participante'}</button></div>
+    </form> : null}
     <form className="entity-form" onSubmit={save} noValidate>
       <div className="form-contract-note"><p>{locked ? `Esta partida está em estado final (${currentStatus}). Use a retificação de resultado para corrigir o placar.` : requirement.consequence}</p></div>
       <label><span>Data</span><input type="date" value={draft.date} onChange={(event) => update('date', event.target.value)} required disabled={locked} /></label>
