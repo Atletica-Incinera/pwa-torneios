@@ -36,3 +36,5 @@ export function montarConfiguracao(
   advancement: { perGroup: number; bestThirds: number; crossing: string; thirdPlaceMatch: boolean };
   [chave: string]: unknown;
 };
+
+export function nomeNoApp(daPlanilha: string): string;

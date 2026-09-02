@@ -171,3 +171,29 @@ test('monta a configuração da categoria a partir da planilha', async () => {
     thirdPlaceMatch: true,
   });
 });
+
+test('nomes da planilha viram os nomes que o app conhece', async () => {
+  const { nomeNoApp } = await import('../../scripts/importar-chaveamento.mjs');
+  // O regulamento padrão é resolvido por nome exato. "VOLEIBOL" não casa com
+  // "Vôlei" e nasceria com regra de futebol — dois tempos de 20 minutos com
+  // cronômetro — no que deveria ser um jogo de sets.
+  assert.equal(nomeNoApp('VOLEIBOL'), 'Vôlei');
+  assert.equal(nomeNoApp('NATAÇÃO'), 'Natação');
+  assert.equal(nomeNoApp('TÊNIS DE MESA'), 'Tênis de Mesa');
+  assert.equal(nomeNoApp('XADREZ'), 'Xadrez');
+  assert.equal(nomeNoApp('HANDEBOL'), 'Handebol');
+  assert.equal(nomeNoApp('FUTSAL'), 'Futsal');
+  assert.equal(nomeNoApp('BASQUETE'), 'Basquete');
+  assert.equal(nomeNoApp('QUEIMADO'), 'Queimado');
+  // Esporte fora da lista passa direto, com a grafia da planilha.
+  assert.equal(nomeNoApp('Peteca'), 'Peteca');
+});
+
+test('as oito modalidades da planilha viram nomes conhecidos', async () => {
+  const { nomeNoApp } = await import('../../scripts/importar-chaveamento.mjs');
+  const daPlanilha = lerModalidades(grade).map((m) => nomeNoApp(m.nome));
+  assert.deepEqual(daPlanilha, [
+    'Futsal', 'Handebol', 'Basquete', 'Vôlei',
+    'Queimado', 'Xadrez', 'Tênis de Mesa', 'Natação',
+  ]);
+});

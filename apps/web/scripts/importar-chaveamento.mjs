@@ -179,6 +179,37 @@ export function lerMataMata(grade) {
   return jogos.sort((a, b) => a.numero - b.numero);
 }
 
+/**
+ * Nome da modalidade como o app a conhece.
+ *
+ * O regulamento padrao e resolvido por nome EXATO: "Vôlei" nasce por sets,
+ * "Xadrez" por rodadas, "Natação" por prova. Criar "VOLEIBOL" em caixa alta
+ * nao casa com nenhum preset, e a modalidade nasceria com regra de futebol --
+ * dois tempos de vinte minutos com cronometro regressivo -- no que deveria ser
+ * um jogo de sets.
+ *
+ * Queimado e Tenis de Mesa nao tem preset nenhum: entram com a regra generica
+ * e precisam de regulamento a mao. O importador diz quais sao.
+ */
+const NOMES_DO_APP = {
+  futsal: 'Futsal',
+  basquete: 'Basquete',
+  handebol: 'Handebol',
+  voleibol: 'Vôlei',
+  volei: 'Vôlei',
+  xadrez: 'Xadrez',
+  natacao: 'Natação',
+  queimado: 'Queimado',
+  'tenis de mesa': 'Tênis de Mesa',
+};
+const COM_REGULAMENTO_PRONTO = new Set(['Futsal', 'Vôlei', 'Handebol', 'Xadrez', 'Natação', 'Basquete']);
+/** Esporte disputado por pessoa, nao por equipe. */
+const INDIVIDUAIS = new Set(['Xadrez', 'Natação', 'Tênis de Mesa']);
+
+export function nomeNoApp(daPlanilha) {
+  return NOMES_DO_APP[chave(daPlanilha)] ?? daPlanilha.trim();
+}
+
 /** Confronto que depende de resultado — o app monta esses sozinho. */
 export const dependeDeResultado = (nome) => /vencedor|perdedor|melhor terceiro|^\d+\s+grupo/.test(chave(nome ?? ''));
 
@@ -378,6 +409,45 @@ async function main() {
     for (const aviso of plano.avisos) console.log('  ! ' + aviso);
   }
 
+  /*
+   * Criar modalidade nao depende de categoria nem de data, e precisa rodar
+   * antes da saida antecipada da simulacao -- do contrario um teste seco
+   * nunca mostraria o que seria criado.
+   */
+  if (SO_MODALIDADES) {
+    for (const m of plano.modalidades) {
+      const nome = nomeNoApp(m.nome);
+      const jaExiste = naEdicao.some((existente) => chave(existente) === chave(nome));
+      const modo = INDIVIDUAIS.has(nome) ? 'Individual' : 'Coletiva';
+      const pronto = COM_REGULAMENTO_PRONTO.has(nome);
+      console.log(
+        `  ${jaExiste ? 'ja existe' : 'criar   '}  ${nome.padEnd(14)} ${modo.padEnd(10)} ` +
+        `${pronto ? 'regulamento pronto' : 'REGULAMENTO A DEFINIR'}` +
+        (chave(nome) === chave(m.nome) ? '' : `  (planilha: ${m.nome})`),
+      );
+      if (jaExiste || !APLICAR) continue;
+      await despachar(token, {
+        type: 'discipline/update',
+        payload: { name: nome, patch: { enabled: true, mode: modo } },
+        audit: { action: 'Modalidade habilitada', entity: nome, after: modo },
+      });
+    }
+    const semRegra = plano.modalidades
+      .map((m) => nomeNoApp(m.nome))
+      .filter((nome) => !COM_REGULAMENTO_PRONTO.has(nome));
+    if (semRegra.length) {
+      console.log('');
+      console.log('! Sem regulamento pronto no app: ' + semRegra.join(', ') + '.');
+      console.log('  Elas nascem com a regra generica (2 tempos de 20 min com cronometro).');
+      console.log('  Abra cada uma em Modalidades -> Editar regras antes do evento.');
+    }
+    if (!APLICAR) {
+      console.log('');
+      console.log('SIMULACAO — nada foi gravado. Repita com --aplicar para executar.');
+    }
+    return;
+  }
+
   if (!modalidade) {
     console.log('');
     console.log('! A modalidade "' + pedida + '" nao existe nesta edicao. Ha: ' + (naEdicao.join(', ') || '(nenhuma)') + '.');
@@ -440,17 +510,6 @@ async function main() {
     return;
   }
 
-  if (SO_MODALIDADES) {
-    for (const m of plano.modalidades) {
-      await despachar(token, {
-        type: 'discipline/update',
-        payload: { name: m.nome, patch: { enabled: true } },
-        audit: { action: 'Modalidade habilitada', entity: m.nome, after: 'Habilitada' },
-      });
-      console.log('  modalidade ' + m.nome);
-    }
-    return;
-  }
 
   /*
    * Preencher uma categoria que ja existe, em vez de criar outra.
