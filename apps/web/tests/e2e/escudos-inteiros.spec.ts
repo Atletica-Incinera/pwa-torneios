@@ -15,10 +15,34 @@ import { loginAs } from './helpers';
  */
 const TRANSPARENTE = 'rgba(0, 0, 0, 0)';
 
-const ROTAS_PUBLICAS = ['/public', '/public/teams', '/public/teams/alcateia'];
-const ROTAS_INTERNAS = ['/teams', '/teams/alcateia', '/matches'];
+/*
+ * A lista precisa alcancar TODA tela que mostra escudo, e nao uma amostra.
+ * A primeira versao parava em `/matches` e deixava o detalhe da partida de
+ * fora -- e era la que sobrevivia um quadrado laranja atras de cada brasao,
+ * pintado por uma regra que nomeia `.team-mark` em vez de `.team-mark-logo`.
+ * Passou semanas em producao porque nada olhava aquela tela.
+ */
+const ROTAS_PUBLICAS = [
+  '/public',
+  '/public/teams',
+  '/public/teams/alcateia',
+  '/public/matches',
+  '/public/tournaments/futsal-m',
+];
+const ROTAS_INTERNAS = [
+  '/teams',
+  '/teams/alcateia',
+  '/matches',
+  '/matches/semifinal-1',
+  '/matches/live?partida=semifinal-1',
+  '/tournaments/futsal-m',
+  '/dashboard',
+];
 
 async function inspecionar(page: import('@playwright/test').Page) {
+  // Algumas rotas publicas redirecionam depois de carregar (a de placares
+  // manda para a aba certa). Medir no meio disso derruba o contexto.
+  await page.waitForLoadState('networkidle');
   return page.$$eval('.team-mark-logo', (els) =>
     els.map((el) => {
       const img = el.querySelector('img') as HTMLImageElement;
