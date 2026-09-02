@@ -21,6 +21,12 @@
  * Uso:
  *   $env:INTERENG_SENHA="..."; node scripts/importar-chaveamento.mjs --arquivo "..." --email ana@ufpe.br --data 2026-09-05
  *   ...mesma linha com --aplicar para gravar
+ *
+ * Repita --arquivo/--categoria-id para varias planilhas num login so.
+ *
+ *   --dia-mata-mata AAAA-MM-DD  o mata-mata costuma ser noutro dia
+ *   --so-mata-mata              cadastra so a chave, sem repetir a fase de
+ *                               grupos (para categoria ja importada)
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -655,8 +661,12 @@ async function importarArquivo(token, ARQUIVO, DATA) {
   console.log('');
   for (const grupo of plano.grupos) console.log(`  ${grupo.nome}: ${grupo.equipes.join(', ')}`);
   console.log('');
-  console.log(`Jogos da fase de grupos a agendar: ${plano.daFaseDeGrupos.length}`);
-  for (const jogo of plano.daFaseDeGrupos) {
+  if (flag('so-mata-mata')) {
+    console.log('--so-mata-mata: a fase de grupos fica como esta; so a chave sera cadastrada.');
+    console.log('');
+  }
+  console.log(`Jogos da fase de grupos a agendar: ${flag('so-mata-mata') ? 0 : plano.daFaseDeGrupos.length}`);
+  for (const jogo of flag('so-mata-mata') ? [] : plano.daFaseDeGrupos) {
     const casa = jogo.casa ?? jogo.rotuloCasa;
     const fora = jogo.fora ?? jogo.rotuloFora;
     console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
@@ -879,8 +889,18 @@ async function importarArquivo(token, ARQUIVO, DATA) {
 
   let agendados = 0;
   const falhas = [];
-  for (const jogo of plano.daFaseDeGrupos) {
-    if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
+  /*
+   * Tres categorias ja foram importadas antes de o mata-mata caber na agenda.
+   * Reimportar a planilha inteira duplicaria a fase de grupos: os jogos de
+   * grupo nascem com id sorteado, entao nada os reconheceria como os mesmos.
+   *
+   * Os do mata-mata nao correm esse risco -- o id vem da vaga, e a API recusa
+   * o segundo com o mesmo id.
+   */
+  if (!flag('so-mata-mata')) {
+    for (const jogo of plano.daFaseDeGrupos) {
+      if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
+    }
   }
 
   /*
