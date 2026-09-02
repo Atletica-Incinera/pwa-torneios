@@ -23,6 +23,9 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # URL exclusiva do servidor Next. Evita a volta pelo gateway ao renderizar
+      # o HTML público e não é exposta ao bundle do navegador.
+      - INTERENG_INTERNAL_API_URL=http://intereng-api:3000/api/v1
     networks:
       - incinera-network
     deploy:
