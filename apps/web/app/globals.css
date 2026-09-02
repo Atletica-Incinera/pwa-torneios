@@ -3723,7 +3723,11 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 /* Variante destrutiva reutilizável: até aqui, remover tinha o mesmo peso visual
    de cancelar em toda ação feita fora do diálogo de confirmação. */
 .danger-button { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; border: 1px solid var(--pink); background: transparent; color: var(--pink); font: inherit; font-weight: 900; letter-spacing: .04em; cursor: pointer; }
-.danger-button:hover, .danger-button:focus-visible { background: var(--pink); color: var(--white); }
+.danger-button:hover:not(:disabled), .danger-button:focus-visible:not(:disabled) { background: var(--pink); color: var(--white); }
+/* Botao destrutivo desabilitado nao tinha aparencia propria: ficava identico ao
+   ativo, e so o cursor denunciava. Num botao que apaga, parecer clicavel e a
+   pior das confusoes -- quem tenta duas vezes acha que o app travou. */
+.danger-button:disabled { opacity: 0.45; cursor: not-allowed; }
 .danger-button-inline { min-height: 44px; padding: 0 12px; font-size: 12px; }
 
 .phase-editor-actions button { width: auto; height: auto; min-width: 44px; min-height: 44px; cursor: pointer; }

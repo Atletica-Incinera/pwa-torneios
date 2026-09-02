@@ -79,6 +79,13 @@ function reduce(current: FrontendState, action: Action): FrontendState {
       return { ...current, tournaments: { ...current.tournaments, [id]: setup }, matches: { ...retained, ...matches } };
     }
 
+    case 'category/delete': {
+      // Sai do estado, nao vira marca. Os jogos nao precisam ser varridos aqui:
+      // a acao so passa quando nao ha nenhum.
+      const { [action.payload.id]: excluida, ...restantes } = current.tournaments;
+      return { ...current, tournaments: restantes };
+    }
+
     case 'discipline/update': {
       const { name, patch } = action.payload;
       return { ...current, disciplines: { ...current.disciplines, [name]: { ...current.disciplines[name], ...patch } } };

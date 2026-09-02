@@ -43,7 +43,15 @@ export type CategoryAction =
    * Gera os confrontos e substitui o que havia sido gerado antes — inclusive o
    * mata-mata já avançado, que deixa de valer quando a chave é refeita.
    */
-  | (WithAudit & { type: 'category/generateMatches'; payload: { id: string; setup: TournamentState; matches: Record<string, MatchState> } });
+  | (WithAudit & { type: 'category/generateMatches'; payload: { id: string; setup: TournamentState; matches: Record<string, MatchState> } })
+  /**
+   * Exclusao de verdade. So cai a categoria que nunca foi usada -- rascunho,
+   * sem equipe inscrita e sem jogo agendado -- porque no banco a partida
+   * cascateia da fase, que cascateia da categoria: apagar uma categoria com
+   * jogos levaria junto os resultados, sem aviso e sem volta. Categoria em uso
+   * se arquiva pela situacao. A API repete a mesma trava.
+   */
+  | (WithAudit & { type: 'category/delete'; payload: { id: string } });
 
 /** Operações de modalidade (o esporte e seu regulamento). */
 export type DisciplineAction =
