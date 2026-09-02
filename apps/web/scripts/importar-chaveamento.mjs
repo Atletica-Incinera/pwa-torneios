@@ -795,10 +795,25 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
     console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
   }
 
+  /*
+   * O mata-mata tambem se reconhece, e pelo id: ele vem da vaga na chave, entao
+   * a partida ja cadastrada tem exatamente o mesmo.
+   *
+   * Sem isto a simulacao mostrava as 28 partidas da chave como "a agendar"
+   * mesmo depois de cadastradas, e aplicar de novo produzia 28 recusas da API
+   * -- inofensivas, mas indistinguiveis de uma falha de verdade no meio da
+   * lista.
+   */
+  const vagasNovas = (plano.doMataMata ?? []).filter(
+    (vaga) => !(categoriaAlvo && estado.matches?.[`${categoriaAlvo}-${vaga.sufixo}`]),
+  );
+  const chaveJaAgendada = (plano.doMataMata?.length ?? 0) - vagasNovas.length;
   if (plano.doMataMata?.length) {
     console.log('');
-    console.log(`Mata-mata a agendar: ${plano.doMataMata.length}  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
-    for (const vaga of plano.doMataMata) {
+    console.log(`Mata-mata a agendar: ${vagasNovas.length}` +
+      (chaveJaAgendada ? `  (${chaveJaAgendada} ja estao na agenda)` : '') +
+      `  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
+    for (const vaga of vagasNovas) {
       console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${vaga.local.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
     }
   }
@@ -1051,7 +1066,15 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
    */
   const diaDoMataMata = DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA;
   let daChave = 0;
+  let chaveJaEstava = 0;
   for (const vaga of plano.doMataMata ?? []) {
+    // O id vem da vaga: a partida ja cadastrada tem exatamente o mesmo. A API
+    // recusaria a segunda, mas recusa vira "falha" na lista e esconde as de
+    // verdade.
+    if (estado.matches?.[`${categoriaId}-${vaga.sufixo}`]) {
+      chaveJaEstava += 1;
+      continue;
+    }
     const feito = await agendar({
       id: `${categoriaId}-${vaga.sufixo}`,
       rotuloCasa: vaga.rotuloA,
@@ -1067,7 +1090,13 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
 
   console.log('');
   console.log(`Concluido: ${agendados} jogos da fase de grupos e ${daChave} do mata-mata, ${falhas.length} falhas.`);
-  if (jaEstavam) console.log(`${jaEstavam} jogos da fase de grupos ja estavam na agenda e ficaram como estavam.`);
+  if (jaEstavam || chaveJaEstava) {
+    const partes = [
+      jaEstavam && `${jaEstavam} da fase de grupos`,
+      chaveJaEstava && `${chaveJaEstava} do mata-mata`,
+    ].filter(Boolean);
+    console.log(`${partes.join(' e ')} ja estavam na agenda e ficaram como estavam.`);
+  }
   for (const falha of falhas) console.log('  ! ' + falha);
   if (daChave) console.log(`A chave ja fica publica com os rotulos; o app troca cada rotulo pela equipe quando o resultado sair.`);
 }

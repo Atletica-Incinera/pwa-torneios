@@ -458,3 +458,26 @@ test('a agenda também diz o dia do mata-mata', async () => {
   assert.equal(dias.get('volei masculino'), '2026-09-05');
   assert.equal(dias.get('handebol masculino'), '2026-09-06');
 });
+
+test('o mata-mata já cadastrado é reconhecido pelo próprio id', async () => {
+  // O id da partida da chave vem da vaga (`<categoria>-advanced-r2-1`), então a
+  // que já está cadastrada tem exatamente o mesmo. Sem reconhecer, uma segunda
+  // execução mandaria as 28 partidas de novo e colheria 28 recusas da API —
+  // inofensivas, mas indistinguíveis de uma falha de verdade no meio da lista.
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  const grade = lerGrade(fixture('basquete-masculino'));
+  const { vagas } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+  const categoria = 'cat-1';
+  const jaCadastradas = Object.fromEntries(
+    vagas.map((vaga) => [`${categoria}-${vaga.sufixo}`, { tournamentId: categoria }]),
+  );
+
+  const novas = vagas.filter((vaga) => !jaCadastradas[`${categoria}-${vaga.sufixo}`]);
+  assert.equal(novas.length, 0, 'nenhuma vaga deveria sobrar');
+
+  // E numa categoria diferente nada é reconhecido: os ids não colidem.
+  const noutra = vagas.filter((vaga) => !jaCadastradas[`cat-2-${vaga.sufixo}`]);
+  assert.equal(noutra.length, vagas.length);
+});
