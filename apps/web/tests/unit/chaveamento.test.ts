@@ -238,3 +238,20 @@ test('o nome da categoria sai da planilha sem gritar', async () => {
   assert.equal(emCaixaDeTitulo('TÊNIS DE MESA FEMININO'), 'Tênis de Mesa Feminino');
   assert.equal(emCaixaDeTitulo('QUEIMADO'), 'Queimado');
 });
+
+test('a agenda diz o dia de cada categoria', async () => {
+  const { lerDias } = await import('../../scripts/importar-chaveamento.mjs');
+  const pasta = dirname(fileURLToPath(import.meta.url));
+  const dias = lerDias(lerGrade(join(pasta, '../fixtures/chaveamento-dias.csv')), 2026);
+
+  assert.equal(dias.get('futsal feminino'), '2026-09-05');
+  assert.equal(dias.get('handebol masculino'), '2026-09-06');
+  assert.equal(dias.get('basquete masculino'), '2026-09-07');
+  // O futsal masculino aparece no dia 6 (grupos) e no 7 (mata-mata). A
+  // primeira ocorrência manda, porque é a fase de grupos que se importa.
+  assert.equal(dias.get('futsal masculino'), '2026-09-06');
+  // A agenda escreve "VOLEI", os arquivos escrevem "VOLEIBOL" — quem concilia
+  // é a tradução de nome, não esta leitura.
+  assert.equal(dias.get('volei masculino'), '2026-09-05');
+  assert.equal(dias.get('voleibol masculino'), undefined);
+});

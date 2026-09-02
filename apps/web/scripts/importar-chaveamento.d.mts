@@ -42,3 +42,5 @@ export function nomeNoApp(daPlanilha: string): string;
 export function colunaDosJogos(grade: string[][]): number;
 
 export function emCaixaDeTitulo(texto: string): string;
+
+export function lerDias(grade: string[][], ano: number): Map<string, string>;

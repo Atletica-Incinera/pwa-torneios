@@ -35,7 +35,12 @@ const opcao = (nome, padrao) => {
 const API = opcao('api', 'https://incinera.cin.ufpe.br/intereng-api/api/v1');
 const EMAIL = opcao('email');
 const SENHA = process.env.INTERENG_SENHA;
-const ARQUIVO = opcao('arquivo');
+/** Todas as ocorrencias de --arquivo: varias planilhas num login so. */
+const ARQUIVOS = args.reduce((lista, atual, indice) => (
+  atual === '--arquivo' && args[indice + 1] ? [...lista, args[indice + 1]] : lista
+), []);
+const ARQUIVO = ARQUIVOS[0];
+const DIAS = opcao('dias');
 const DATA = opcao('data');
 const APLICAR = flag('aplicar');
 const SO_MODALIDADES = flag('somente-modalidades');
@@ -228,6 +233,39 @@ const INDIVIDUAIS = new Set(['Xadrez', 'Natação', 'Tênis de Mesa']);
  * Preposicao fica minuscula: "Tenis de Mesa Feminino", nao "Tenis De Mesa
  * Feminino".
  */
+/**
+ * Dia de cada categoria, lido da aba "DIAS X MODALIDADES".
+ *
+ * A data era um argumento por execucao, e com sete planilhas isso vira sete
+ * logins -- o servidor permite dez por cinco minutos, entao simular e aplicar
+ * cada uma estourava o limite no meio do trabalho. A organizacao ja escreveu
+ * essa agenda; ler dali evita repetir o que ela ja decidiu e permite importar
+ * tudo num login so.
+ *
+ * O cabecalho traz "05/09", "06/09", "07/09" em colunas separadas, e abaixo de
+ * cada uma as categorias daquele dia.
+ */
+export function lerDias(grade, ano) {
+  const cabecalho = grade.findIndex((linha) =>
+    linha.some((celula) => /^\d{2}\/\d{2}$/.test((celula ?? '').trim())),
+  );
+  if (cabecalho < 0) return new Map();
+  const porCategoria = new Map();
+  grade[cabecalho].forEach((celula, coluna) => {
+    const dia = /^(\d{2})\/(\d{2})$/.exec((celula ?? '').trim());
+    if (!dia) return;
+    const data = `${ano}-${dia[2]}-${dia[1]}`;
+    for (let l = cabecalho + 1; l < grade.length; l += 1) {
+      const categoria = (grade[l][coluna] ?? '').trim();
+      if (!categoria) continue;
+      // A primeira ocorrencia manda: o futsal masculino aparece no dia 6 (fase
+      // de grupos) e no 7 (mata-mata), e o que se importa aqui sao os grupos.
+      if (!porCategoria.has(chave(categoria))) porCategoria.set(chave(categoria), data);
+    }
+  });
+  return porCategoria;
+}
+
 export function emCaixaDeTitulo(texto) {
   const minusculas = new Set(['de', 'do', 'da', 'dos', 'das', 'e']);
   return texto
@@ -390,13 +428,12 @@ export function planejar(grade, estado) {
   return { grupos, jogos, modalidades, daFaseDeGrupos, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
-async function main() {
+async function importarArquivo(token, ARQUIVO, DATA) {
   if (!EMAIL) throw new Error('Informe --email.');
   if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
   if (!ARQUIVO || !existsSync(ARQUIVO)) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
 
   const grade = lerGrade(ARQUIVO);
-  const token = await entrar();
   const estado = await estadoAtual(token);
   const plano = planejar(grade, estado);
 
@@ -641,6 +678,44 @@ async function main() {
 }
 
 // Só executa quando chamado direto: o teste importa as funções de leitura.
+/**
+ * Um login para todas as planilhas.
+ *
+ * O servidor aceita dez logins por identidade a cada cinco minutos, e passar
+ * disso bloqueia por mais cinco. Com sete planilhas, simular e aplicar cada
+ * uma dava catorze logins: o limite estourava no meio do trabalho, e no meio
+ * de um evento a tres dias de comecar.
+ */
+async function main() {
+  if (!EMAIL) throw new Error('Informe --email.');
+  if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
+  if (!ARQUIVOS.length) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
+  for (const arquivo of ARQUIVOS) {
+    if (!existsSync(arquivo)) throw new Error(`Arquivo não encontrado: ${arquivo}`);
+  }
+  if (ARQUIVOS.length > 1 && !DIAS && !DATA) {
+    throw new Error('Com mais de uma planilha, informe --dias com a aba "DIAS X MODALIDADES" (ou --data para todas).');
+  }
+
+  const token = await entrar();
+  const agenda = DIAS ? lerDias(lerGrade(DIAS), Number(opcao('ano', '2026'))) : new Map();
+
+  for (const arquivo of ARQUIVOS) {
+    const nomeDoArquivo = arquivo.split(/[\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop().trim();
+    // A agenda escreve "VOLEI MASCULINO" e o arquivo "VOLEIBOL MASCULINO": a
+    // primeira palavra passa pela mesma traducao usada em todo o resto.
+    const [modalidade, ...resto] = nomeDoArquivo.split(/\s+/);
+    const chaveDaAgenda = chave([nomeNoApp(modalidade), ...resto].join(' '));
+    const data = DATA ?? agenda.get(chaveDaAgenda) ?? agenda.get(chave(nomeDoArquivo));
+    if (ARQUIVOS.length > 1) {
+      console.log('');
+      console.log('══════ ' + nomeDoArquivo + ' ══════');
+      if (!data) console.log('! Sem data na agenda para "' + nomeDoArquivo + '" — esta planilha nao sera gravada.');
+    }
+    await importarArquivo(token, arquivo, data);
+  }
+}
+
 if (process.argv[1] && process.argv[1].endsWith('importar-chaveamento.mjs')) main().catch((erro) => {
   console.error('\nFalhou: ' + erro.message);
   process.exitCode = 1;
