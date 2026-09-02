@@ -295,11 +295,21 @@ async function main() {
   const plano = planejar(grade, estado);
 
   const nomeDaCategoria = (opcao('categoria') ?? ARQUIVO.split(/[\\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop()).trim();
-  const modalidade = opcao('modalidade') ?? nomeDaCategoria.split(/\s+/)[0];
+  /*
+   * A modalidade tem de sair com a grafia que existe na edicao, nao a da
+   * planilha. A API busca por nome exato: a planilha escreve "FUTSAL" em caixa
+   * alta e a edicao tem "Futsal", e sem casar isso a criacao da categoria
+   * falha logo na primeira acao com "a modalidade nao pertence a esta edicao".
+   */
+  const pedida = opcao('modalidade') ?? nomeDaCategoria.split(/\s+/)[0];
+  const naEdicao = Object.values(estado.disciplines ?? {})
+    .map((d) => d?.name)
+    .filter(Boolean);
+  const modalidade = naEdicao.find((nome) => chave(nome) === chave(pedida));
 
   console.log('');
   console.log('Arquivo    ' + ARQUIVO);
-  console.log('Categoria  ' + nomeDaCategoria + '  (modalidade: ' + modalidade + ')');
+  console.log('Categoria  ' + nomeDaCategoria + '  (modalidade: ' + (modalidade ?? '"' + pedida + '" NAO EXISTE NA EDICAO') + ')');
   console.log('Data       ' + (DATA ?? '(use --data AAAA-MM-DD)'));
   console.log('');
   console.log('Modalidades na planilha: ' + plano.modalidades.map((m) => `${m.nome} (${m.masculino}M/${m.feminino}F)`).join(', '));
@@ -317,12 +327,19 @@ async function main() {
     for (const aviso of plano.avisos) console.log('  ! ' + aviso);
   }
 
+  if (!modalidade) {
+    console.log('');
+    console.log('! A modalidade "' + pedida + '" nao existe nesta edicao. Ha: ' + (naEdicao.join(', ') || '(nenhuma)') + '.');
+    console.log('  Crie a modalidade no app antes, ou informe --modalidade com o nome exato.');
+  }
+
   if (!APLICAR) {
     console.log('');
     console.log('SIMULACAO — nada foi gravado. Repita com --aplicar para executar.');
     return;
   }
   if (!DATA) throw new Error('Para gravar, informe --data AAAA-MM-DD (o dia dos jogos desta categoria).');
+  if (!modalidade) throw new Error('A modalidade "' + pedida + '" nao existe nesta edicao — crie-a antes de importar o chaveamento.');
 
   if (flag('mata-mata')) {
     /*
