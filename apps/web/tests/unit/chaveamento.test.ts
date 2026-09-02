@@ -403,3 +403,44 @@ test('nome errado na planilha vira aviso que diz o que corrigir', async () => {
   // E o jogo não entra: quem decide é quem lê o aviso.
   assert.equal(plano.daFaseDeGrupos.length, 0);
 });
+
+test('reimportar não duplica o que já está na agenda', async () => {
+  // O Futsal Masculino entrou com treze dos quinze jogos: faltam os dois do
+  // grupo de três jogado como mini-chave, que o importador descartava. O jogo
+  // de grupo nasce com id sorteado, então quem o reconhece de uma execução
+  // para outra é o confronto em si — os dois lados, o dia e a hora.
+  const { jaAgendado } = await import('../../scripts/importar-chaveamento.mjs');
+  const estado = {
+    matches: {
+      'match-x': {
+        tournamentId: 'cat-1',
+        entryA: 'Voraz',
+        entryB: 'Alcateia',
+        date: '2026-09-06',
+        time: '10:55',
+      },
+    },
+  };
+  const mesmo = { casa: 'Voraz', fora: 'Alcateia', horario: '10:55' };
+
+  assert.equal(jaAgendado(estado, 'cat-1', mesmo, '2026-09-06'), true);
+  // A ordem dos lados não importa: a planilha pode inverter mandante e visitante.
+  assert.equal(
+    jaAgendado(estado, 'cat-1', { casa: 'Alcateia', fora: 'Voraz', horario: '10:55' }, '2026-09-06'),
+    true,
+  );
+  // Outro horário é outro jogo — as duas equipes podem se enfrentar de novo.
+  assert.equal(jaAgendado(estado, 'cat-1', { ...mesmo, horario: '14:00' }, '2026-09-06'), false);
+  // Outra categoria não conta.
+  assert.equal(jaAgendado(estado, 'cat-2', mesmo, '2026-09-06'), false);
+  // E o confronto com rótulo é reconhecido pelo texto do rótulo.
+  const comRotulo = {
+    matches: {
+      'm': { tournamentId: 'cat-1', entryA: 'Voraz', entryB: 'Perdedor do Jogo 3', date: '2026-09-06', time: '10:55' },
+    },
+  };
+  assert.equal(
+    jaAgendado(comRotulo, 'cat-1', { casa: 'Voraz', rotuloFora: 'Perdedor do Jogo 3', horario: '10:55' }, '2026-09-06'),
+    true,
+  );
+});

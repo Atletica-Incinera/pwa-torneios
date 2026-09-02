@@ -83,3 +83,10 @@ export type VagaDaChave = Jogo & {
   rotuloB: string;
 };
 export function vagasDoMataMata(jogos: Jogo[]): { vagas: VagaDaChave[]; sobraram: Jogo[] };
+
+export function jaAgendado(
+  estado: { matches?: Record<string, { tournamentId?: string; entryA?: string; entryB?: string; date?: string; time?: string }> },
+  categoriaId: string,
+  jogo: { casa?: string; fora?: string; rotuloCasa?: string; rotuloFora?: string; horario?: string },
+  data?: string,
+): boolean;

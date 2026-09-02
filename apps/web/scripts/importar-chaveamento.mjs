@@ -577,6 +577,24 @@ function distanciaDeEdicao(a, b) {
   return linha[b.length];
 }
 
+/**
+ * O confronto ja esta na agenda desta categoria?
+ *
+ * Reconhece pelo que a planilha define -- os dois lados, o dia e a hora --,
+ * nao pelo id, que e sorteado e muda a cada execucao. O lado pode ser equipe
+ * ou rotulo; comparar os dois textos normalizados cobre os dois casos.
+ */
+export function jaAgendado(estado, categoriaId, jogo, data) {
+  const lados = [chave(jogo.casa ?? jogo.rotuloCasa), chave(jogo.fora ?? jogo.rotuloFora)];
+  return Object.values(estado.matches ?? {}).some((partida) => {
+    if (partida.tournamentId !== categoriaId) return false;
+    if (data && partida.date && partida.date !== data) return false;
+    if (jogo.horario && partida.time && partida.time !== jogo.horario) return false;
+    const dela = [chave(partida.entryA ?? ''), chave(partida.entryB ?? '')];
+    return lados.every((lado) => dela.includes(lado));
+  });
+}
+
 export function planejar(grade, estado) {
   const avisos = [];
   const grupos = lerGrupos(grade);
@@ -715,8 +733,14 @@ async function importarArquivo(token, ARQUIVO, DATA) {
     console.log('--so-mata-mata: a fase de grupos fica como esta; so a chave sera cadastrada.');
     console.log('');
   }
-  console.log(`Jogos da fase de grupos a agendar: ${flag('so-mata-mata') ? 0 : plano.daFaseDeGrupos.length}`);
-  for (const jogo of flag('so-mata-mata') ? [] : plano.daFaseDeGrupos) {
+  const categoriaAlvo = opcao('categoria-id');
+  const daFaseDeGrupos = flag('so-mata-mata') ? [] : plano.daFaseDeGrupos;
+  const novos = categoriaAlvo
+    ? daFaseDeGrupos.filter((jogo) => !jaAgendado(estado, categoriaAlvo, jogo, DATA))
+    : daFaseDeGrupos;
+  console.log(`Jogos da fase de grupos a agendar: ${novos.length}` +
+    (daFaseDeGrupos.length !== novos.length ? `  (${daFaseDeGrupos.length - novos.length} ja estao na agenda)` : ''));
+  for (const jogo of novos) {
     const casa = jogo.casa ?? jogo.rotuloCasa;
     const fora = jogo.fora ?? jogo.rotuloFora;
     console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
@@ -938,17 +962,29 @@ async function importarArquivo(token, ARQUIVO, DATA) {
   };
 
   let agendados = 0;
+  let jaEstavam = 0;
   const falhas = [];
   /*
-   * Tres categorias ja foram importadas antes de o mata-mata caber na agenda.
-   * Reimportar a planilha inteira duplicaria a fase de grupos: os jogos de
-   * grupo nascem com id sorteado, entao nada os reconheceria como os mesmos.
+   * Reimportar uma categoria nao pode duplicar a fase de grupos.
    *
-   * Os do mata-mata nao correm esse risco -- o id vem da vaga, e a API recusa
-   * o segundo com o mesmo id.
+   * O jogo de grupo nasce com id sorteado, entao o id nao o reconhece de uma
+   * execucao para outra -- quem reconhece e o confronto em si: mesma categoria,
+   * mesmos dois lados, mesmo dia e mesma hora.
+   *
+   * Isso importa agora porque o Futsal Masculino entrou com treze dos quinze
+   * jogos: os dois que faltam sao os do grupo de tres jogado como mini-chave,
+   * que o importador descartava. Sem esta checagem, so daria para busca-los
+   * repetindo os treze.
+   *
+   * O mata-mata nao precisa disso: o id vem da vaga na chave, e a API recusa o
+   * segundo com o mesmo id.
    */
   if (!flag('so-mata-mata')) {
     for (const jogo of plano.daFaseDeGrupos) {
+      if (jaAgendado(estado, categoriaId, jogo, DATA)) {
+        jaEstavam += 1;
+        continue;
+      }
       if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
     }
   }
@@ -982,6 +1018,7 @@ async function importarArquivo(token, ARQUIVO, DATA) {
 
   console.log('');
   console.log(`Concluido: ${agendados} jogos da fase de grupos e ${daChave} do mata-mata, ${falhas.length} falhas.`);
+  if (jaEstavam) console.log(`${jaEstavam} jogos da fase de grupos ja estavam na agenda e ficaram como estavam.`);
   for (const falha of falhas) console.log('  ! ' + falha);
   if (daChave) console.log(`A chave ja fica publica com os rotulos; o app troca cada rotulo pela equipe quando o resultado sair.`);
 }
