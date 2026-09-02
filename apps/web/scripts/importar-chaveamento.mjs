@@ -82,7 +82,7 @@ export function lerGrade(caminho) {
 function acharCelula(grade, teste) {
   for (let l = 0; l < grade.length; l += 1) {
     for (let c = 0; c < grade[l].length; c += 1) {
-      if (teste(grade[l][c] ?? '')) return { linha: l, coluna: c };
+      if (teste(grade[l][c] ?? '', c)) return { linha: l, coluna: c };
     }
   }
   return null;
@@ -107,12 +107,14 @@ export function lerModalidades(grade) {
 
 /** Grupos e as equipes de cada um, lidos em colunas. */
 export function lerGrupos(grade) {
-  const primeiro = acharCelula(grade, (v) => /^grupo\s+a$/.test(chave(v)));
+  // Nem toda aba usa "GRUPO A": o futsal feminino tem "GRUPO ÚNICO", com todo
+  // mundo jogando contra todo mundo. O rotulo varia, o prefixo nao.
+  const primeiro = acharCelula(grade, (v) => /^grupo/.test(chave(v)));
   if (!primeiro) return [];
   const grupos = [];
   for (let c = primeiro.coluna; c < (grade[primeiro.linha]?.length ?? 0); c += 1) {
     const rotulo = grade[primeiro.linha][c] ?? '';
-    if (!/^grupo\s+\w+$/.test(chave(rotulo))) continue;
+    if (!/^grupo/.test(chave(rotulo))) continue;
     const equipes = [];
     for (let l = primeiro.linha + 1; l < grade.length; l += 1) {
       const equipe = (grade[l][c] ?? '').trim();
@@ -125,6 +127,11 @@ export function lerGrupos(grade) {
 }
 
 /** Jogos da fase de grupos, com horário e local. */
+export function colunaDosJogos(grade) {
+  const primeiro = acharCelula(grade, (v) => /^jogo\s*1$/.test(chave(v)));
+  return primeiro ? primeiro.coluna : -1;
+}
+
 export function lerJogos(grade) {
   const primeiro = acharCelula(grade, (v) => /^jogo\s*1$/.test(chave(v)));
   if (!primeiro) return [];
@@ -135,7 +142,10 @@ export function lerJogos(grade) {
     if (!numero) continue;
     const confronto = (grade[l][primeiro.coluna + 1] ?? '').trim();
     if (!confronto) continue;
-    const [casa, fora] = confronto.split(/\s+x\s+/i).map((v) => v.trim());
+    // Duas abas usam a letra X e outras o sinal de multiplicacao. Sem os dois,
+    // metade dos confrontos sai com o adversario vazio.
+    const [casa, fora] = confronto.split(/\s+[x×]\s+/i).map((v) => (v ?? '').trim());
+    if (!casa || !fora) continue;
     jogos.push({
       numero: Number(numero[1]),
       casa,
@@ -157,8 +167,14 @@ export function lerJogos(grade) {
  * isso são oito reagendamentos manuais por categoria, e são dezesseis
  * categorias.
  */
-export function lerMataMata(grade) {
-  const primeiro = acharCelula(grade, (v) => /^jogo\s*16$/.test(chave(v)));
+export function lerMataMata(grade, colunaDosJogos) {
+  // O mata-mata mora num bloco proprio, numa coluna diferente da fase de
+  // grupos. Prender a leitura em "JOGO 16" so funcionava no futsal masculino:
+  // no voleibol feminino ele comeca no JOGO 7, e no queimado no JOGO 13.
+  const primeiro = acharCelula(
+    grade,
+    (v, coluna) => /^jogo\s*\d+$/.test(chave(v)) && coluna !== colunaDosJogos,
+  );
   if (!primeiro) return [];
   const jogos = [];
   for (let l = primeiro.linha; l < grade.length; l += 1) {
@@ -471,7 +487,7 @@ async function main() {
      * so por dia, hora e ginasio nelas, na ordem do chaveamento -- quartas,
      * semis, terceiro lugar e final.
      */
-    const agenda = lerMataMata(grade);
+    const agenda = lerMataMata(grade, colunaDosJogos(grade));
     if (!agenda.length) throw new Error('A planilha nao tem bloco de mata-mata.');
     const daCategoria = Object.entries(estado.matches ?? {})
       .filter(([id, partida]) => partida.tournamentId === opcao('categoria-id') && id.includes('-advanced'))

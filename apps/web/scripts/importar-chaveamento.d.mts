@@ -21,7 +21,7 @@ export function lerModalidades(grade: string[][]): Modalidade[];
 export function lerGrupos(grade: string[][]): Grupo[];
 export function lerJogos(grade: string[][]): Jogo[];
 export function dependeDeResultado(nome: string): boolean;
-export function lerMataMata(grade: string[][]): Jogo[];
+export function lerMataMata(grade: string[][], colunaDosJogos?: number): Jogo[];
 export function ordemNoChaveamento(id: string): number;
 
 export type Plano = { grupos: Grupo[]; participantes: string[] };
@@ -38,3 +38,5 @@ export function montarConfiguracao(
 };
 
 export function nomeNoApp(daPlanilha: string): string;
+
+export function colunaDosJogos(grade: string[][]): number;

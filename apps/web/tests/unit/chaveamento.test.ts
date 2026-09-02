@@ -7,6 +7,7 @@ import {
   lerGrade,
   lerGrupos,
   lerJogos,
+  lerMataMata,
   lerModalidades,
 } from '../../scripts/importar-chaveamento.mjs';
 
@@ -87,8 +88,11 @@ test('a leitura acusa a equipe do grupo que não joga nada', () => {
 });
 
 test('lê o bloco do mata-mata com horário e ginásio', async () => {
-  const { lerMataMata } = await import('../../scripts/importar-chaveamento.mjs');
-  const jogos = lerMataMata(grade);
+  const { lerMataMata, colunaDosJogos } = await import('../../scripts/importar-chaveamento.mjs');
+  // O bloco do mata-mata e reconhecido por estar numa coluna diferente da fase
+  // de grupos: prender em "JOGO 16" so funcionava nesta aba, e no voleibol
+  // feminino o mata-mata comeca no JOGO 7.
+  const jogos = lerMataMata(grade, colunaDosJogos(grade));
   // Quatro quartas, duas semis, terceiro lugar e final.
   assert.equal(jogos.length, 8);
   assert.deepEqual(jogos.map((j) => j.numero), [16, 17, 18, 19, 20, 21, 22, 23]);
@@ -196,4 +200,31 @@ test('as oito modalidades da planilha viram nomes conhecidos', async () => {
     'Futsal', 'Handebol', 'Basquete', 'Vôlei',
     'Queimado', 'Xadrez', 'Tênis de Mesa', 'Natação',
   ]);
+});
+
+test('lê as abas que fogem do formato do Futsal Masculino', async () => {
+  const { colunaDosJogos } = await import('../../scripts/importar-chaveamento.mjs');
+  const pasta = dirname(fileURLToPath(import.meta.url));
+  const abrir = (arquivo: string) => lerGrade(join(pasta, '../fixtures/' + arquivo));
+
+  // Grupo único: todo mundo contra todo mundo, sem "GRUPO A".
+  const feminino = abrir('chaveamento-futsal-feminino.csv');
+  const gruposF = lerGrupos(feminino);
+  assert.deepEqual(gruposF.map((g) => g.nome), ['GRUPO ÚNICO']);
+  assert.equal(gruposF[0].equipes.length, 5);
+  // Cinco equipes em turno único dão dez confrontos.
+  assert.equal(lerJogos(feminino).length, 10);
+  // E o separador aqui é "×", não a letra X — sem os dois, metade dos
+  // confrontos sairia sem adversário.
+  assert.deepEqual(lerJogos(feminino)[0].casa, 'CANGACEIROS');
+  assert.deepEqual(lerJogos(feminino)[0].fora, 'TORMENTA');
+
+  // Dois grupos de quatro: seis jogos em cada.
+  const basquete = abrir('chaveamento-basquete-masculino.csv');
+  assert.equal(lerGrupos(basquete).length, 2);
+  assert.equal(lerJogos(basquete).length, 12);
+
+  // O mata-mata do voleibol feminino começa no JOGO 7, não no 16.
+  const volei = abrir('chaveamento-voleibol-feminino.csv');
+  assert.equal(lerMataMata(volei, colunaDosJogos(volei)).length, 4);
 });
