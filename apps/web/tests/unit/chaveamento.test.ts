@@ -85,3 +85,52 @@ test('a leitura acusa a equipe do grupo que não joga nada', () => {
   const semJogo = grupoC.equipes.filter((equipe) => !emJogo.has(equipe));
   assert.deepEqual(semJogo, ['INVASORA']);
 });
+
+test('lê o bloco do mata-mata com horário e ginásio', async () => {
+  const { lerMataMata } = await import('../../scripts/importar-chaveamento.mjs');
+  const jogos = lerMataMata(grade);
+  // Quatro quartas, duas semis, terceiro lugar e final.
+  assert.equal(jogos.length, 8);
+  assert.deepEqual(jogos.map((j) => j.numero), [16, 17, 18, 19, 20, 21, 22, 23]);
+  assert.deepEqual(jogos[0], {
+    numero: 16,
+    casa: '1 GRUPO A',
+    fora: 'MELHOR TERCEIRO COLOCADO',
+    local: 'GINÁSIO A',
+    horario: '08:00',
+  });
+  const final = jogos.at(-1);
+  assert.ok(final, 'a planilha não trouxe a final');
+  assert.equal(final.horario, '12:00');
+  // Todos dependem de resultado: nenhum pode ser agendado antes dos grupos.
+  assert.ok(jogos.every((j) => dependeDeResultado(j.casa) && dependeDeResultado(j.fora)));
+});
+
+test('a ordem do chaveamento segue quartas, semis, terceiro e final', async () => {
+  const { ordemNoChaveamento } = await import('../../scripts/importar-chaveamento.mjs');
+  // É esta ordem que casa cada partida gerada com a linha certa da planilha:
+  // errar aqui poria a final às 08:00 e uma quarta de final às 12:00.
+  const ids = [
+    'cat-advanced-final',
+    'cat-advanced-third',
+    'cat-advanced-r2-2',
+    'cat-advanced-r1-3',
+    'cat-advanced-r1-1',
+    'cat-advanced-r2-1',
+    'cat-advanced-r1-4',
+    'cat-advanced-r1-2',
+  ];
+  const ordenados = [...ids].sort((a, b) => ordemNoChaveamento(a) - ordemNoChaveamento(b));
+  assert.deepEqual(ordenados, [
+    'cat-advanced-r1-1',
+    'cat-advanced-r1-2',
+    'cat-advanced-r1-3',
+    'cat-advanced-r1-4',
+    'cat-advanced-r2-1',
+    'cat-advanced-r2-2',
+    'cat-advanced-third',
+    'cat-advanced-final',
+  ]);
+  // Os nomes antigos de semifinal continuam ordenando junto com a rodada 2.
+  assert.ok(ordemNoChaveamento('cat-advanced-semi-1') < ordemNoChaveamento('cat-advanced-third'));
+});

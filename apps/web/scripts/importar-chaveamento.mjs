@@ -147,8 +147,57 @@ export function lerJogos(grade) {
   return jogos.sort((a, b) => a.numero - b.numero);
 }
 
+/**
+ * Bloco do mata-mata: os confrontos que dependem de resultado, com horário e
+ * local.
+ *
+ * Fica num bloco próprio, à esquerda da fase de grupos, e por isso não é lido
+ * por `lerJogos`. As partidas em si o app cria sozinho ao fim dos grupos; o
+ * que se aproveita daqui é a AGENDA — dia, hora e ginásio de cada uma. Sem
+ * isso são oito reagendamentos manuais por categoria, e são dezesseis
+ * categorias.
+ */
+export function lerMataMata(grade) {
+  const primeiro = acharCelula(grade, (v) => /^jogo\s*16$/.test(chave(v)));
+  if (!primeiro) return [];
+  const jogos = [];
+  for (let l = primeiro.linha; l < grade.length; l += 1) {
+    const rotulo = (grade[l][primeiro.coluna] ?? '').trim();
+    const numero = /^jogo\s*(\d+)$/.exec(chave(rotulo));
+    if (!numero) continue;
+    const casa = (grade[l][primeiro.coluna + 1] ?? '').trim();
+    const fora = (grade[l][primeiro.coluna + 3] ?? '').trim();
+    if (!casa || !fora) continue;
+    jogos.push({
+      numero: Number(numero[1]),
+      casa,
+      fora,
+      local: (grade[l][primeiro.coluna + 6] ?? '').trim(),
+      horario: (grade[l][primeiro.coluna + 9] ?? '').trim(),
+    });
+  }
+  return jogos.sort((a, b) => a.numero - b.numero);
+}
+
 /** Confronto que depende de resultado — o app monta esses sozinho. */
 export const dependeDeResultado = (nome) => /vencedor|perdedor|melhor terceiro|^\d+\s+grupo/.test(chave(nome ?? ''));
+
+/**
+ * Posicao da partida no chaveamento, a partir do id que o app gera.
+ *
+ * O app nomeia as partidas geradas por rodada e vaga (`-advanced-r1-2`), com
+ * a final e a disputa de terceiro por nome. A ordem aqui e a mesma da
+ * planilha: quartas, semis, terceiro lugar e final.
+ */
+export function ordemNoChaveamento(id) {
+  const rodada = /-advanced-r(\d+)-(\d+)$/.exec(id);
+  if (rodada) return Number(rodada[1]) * 100 + Number(rodada[2]);
+  if (id.endsWith('-advanced-semi-1')) return 201;
+  if (id.endsWith('-advanced-semi-2')) return 202;
+  if (id.endsWith('-advanced-third')) return 900;
+  if (id.endsWith('-advanced-final')) return 901;
+  return 999;
+}
 
 async function entrar() {
   const resposta = await fetch(API + '/auth/login', {
@@ -274,6 +323,54 @@ async function main() {
     return;
   }
   if (!DATA) throw new Error('Para gravar, informe --data AAAA-MM-DD (o dia dos jogos desta categoria).');
+
+  if (flag('mata-mata')) {
+    /*
+     * Agenda o mata-mata que o app ja gerou.
+     *
+     * Roda DEPOIS que a fase de grupos termina: antes disso as partidas nao
+     * existem, porque quem as cria e a classificacao real. O que se faz aqui e
+     * so por dia, hora e ginasio nelas, na ordem do chaveamento -- quartas,
+     * semis, terceiro lugar e final.
+     */
+    const agenda = lerMataMata(grade);
+    if (!agenda.length) throw new Error('A planilha nao tem bloco de mata-mata.');
+    const daCategoria = Object.entries(estado.matches ?? {})
+      .filter(([id, partida]) => partida.tournamentId === opcao('categoria-id') && id.includes('-advanced'))
+      .map(([id, partida]) => ({ id, partida, ordem: ordemNoChaveamento(id) }))
+      .sort((a, b) => a.ordem - b.ordem);
+
+    if (!daCategoria.length) {
+      throw new Error('Nenhuma partida de mata-mata encontrada. Ela so existe depois que a fase de grupos termina.');
+    }
+    if (daCategoria.length !== agenda.length) {
+      console.log(`! A planilha tem ${agenda.length} jogos de mata-mata e o app gerou ${daCategoria.length}. Confira antes de aplicar.`);
+    }
+
+    console.log('');
+    for (let i = 0; i < Math.min(agenda.length, daCategoria.length); i += 1) {
+      const alvo = daCategoria[i];
+      const desejado = agenda[i];
+      console.log(`  J${desejado.numero}  ${DATA ?? '(--data)'} ${desejado.horario} ${desejado.local}  <-  ${alvo.partida.entryA} x ${alvo.partida.entryB}`);
+    }
+    if (!APLICAR) {
+      console.log('');
+      console.log('SIMULACAO — nada foi gravado. Repita com --aplicar para executar.');
+      return;
+    }
+    for (let i = 0; i < Math.min(agenda.length, daCategoria.length); i += 1) {
+      const alvo = daCategoria[i];
+      const desejado = agenda[i];
+      await despachar(token, {
+        type: 'match/update',
+        payload: { id: alvo.id, patch: { date: DATA, time: desejado.horario, venue: desejado.local } },
+        audit: { action: 'Jogo reagendado', entity: `${alvo.partida.entryA} x ${alvo.partida.entryB}`, after: `${DATA} ${desejado.horario}` },
+      });
+    }
+    console.log('');
+    console.log(`Concluido: ${Math.min(agenda.length, daCategoria.length)} jogos do mata-mata agendados.`);
+    return;
+  }
 
   if (SO_MODALIDADES) {
     for (const m of plano.modalidades) {
