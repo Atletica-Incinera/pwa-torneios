@@ -8,7 +8,22 @@ import type { Action } from './actions.ts';
 export type ActionContext = { actor: string };
 
 function patchMatch(current: FrontendState, id: string, patch: Partial<MatchState>): FrontendState {
-  return { ...current, matches: { ...current.matches, [id]: { ...current.matches[id], ...patch } } };
+  /*
+   * Definir o participante apaga o rotulo do mesmo lado, como a API faz.
+   *
+   * Sem isto o lado continuava marcado como "a definir" depois de resolvido:
+   * a tela de definir participante nao saia, e a mesa seguia recusando abrir
+   * a partida. Em producao a API devolve o estado ja corrigido e o defeito nao
+   * aparecia -- so no modo local, que e onde os testes rodam.
+   */
+  const resolvido = {
+    ...(patch.entryA !== undefined ? { aDefinirA: false } : {}),
+    ...(patch.entryB !== undefined ? { aDefinirB: false } : {}),
+  };
+  return {
+    ...current,
+    matches: { ...current.matches, [id]: { ...current.matches[id], ...patch, ...resolvido } },
+  };
 }
 
 /**

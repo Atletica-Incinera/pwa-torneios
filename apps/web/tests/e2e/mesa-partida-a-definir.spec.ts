@@ -36,3 +36,52 @@ test('o jogo com os dois participantes definidos continua começando', async ({ 
   await expect(page.getByRole('alertdialog')).toBeVisible();
   await expect(page.getByRole('alertdialog')).toContainText('Iniciar partida');
 });
+
+/**
+ * O mata-mata o app resolve sozinho, lendo a classificação. Já o grupo de três
+ * jogado como mini-chave — "VORAZ × PERDEDOR J3", que a planilha traz dentro
+ * da fase de grupos — não segue regra nenhuma que o app conheça: quem sabe
+ * quem joga é a organização.
+ *
+ * Sem esta tela esses jogos ficavam impossíveis de operar. E como a geração do
+ * mata-mata exige TODOS os jogos da fase de grupos encerrados, a chave da
+ * categoria inteira nunca seria montada — são doze jogos assim no InterEng
+ * 2026, travando quatro chaveamentos.
+ */
+test('o organizador define quem joga, e a partida passa a ser operável', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/matches/futsal-m-advanced-r1-1/manage');
+
+  const definir = page.locator('form.definir-participante');
+  await expect(definir).toBeVisible();
+  await expect(definir).toContainText('depende de um resultado anterior');
+
+  // Um seletor por lado a definir, com as equipes inscritas na categoria.
+  await definir.getByLabel(/Vencedor do Jogo 1/).selectOption('Alcateia');
+  await definir.getByLabel(/Vencedor do Jogo 2/).selectOption('Cangaceiros');
+  await definir.getByRole('button', { name: 'Definir participante' }).click();
+
+  // Definidos os dois lados, o formulário sai e a mesa passa a poder abrir.
+  await expect(definir).toHaveCount(0);
+  await page.goto('/matches/live?partida=futsal-m-advanced-r1-1');
+  await page.getByRole('button', { name: /^INICIAR PARTIDA/i }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+});
+
+test('a mesma equipe nos dois lados é recusada', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/matches/futsal-m-advanced-r1-1/manage');
+
+  const definir = page.locator('form.definir-participante');
+  await definir.getByLabel(/Vencedor do Jogo 1/).selectOption('Alcateia');
+  await definir.getByLabel(/Vencedor do Jogo 2/).selectOption('Alcateia');
+  await definir.getByRole('button', { name: 'Definir participante' }).click();
+
+  await expect(definir.getByRole('alert')).toContainText('diferentes');
+});
+
+test('partida com os dois lados definidos não mostra o formulário', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/matches/semifinal-1/manage');
+  await expect(page.locator('form.definir-participante')).toHaveCount(0);
+});
