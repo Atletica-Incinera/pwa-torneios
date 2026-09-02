@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { initialFrontendState, type FrontendState } from '../frontend-state.ts';
 import { preferencesChangeEvent, withDevicePreferences, writeDevicePreferences, type DevicePreferences } from './device-preferences.ts';
 import type { Action } from './actions.ts';
@@ -32,9 +32,9 @@ function handleUnauthorized(caught: unknown) {
   if (caught instanceof UnauthorizedError) expireStoredSession();
 }
 
-export function useFrontendState() {
-  const [state, setState] = useState<FrontendState>(initialFrontendState);
-  const [status, setStatus] = useState<StateStatus>('loading');
+function useFrontendStateValue(initialState?: FrontendState) {
+  const [state, setState] = useState<FrontendState>(initialState ?? initialFrontendState);
+  const [status, setStatus] = useState<StateStatus>(initialState ? 'ready' : 'loading');
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>('online');
   const adapter = useMemo(createAdapter, []);
@@ -121,4 +121,25 @@ export function useFrontendState() {
   }, []);
 
   return { state, status, error, hydrated: status === 'ready', source, connection, dispatch, setPreference, refresh };
+}
+
+type FrontendStateValue = ReturnType<typeof useFrontendStateValue>;
+
+const FrontendStateContext = createContext<FrontendStateValue | null>(null);
+
+export function FrontendStateProvider({
+  children,
+  initialState,
+}: {
+  children: React.ReactNode;
+  initialState?: FrontendState;
+}) {
+  const value = useFrontendStateValue(initialState);
+  return createElement(FrontendStateContext.Provider, { value }, children);
+}
+
+export function useFrontendState() {
+  const value = useContext(FrontendStateContext);
+  if (!value) throw new Error('useFrontendState precisa estar dentro de FrontendStateProvider');
+  return value;
 }

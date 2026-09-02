@@ -1,8 +1,16 @@
 import localFont from 'next/font/local';
+import type { Metadata } from 'next';
 import './globals.css';
 import './motion.css';
 import { PwaRegistration } from './components/PwaRegistration';
 import { UiProvider } from './components/UiProvider';
+import { appPath } from './lib/base-path';
+import { loadPublicSnapshot } from './lib/public-snapshot';
+import { FrontendStateProvider } from './lib/repositories/use-frontend-state';
+
+const SITE_URL = 'https://incinera.cin.ufpe.br';
+
+export const dynamic = 'force-dynamic';
 
 const kenyanCoffee = localFont({
   src: [
@@ -34,12 +42,15 @@ const ttTravelsNext = localFont({
   display: 'swap',
 });
 
-import { appPath } from './lib/base-path';
-
-export const metadata = {
-  title: 'InterEng Pernambuco 2026',
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'InterEng Pernambuco 2026',
+    template: '%s | InterEng Pernambuco',
+  },
   description: 'Gestão e acompanhamento das edições do InterEng',
-  manifest: '/manifest.webmanifest',
+  applicationName: 'InterEng Pernambuco',
+  manifest: appPath('/manifest.webmanifest'),
   /*
    * Os ícones passam por `appPath`. O Next aplica o `basePath` no endereço do
    * manifesto, mas não no dos ícones — em produção eles apontavam para a raiz
@@ -55,12 +66,19 @@ export const metadata = {
     apple: [{ url: appPath('/apple-touch-icon.png'), sizes: '180x180', type: 'image/png' }],
   },
   appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const },
+  robots: { index: false, follow: false, nocache: true },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const initialState = await loadPublicSnapshot();
   return (
     <html lang="pt-BR" className={`${kenyanCoffee.variable} ${ttTravelsNext.variable}`}>
-      <body><PwaRegistration /><UiProvider>{children}</UiProvider></body>
+      <body>
+        <PwaRegistration />
+        <FrontendStateProvider initialState={initialState}>
+          <UiProvider>{children}</UiProvider>
+        </FrontendStateProvider>
+      </body>
     </html>
   );
 }

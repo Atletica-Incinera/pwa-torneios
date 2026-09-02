@@ -1,24 +1,15 @@
-'use client';
+import type { Metadata } from 'next';
+import { PublicTournamentsPage } from '../../components/PublicTournamentsPage';
 
-import Link from 'next/link';
-import { PublicAppShell } from '../../components/PublicAppShell';
-import { TournamentCard } from '../../components/TournamentCard';
-import { EmptyState } from '../../components/AppShell';
-import { getActiveEdition, useFrontendState } from '../../lib/repositories/browser-repository';
-import { listCategories } from '../../lib/edition-catalog';
-import { isPublicTournamentStatus } from '../../lib/publication';
+export const metadata: Metadata = {
+  title: 'Modalidades e resultados',
+  description: 'Acompanhe modalidades, fases, tabelas e resultados do InterEng Pernambuco.',
+  alternates: { canonical: '/intereng/public/tournaments' },
+  openGraph: {
+    title: 'Modalidades e resultados do InterEng Pernambuco',
+    description: 'Acompanhe modalidades, fases, tabelas e resultados do InterEng Pernambuco.',
+    url: '/intereng/public/tournaments',
+  },
+};
 
-export default function PublicCategoriesPage() {
-  const { state } = useFrontendState();
-  const activeEdition = getActiveEdition(state);
-  const visible = listCategories(state, activeEdition?.id).filter((item) => isPublicTournamentStatus(item.status));
-
-  return (
-    <PublicAppShell active="disciplines" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="MODALIDADES" subtitle="Categorias, fases e resultados desta edição">
-      <section className="tournament-list" aria-label="Categorias da edição">
-        {visible.map((item, index) => <TournamentCard tournament={item} index={index} detailHref={`/public/tournaments/${item.id}`} resultsHref={`/public/tournaments/${item.id}?aba=jogos`} publicView key={item.id} />)}
-        {!visible.length ? <EmptyState title="SEM MODALIDADES PUBLICADAS" copy="As categorias aparecem aqui quando forem publicadas." /> : null}
-      </section>
-    </PublicAppShell>
-  );
-}
+export default PublicTournamentsPage;

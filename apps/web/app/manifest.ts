@@ -47,7 +47,7 @@ export function construirManifesto(prefixo: string): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: 'Jogos ao vivo', short_name: 'Ao vivo', url: com('/public'), icons: [icone('icon-192.png', '192x192')] },
-      { name: 'Agenda', short_name: 'Agenda', url: com('/public/matches'), icons: [icone('icon-192.png', '192x192')] },
+      { name: 'Agenda', short_name: 'Agenda', url: com('/public/tournaments'), icons: [icone('icon-192.png', '192x192')] },
       { name: 'Equipes', short_name: 'Equipes', url: com('/public/teams'), icons: [icone('icon-192.png', '192x192')] },
     ],
   };

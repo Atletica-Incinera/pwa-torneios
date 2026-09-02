@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 /**
  * A classificacao geral e restrita a organizacao.
@@ -9,5 +9,5 @@ import { redirect } from 'next/navigation';
  * mais no snapshot publico, entao esconder a tela nao e a unica barreira.
  */
 export default function PublicOverallStandingsPage() {
-  redirect('/public/tournaments');
+  permanentRedirect('/public/tournaments');
 }
