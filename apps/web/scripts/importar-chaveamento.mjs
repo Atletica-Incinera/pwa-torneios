@@ -199,6 +199,63 @@ export function lerJogos(grade) {
  * isso são oito reagendamentos manuais por categoria, e são dezesseis
  * categorias.
  */
+const HORA = /^\d{1,2}:\d{2}$/;
+/** Texto que ocupa a celula de horario ou local sem dizer nada. */
+const SEM_INFORMACAO = new Set(['a seguir', 'a definir', 'a confirmar', 'xxxx', '-']);
+
+/**
+ * Local e horario de uma linha do mata-mata, achados pelo que a celula E.
+ *
+ * O bloco nao tem sempre as mesmas colunas: as abas normais trazem uma coluna
+ * de situacao ("A SEGUIR") antes do local, e a do Queimado nao. Lendo por
+ * posicao fixa, o Queimado saia com local e horario vazios -- e foi por isso
+ * que aquela categoria ficou de fora do app.
+ *
+ * A janela e curta de proposito: logo depois dela comeca o bloco da fase de
+ * grupos, e um confronto de la viraria "local" se a busca fosse mais longe.
+ */
+function localEHorario(linha, de, ate) {
+  let local = '';
+  let horario = '';
+  for (let coluna = de; coluna <= ate; coluna += 1) {
+    const valor = (linha[coluna] ?? '').trim();
+    if (!valor || SEM_INFORMACAO.has(chave(valor))) continue;
+    if (HORA.test(valor)) {
+      if (!horario) horario = valor;
+      continue;
+    }
+    if (!local) local = valor;
+  }
+  return { local, horario };
+}
+
+/**
+ * Confrontos de um bloco "RODADAS", sem rotulo de jogo.
+ *
+ * O Queimado lista os jogos da fase de grupos num bloco proprio, um por linha,
+ * sem "JOGO N" e sem horario. Como as referencias da propria aba contam por
+ * essa ordem ("PERDEDOR J3" e o terceiro da lista), a numeracao sai da ordem
+ * em que aparecem.
+ */
+export function lerRodadas(grade) {
+  const cabecalho = acharCelula(grade, (v) => /^rodadas\b/.test(chave(v)));
+  if (!cabecalho) return [];
+  const jogos = [];
+  for (let l = cabecalho.linha + 1; l < grade.length; l += 1) {
+    const confronto = (grade[l][cabecalho.coluna] ?? '').trim();
+    // Linha em branco fecha o bloco: o que vem depois, na mesma coluna, ja e
+    // outra coisa da planilha.
+    if (!confronto) {
+      if (jogos.length) break;
+      continue;
+    }
+    const [casa, fora] = confronto.split(/\s+[x×]\s+/i).map((v) => (v ?? '').trim());
+    if (!casa || !fora) continue;
+    jogos.push({ numero: jogos.length + 1, casa, fora, local: '', horario: '' });
+  }
+  return jogos;
+}
+
 export function lerMataMata(grade, colunaDosJogos) {
   // O mata-mata mora num bloco proprio, numa coluna diferente da fase de
   // grupos. Prender a leitura em "JOGO 16" so funcionava no futsal masculino:
@@ -220,8 +277,7 @@ export function lerMataMata(grade, colunaDosJogos) {
       numero: Number(numero[1]),
       casa,
       fora,
-      local: (grade[l][primeiro.coluna + 6] ?? '').trim(),
-      horario: (grade[l][primeiro.coluna + 9] ?? '').trim(),
+      ...localEHorario(grade[l], primeiro.coluna + 4, primeiro.coluna + 9),
     });
   }
   return jogos.sort((a, b) => a.numero - b.numero);
@@ -316,6 +372,42 @@ export function lerDiasDeMataMata(grade, ano) {
     for (let l = cabecalho + 1; l < grade.length; l += 1) {
       const categoria = (grade[l][coluna] ?? '').trim();
       if (categoria) porCategoria.set(chave(categoria), data);
+    }
+  });
+  return porCategoria;
+}
+
+/**
+ * O local de cada categoria, da mesma agenda que da o dia.
+ *
+ * A coluna seguinte a de cada data e o local. Serve de recurso para o jogo
+ * cuja linha nao traz local nenhum -- o bloco "RODADAS" do Queimado e assim, e
+ * os nove jogos dele entrariam com "A definir" mesmo a organizacao tendo
+ * escrito QUADRA DE VOLEI aqui e no bloco do mata-mata da propria aba.
+ *
+ * Recurso, nao preferencia: o local escrito na linha do jogo continua mandando,
+ * porque e o mais especifico. Uma celula pode trazer mais de um local em linhas
+ * separadas (o volei masculino usa dois ginasios); nesse caso vale o primeiro,
+ * que e o unico que da para atribuir sem inventar.
+ */
+export function lerLocais(grade) {
+  const cabecalho = grade.findIndex((linha) =>
+    linha.some((celula) => /^\d{2}\/\d{2}$/.test((celula ?? '').trim())),
+  );
+  if (cabecalho < 0) return new Map();
+  const porCategoria = new Map();
+  grade[cabecalho].forEach((celula, coluna) => {
+    if (!/^\d{2}\/\d{2}$/.test((celula ?? '').trim())) return;
+    for (let l = cabecalho + 1; l < grade.length; l += 1) {
+      const categoria = (grade[l][coluna] ?? '').trim();
+      // A celula com dois locais chega unida ("GINASIO B | GINASIO A"): vale o
+      // primeiro, que e o unico que da para atribuir sem inventar.
+      const local = (grade[l][coluna + 1] ?? '')
+        .split(/\s*[|\n]\s*/)
+        .map((v) => v.trim())
+        .find(Boolean);
+      if (!categoria || !local) continue;
+      if (!porCategoria.has(chave(categoria))) porCategoria.set(chave(categoria), local);
     }
   });
   return porCategoria;
@@ -633,21 +725,46 @@ function distanciaDeEdicao(a, b) {
  * nao pelo id, que e sorteado e muda a cada execucao. O lado pode ser equipe
  * ou rotulo; comparar os dois textos normalizados cobre os dois casos.
  */
-export function jaAgendado(estado, categoriaId, jogo, data) {
+export function partidaAgendada(estado, categoriaId, jogo, data) {
   const lados = [chave(jogo.casa ?? jogo.rotuloCasa), chave(jogo.fora ?? jogo.rotuloFora)];
-  return Object.values(estado.matches ?? {}).some((partida) => {
+  const achada = Object.entries(estado.matches ?? {}).find(([, partida]) => {
     if (partida.tournamentId !== categoriaId) return false;
     if (data && partida.date && partida.date !== data) return false;
     if (jogo.horario && partida.time && partida.time !== jogo.horario) return false;
     const dela = [chave(partida.entryA ?? ''), chave(partida.entryB ?? '')];
     return lados.every((lado) => dela.includes(lado));
   });
+  return achada ? { id: achada[0], ...achada[1] } : null;
+}
+
+export function jaAgendado(estado, categoriaId, jogo, data) {
+  return Boolean(partidaAgendada(estado, categoriaId, jogo, data));
+}
+
+/**
+ * "A definir" nao e um local: e a marca de que nao havia nenhum.
+ *
+ * Os nove jogos de grupo do Queimado entraram assim, antes de o importador
+ * saber ler o local da agenda. Preencher agora e completar o que ficou em
+ * branco -- nunca sobrescrever um local que alguem escolheu, que continua
+ * intocado.
+ */
+const SEM_LOCAL = new Set(['a definir', 'a confirmar', '']);
+export function localAPreencher(partida, desejado) {
+  if (!desejado || SEM_LOCAL.has(chave(desejado))) return null;
+  return SEM_LOCAL.has(chave(partida.venue ?? '')) ? desejado : null;
 }
 
 export function planejar(grade, estado) {
   const avisos = [];
   const grupos = lerGrupos(grade);
-  const jogos = lerJogos(grade);
+  /*
+   * A aba do Queimado lista os jogos da fase de grupos num bloco "RODADAS",
+   * sem rotulo "JOGO N" -- que e como todas as outras os identificam. Sem esta
+   * alternativa a categoria inteira ficava de fora: nove jogos de grupo lidos
+   * como zero, e um mata-mata que dependeria de uma classificacao inexistente.
+   */
+  const jogos = lerJogos(grade).length ? lerJogos(grade) : lerRodadas(grade);
   const modalidades = lerModalidades(grade);
 
   const equipesDaEdicao = Object.values(estado.teams ?? {}).map((t) => t.name).filter(Boolean);
@@ -735,10 +852,23 @@ export function planejar(grade, estado) {
     }
   }
 
+  /*
+   * Jogo sem horario na planilha entra com 08:00, porque a partida precisa de
+   * um horario para existir. Isso e um preenchimento, nao um dado: treze jogos
+   * do Queimado empilhados as 08:00 nao sao uma agenda.
+   *
+   * O aviso existe para a organizacao saber que precisa preencher, em vez de
+   * descobrir no dia por uma agenda que parecia pronta.
+   */
+  const semHorario = [...daFaseDeGrupos, ...doMataMata].filter((jogo) => !jogo.horario).length;
+  if (semHorario) {
+    avisos.push(`${semHorario} ${semHorario === 1 ? 'jogo nao tem' : 'jogos nao tem'} horario na planilha e ${semHorario === 1 ? 'vai entrar' : 'vao entrar'} as 08:00. Corrija na agenda do app depois, ou preencha a planilha e rode de novo.`);
+  }
+
   return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
-async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID) {
+async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID, LOCAL_DA_AGENDA) {
   if (!EMAIL) throw new Error('Informe --email.');
   if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
   if (!ARQUIVO || !existsSync(ARQUIVO)) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
@@ -787,19 +917,51 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
   const novos = categoriaAlvo
     ? daFaseDeGrupos.filter((jogo) => !jaAgendado(estado, categoriaAlvo, jogo, DATA))
     : daFaseDeGrupos;
+  const aPreencher = categoriaAlvo
+    ? daFaseDeGrupos.flatMap((jogo) => {
+        const existente = partidaAgendada(estado, categoriaAlvo, jogo, DATA);
+        const local = existente && localAPreencher(existente, jogo.local || LOCAL_DA_AGENDA);
+        return local ? [{ existente, local }] : [];
+      })
+    : [];
   console.log(`Jogos da fase de grupos a agendar: ${novos.length}` +
     (daFaseDeGrupos.length !== novos.length ? `  (${daFaseDeGrupos.length - novos.length} ja estao na agenda)` : ''));
   for (const jogo of novos) {
     const casa = jogo.casa ?? jogo.rotuloCasa;
     const fora = jogo.fora ?? jogo.rotuloFora;
-    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
+    const onde = jogo.local || LOCAL_DA_AGENDA || 'A definir';
+    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${onde.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
+  }
+
+  /*
+   * O mata-mata tambem se reconhece, e pelo id: ele vem da vaga na chave, entao
+   * a partida ja cadastrada tem exatamente o mesmo.
+   *
+   * Sem isto a simulacao mostrava as 28 partidas da chave como "a agendar"
+   * mesmo depois de cadastradas, e aplicar de novo produzia 28 recusas da API
+   * -- inofensivas, mas indistinguiveis de uma falha de verdade no meio da
+   * lista.
+   */
+  const vagasNovas = (plano.doMataMata ?? []).filter(
+    (vaga) => !(categoriaAlvo && estado.matches?.[`${categoriaAlvo}-${vaga.sufixo}`]),
+  );
+  const chaveJaAgendada = (plano.doMataMata?.length ?? 0) - vagasNovas.length;
+  if (aPreencher.length) {
+    console.log('');
+    console.log(`Jogos que vao ganhar o local que esta "A definir": ${aPreencher.length}`);
+    for (const { existente, local } of aPreencher) {
+      console.log(`  ${existente.entryA} × ${existente.entryB}  "${existente.venue}" -> "${local}"`);
+    }
   }
 
   if (plano.doMataMata?.length) {
     console.log('');
-    console.log(`Mata-mata a agendar: ${plano.doMataMata.length}  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
-    for (const vaga of plano.doMataMata) {
-      console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${vaga.local.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
+    console.log(`Mata-mata a agendar: ${vagasNovas.length}` +
+      (chaveJaAgendada ? `  (${chaveJaAgendada} ja estao na agenda)` : '') +
+      `  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
+    for (const vaga of vagasNovas) {
+      const onde = vaga.local || LOCAL_DA_AGENDA || 'A definir';
+      console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${onde.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
     }
   }
 
@@ -995,7 +1157,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
             phase: fase,
             date: data,
             time: horario || '08:00',
-            venue: local || 'A definir',
+            venue: local || LOCAL_DA_AGENDA || 'A definir',
             status: 'Agendada',
             scoreA: null,
             scoreB: null,
@@ -1028,10 +1190,22 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
    * O mata-mata nao precisa disso: o id vem da vaga na chave, e a API recusa o
    * segundo com o mesmo id.
    */
+  let locaisPreenchidos = 0;
   if (!flag('so-mata-mata')) {
     for (const jogo of plano.daFaseDeGrupos) {
-      if (jaAgendado(estado, categoriaId, jogo, DATA)) {
-        jaEstavam += 1;
+      const existente = partidaAgendada(estado, categoriaId, jogo, DATA);
+      if (existente) {
+        const local = localAPreencher(existente, jogo.local || LOCAL_DA_AGENDA);
+        if (local) {
+          await despachar(token, {
+            type: 'match/update',
+            payload: { id: existente.id, patch: { venue: local } },
+            audit: { action: 'Local do jogo preenchido', entity: `${existente.entryA} x ${existente.entryB}`, before: existente.venue, after: local },
+          });
+          locaisPreenchidos += 1;
+        } else {
+          jaEstavam += 1;
+        }
         continue;
       }
       if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
@@ -1051,7 +1225,15 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
    */
   const diaDoMataMata = DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA;
   let daChave = 0;
+  let chaveJaEstava = 0;
   for (const vaga of plano.doMataMata ?? []) {
+    // O id vem da vaga: a partida ja cadastrada tem exatamente o mesmo. A API
+    // recusaria a segunda, mas recusa vira "falha" na lista e esconde as de
+    // verdade.
+    if (estado.matches?.[`${categoriaId}-${vaga.sufixo}`]) {
+      chaveJaEstava += 1;
+      continue;
+    }
     const feito = await agendar({
       id: `${categoriaId}-${vaga.sufixo}`,
       rotuloCasa: vaga.rotuloA,
@@ -1067,7 +1249,14 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
 
   console.log('');
   console.log(`Concluido: ${agendados} jogos da fase de grupos e ${daChave} do mata-mata, ${falhas.length} falhas.`);
-  if (jaEstavam) console.log(`${jaEstavam} jogos da fase de grupos ja estavam na agenda e ficaram como estavam.`);
+  if (locaisPreenchidos) console.log(`${locaisPreenchidos} jogos ganharam o local que estava "A definir".`);
+  if (jaEstavam || chaveJaEstava) {
+    const partes = [
+      jaEstavam && `${jaEstavam} da fase de grupos`,
+      chaveJaEstava && `${chaveJaEstava} do mata-mata`,
+    ].filter(Boolean);
+    console.log(`${partes.join(' e ')} ja estavam na agenda e ficaram como estavam.`);
+  }
   for (const falha of falhas) console.log('  ! ' + falha);
   if (daChave) console.log(`A chave ja fica publica com os rotulos; o app troca cada rotulo pela equipe quando o resultado sair.`);
 }
@@ -1099,6 +1288,7 @@ async function main() {
   // O mata-mata do futsal masculino e no dia seguinte ao dos grupos, e a mesma
   // agenda diz isso. Sem ler, oito jogos entrariam com dia publicado e errado.
   const agendaDaChave = gradeDaAgenda ? lerDiasDeMataMata(gradeDaAgenda, ano) : new Map();
+  const agendaDeLocais = gradeDaAgenda ? lerLocais(gradeDaAgenda) : new Map();
 
   if (CATEGORIAS.length && CATEGORIAS.length !== ARQUIVOS.length) {
     throw new Error(
@@ -1114,6 +1304,10 @@ async function main() {
     const [modalidade, ...resto] = nomeDoArquivo.split(/\s+/);
     const chaveDaAgenda = chave([nomeNoApp(modalidade), ...resto].join(' '));
     const data = DATA ?? agenda.get(chaveDaAgenda) ?? agenda.get(chave(nomeDoArquivo));
+    // Recurso para o jogo cuja linha nao traz local: o bloco "RODADAS" do
+    // Queimado e assim, e a organizacao ja escreveu o local na agenda.
+    const localDaAgenda =
+      agendaDeLocais.get(chaveDaAgenda) ?? agendaDeLocais.get(chave(nomeDoArquivo));
     const diaDaChave =
       opcao('dia-mata-mata') ??
       agendaDaChave.get(chaveDaAgenda) ??
@@ -1127,7 +1321,7 @@ async function main() {
     if (data && diaDaChave && data !== diaDaChave) {
       console.log(`Mata-mata em ${diaDaChave}, um dia diferente do da fase de grupos (${data}) — como a agenda manda.`);
     }
-    await importarArquivo(token, arquivo, data, diaDaChave, categoriaDoArquivo(indice));
+    await importarArquivo(token, arquivo, data, diaDaChave, categoriaDoArquivo(indice), localDaAgenda);
   }
 }
 

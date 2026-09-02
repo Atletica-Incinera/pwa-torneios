@@ -458,3 +458,137 @@ test('a agenda também diz o dia do mata-mata', async () => {
   assert.equal(dias.get('volei masculino'), '2026-09-05');
   assert.equal(dias.get('handebol masculino'), '2026-09-06');
 });
+
+test('o mata-mata já cadastrado é reconhecido pelo próprio id', async () => {
+  // O id da partida da chave vem da vaga (`<categoria>-advanced-r2-1`), então a
+  // que já está cadastrada tem exatamente o mesmo. Sem reconhecer, uma segunda
+  // execução mandaria as 28 partidas de novo e colheria 28 recusas da API —
+  // inofensivas, mas indistinguíveis de uma falha de verdade no meio da lista.
+  const { vagasDoMataMata, lerMataMata, colunaDosJogos } = await import(
+    '../../scripts/importar-chaveamento.mjs'
+  );
+  const grade = lerGrade(fixture('basquete-masculino'));
+  const { vagas } = vagasDoMataMata(lerMataMata(grade, colunaDosJogos(grade)));
+  const categoria = 'cat-1';
+  const jaCadastradas = Object.fromEntries(
+    vagas.map((vaga) => [`${categoria}-${vaga.sufixo}`, { tournamentId: categoria }]),
+  );
+
+  const novas = vagas.filter((vaga) => !jaCadastradas[`${categoria}-${vaga.sufixo}`]);
+  assert.equal(novas.length, 0, 'nenhuma vaga deveria sobrar');
+
+  // E numa categoria diferente nada é reconhecido: os ids não colidem.
+  const noutra = vagas.filter((vaga) => !jaCadastradas[`cat-2-${vaga.sufixo}`]);
+  assert.equal(noutra.length, vagas.length);
+});
+
+/*
+ * A aba do Queimado foge do formato das outras em duas coisas, e cada uma
+ * sozinha já bastava para a categoria inteira ficar de fora do app:
+ *
+ *   os jogos da fase de grupos estão num bloco "RODADAS", um por linha, sem o
+ *   rótulo "JOGO N" que todas as outras abas usam;
+ *
+ *   o bloco do mata-mata não tem a coluna de situação ("A SEGUIR"), então o
+ *   local cai uma casa antes de onde as outras o põem.
+ *
+ * O efeito somado era nove jogos lidos como zero e um mata-mata sem local —
+ * o que fazia a categoria parecer "sem horário nem local" quando, na verdade,
+ * só o horário falta mesmo.
+ */
+test('a aba do Queimado, que foge do formato, é lida inteira', async () => {
+  const { planejar } = await import('../../scripts/importar-chaveamento.mjs');
+  const estado = {
+    teams: Object.fromEntries(
+      ['Voraz', 'Incinera', 'Engenhosa', 'Tormenta', 'Engrenada', 'Tríade', 'Cangaceiros'].map(
+        (nome, i) => [`t${i}`, { name: nome }],
+      ),
+    ),
+  };
+  const plano = planejar(lerGrade(fixture('queimado')), estado);
+
+  assert.equal(plano.daFaseDeGrupos.length, 9);
+  assert.equal(plano.doMataMata.length, 4);
+  // Nenhuma equipe fica de fora e nenhum nome fica sem casar. O único aviso é
+  // o do horário, que a aba realmente não tem — e que precisa ser dito, porque
+  // treze jogos empilhados às 08:00 não são uma agenda.
+  assert.equal(plano.avisos.length, 1, plano.avisos.join(' | '));
+  assert.match(plano.avisos[0], /13 jogos nao tem horario/);
+
+  // Grupo A tem 4 equipes: os seis confrontos possíveis entre elas.
+  const grupoA = plano.daFaseDeGrupos.filter((j) => j.grupo === 'GRUPO A');
+  assert.equal(grupoA.length, 6);
+  // Grupo B tem 3: uma mini-chave, com dois jogos dependendo do primeiro.
+  const grupoB = plano.daFaseDeGrupos.filter((j) => j.grupo === 'GRUPO B');
+  assert.deepEqual(
+    grupoB.map((j) => `${j.casa ?? j.rotuloCasa} × ${j.fora ?? j.rotuloFora}`),
+    ['Engrenada × Cangaceiros', 'Tríade × Perdedor do Jogo 3', 'Tríade × Vencedor do Jogo 3'],
+  );
+
+  // O local do mata-mata está na aba; era ele que a leitura por posição fixa
+  // perdia. O horário é que não existe em jogo nenhum desta categoria.
+  for (const vaga of plano.doMataMata) {
+    assert.equal(vaga.local, 'QUADRA DE VÔLEI');
+    assert.equal(vaga.horario, '');
+  }
+});
+
+test('a numeração das rodadas segue a ordem em que aparecem', async () => {
+  // As referências da própria aba contam assim: "PERDEDOR J3" é o terceiro da
+  // lista, que é Engrenada × Cangaceiros — o único jogo do Grupo B entre duas
+  // equipes conhecidas.
+  const { lerRodadas } = await import('../../scripts/importar-chaveamento.mjs');
+  const rodadas = lerRodadas(lerGrade(fixture('queimado')));
+
+  assert.equal(rodadas.length, 9);
+  assert.equal(rodadas[2].numero, 3);
+  assert.equal(`${rodadas[2].casa} × ${rodadas[2].fora}`, 'ENGRENADA × CANGACEIROS');
+});
+
+test('as abas que já funcionavam continuam com o mesmo local e horário', async () => {
+  // A leitura de local e horário deixou de ser por posição fixa. Se a nova
+  // busca pegasse a célula errada, seria aqui que apareceria.
+  const { lerMataMata, colunaDosJogos } = await import('../../scripts/importar-chaveamento.mjs');
+  const esperado: Record<string, [string, string]> = {
+    'futsal-masculino': ['08:00', 'GINÁSIO A'],
+    'basquete-masculino': ['18:30', 'GINÁSIO A'],
+    'voleibol-feminino': ['14:00', 'GINÁSIO B'],
+  };
+  for (const [arquivo, [horario, local]] of Object.entries(esperado)) {
+    const grade = lerGrade(fixture(arquivo));
+    const primeira = lerMataMata(grade, colunaDosJogos(grade))[0];
+    assert.equal(primeira.horario, horario, arquivo);
+    assert.equal(primeira.local, local, arquivo);
+  }
+});
+
+test('a agenda também diz o local de cada categoria', async () => {
+  // Serve de recurso para o jogo cuja linha não traz local — o bloco "RODADAS"
+  // do Queimado é assim. O local escrito na linha do jogo continua mandando,
+  // porque é o mais específico.
+  const { lerLocais } = await import('../../scripts/importar-chaveamento.mjs');
+  const pasta = dirname(fileURLToPath(import.meta.url));
+  const locais = lerLocais(lerGrade(join(pasta, '../fixtures/chaveamento-dias.csv')));
+
+  assert.equal(locais.get('queimado'), 'QUADRA DE VÔLEI');
+  assert.equal(locais.get('xadrez'), 'CLUBE UNIVERSITÁRIO');
+  assert.equal(locais.get('natacao'), 'PISCINA OLÍMPICA');
+  // Célula com dois locais: vale o primeiro, que é o único atribuível sem
+  // inventar qual jogo vai para qual quadra.
+  assert.equal(locais.get('volei masculino'), 'GINÁSIO B');
+});
+
+test('"A definir" é preenchido; local escolhido não é tocado', async () => {
+  // Os nove jogos de grupo do Queimado entraram com "A definir", antes de o
+  // importador saber ler o local da agenda. Preencher agora completa o que
+  // ficou em branco — sobrescrever um local que alguém escolheu seria outra
+  // coisa, e não acontece.
+  const { localAPreencher } = await import('../../scripts/importar-chaveamento.mjs');
+
+  assert.equal(localAPreencher({ venue: 'A definir' }, 'QUADRA DE VÔLEI'), 'QUADRA DE VÔLEI');
+  assert.equal(localAPreencher({ venue: '' }, 'QUADRA DE VÔLEI'), 'QUADRA DE VÔLEI');
+  assert.equal(localAPreencher({ venue: 'GINÁSIO A' }, 'QUADRA DE VÔLEI'), null);
+  // Sem local desejado não há o que preencher.
+  assert.equal(localAPreencher({ venue: 'A definir' }, ''), null);
+  assert.equal(localAPreencher({ venue: 'A definir' }, 'A definir'), null);
+});
