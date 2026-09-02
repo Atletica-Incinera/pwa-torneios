@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { getActiveEdition, TournamentAdvancement, TournamentPhase, TournamentState, useFrontendState } from '../lib/repositories/browser-repository';
 import { distributeGroups, generateRoundRobin } from '../lib/tournament-engine';
 import { useUi } from './UiProvider';
-import { listMatches } from '../lib/edition-catalog';
+import { disciplineHref, listMatches } from '../lib/edition-catalog';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { resolveDisciplineRule } from '../lib/discipline-rules';
 import { resolveRegulation } from '../lib/regulation';
@@ -19,6 +20,7 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   const { state, dispatch } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const { confirm, prompt, toast } = useUi();
+  const router = useRouter();
   const { session } = useFrontendSession();
   const regulation = useMemo(() => resolveRegulation(discipline, state.disciplines[discipline]), [discipline, state.disciplines]);
   // `name` e `discipline` entram no fallback porque toda gravação manda o setup
@@ -38,6 +40,28 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   // simplesmente substituídos: exigem anulação explícita e auditada.
   const generatedMatches = useMemo(() => Object.entries(state.matches).filter(([matchId]) => matchId.startsWith(`${id}-generated-`)), [id, state.matches]);
   const generatedWithResults = generatedMatches.filter(([, item]) => (item.status ?? matchStatus.scheduled) !== matchStatus.scheduled);
+  /*
+   * O que impede excluir esta categoria, na mesma ordem em que a API responde.
+   *
+   * Conferir aqui nao substitui a trava do servidor -- ela e que vale. Serve
+   * para o motivo aparecer ANTES do clique, em vez de o organizador descobrir
+   * por um erro depois de confirmar uma acao sem volta.
+   *
+   * A conta de jogos e por categoria inteira, e nao so os gerados: um jogo
+   * agendado a mao conta igual, e no banco ele cascateia da fase junto com o
+   * resto.
+   */
+  const jogosDaCategoria = useMemo(
+    () => Object.values(state.matches).filter((item) => item.tournamentId === id).length,
+    [id, state.matches],
+  );
+  const impedimentosParaExcluir = [
+    jogosDaCategoria && `${jogosDaCategoria} ${jogosDaCategoria === 1 ? 'jogo agendado' : 'jogos agendados'}`,
+    setup.participants.length &&
+      `${setup.participants.length} ${setup.participants.length === 1 ? 'equipe inscrita' : 'equipes inscritas'}`,
+  ].filter((item): item is string => Boolean(item));
+  const emRascunho = setup.status === 'Rascunho';
+  const podeExcluir = emRascunho && !impedimentosParaExcluir.length;
   // A tabela pronta é medida pelos jogos que existem de fato, não pelo flag da
   // chave automática: um confronto agendado à mão conta igual.
   const categoryMatches = useMemo(() => listMatches(state, activeEdition?.id, { tournamentId: id }), [activeEdition?.id, id, state]);
@@ -203,6 +227,41 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   const nextStatus = statusOrder[statusOrder.indexOf(setup.status) + 1];
   const pendingNext = nextStatus ? pendingFor(nextStatus) : [];
 
+  /**
+   * Excluir de verdade, distinto de arquivar pela situacao.
+   *
+   * A categoria duplicada por erro de digitacao ficava na lista para sempre:
+   * nao dava para apagar por tela nenhuma. Mas apagar categoria em uso e mais
+   * grave do que parece -- no banco a partida cascateia da fase, que cascateia
+   * da categoria, entao levaria junto lances e resultados sem avisar. Por isso
+   * so cai o que nunca foi usado.
+   */
+  async function excluirCategoria() {
+    if (
+      !(await confirm({
+        title: `Excluir ${setup.name || name}?`,
+        message:
+          'A categoria é apagada da edição, não fica marcada como removida. Não dá para desfazer.',
+        confirmLabel: 'Excluir',
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    try {
+      await dispatch({
+        type: 'category/delete',
+        payload: { id },
+        audit: { action: 'Categoria excluída', entity: setup.name || name, before: discipline },
+      });
+      toast(`${setup.name || name} foi excluída.`, 'success');
+      // A categoria deixou de existir: ficar na tela dela mostraria "nao encontrada".
+      router.push(disciplineHref(discipline));
+    } catch (falha) {
+      toast(falha instanceof Error ? falha.message : 'Não foi possível excluir a categoria.', 'error');
+    }
+  }
+
   return <div className="tournament-manager">
     {/* A tela mostra quatro paineis numerados e nenhum texto dizia que eram
         uma sequencia, nem que dava para parar no meio. Quem chegava aqui pela
@@ -231,5 +290,15 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     <section className="management-panel" id="generate"><div className="management-panel-head"><div><small>ETAPA 4</small><h2>MONTAR OS JOGOS</h2></div></div>
       <p>{setup.participants.length < 2 ? 'Inscreva ao menos 2 participantes na Etapa 1 para gerar os confrontos.' : !setup.phases.length ? 'Crie ao menos uma fase na Etapa 2 para gerar os confrontos.' : locked ? 'A categoria já começou: os confrontos não podem mais ser regerados.' : setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} fases.` : 'Gera todos contra todos dentro de cada grupo. Também dá para agendar jogos um a um pela agenda, depois de publicar.'}</p>
       <button type="button" className="wide-action button-reset" onClick={generateConfrontations} disabled={generating || locked || setup.participants.length < 2 || !setup.phases.length} aria-busy={generating}><WandSparkles size={18} aria-hidden="true" /> {generating ? 'MONTANDO OS JOGOS…' : setup.generated ? 'MONTAR OS JOGOS DE NOVO' : 'MONTAR OS JOGOS'} <span aria-hidden="true">›</span></button></section>
+    {canManageEdition(session) ? <section className="management-panel management-panel-danger" id="excluir"><div className="management-panel-head"><div><small>SE FOR PRECISO</small><h2>EXCLUIR ESTA CATEGORIA</h2></div></div>
+      {/* A situacao so anda para a frente -- o seletor de Publicacao desabilita
+          os estados anteriores. Entao mandar "voltar para rascunho" seria
+          mandar por um caminho que nao existe: aqui a saida e arquivar. */}
+      <p>{!emRascunho
+        ? `Só dá para excluir categoria em rascunho, e esta está como ${setup.status.toLocaleLowerCase('pt-BR')}. A situação não volta atrás: uma categoria que já saiu do rascunho se arquiva em Publicação, não se apaga.`
+        : impedimentosParaExcluir.length
+          ? `Esta categoria tem ${impedimentosParaExcluir.join(' e ')}. Excluir levaria os jogos e os resultados junto, então primeiro remova isso.`
+          : 'Esta categoria nunca foi usada: sem equipe inscrita e sem jogo agendado. Serve para desfazer uma criada por engano.'}</p>
+      <div className="form-actions"><button type="button" className="danger-button" onClick={excluirCategoria} disabled={!podeExcluir}><Trash2 size={16} aria-hidden="true" /> Excluir categoria</button></div></section> : null}
   </div>;
 }
