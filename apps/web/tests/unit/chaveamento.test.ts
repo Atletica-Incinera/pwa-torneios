@@ -378,3 +378,28 @@ test('grupo de três jogado como mini-chave entra na agenda com rótulo', async 
   assert.equal(j12?.rotuloFora, 'Perdedor do Jogo 3');
   assert.equal(j12?.horario, '10:55');
 });
+
+test('nome errado na planilha vira aviso que diz o que corrigir', async () => {
+  // "ENGRENANDA" por "ENGRENADA" está na aba do Handebol Masculino. Sem a
+  // sugestão, o aviso diria só "equipe desconhecida" e o jogo sumiria da
+  // agenda sem ninguém saber o que consertar. Sugerir é útil; ACEITAR seria
+  // perigoso — o palpite errado agendaria o jogo com a equipe errada.
+  const { planejar } = await import('../../scripts/importar-chaveamento.mjs');
+  const estado = {
+    teams: { a: { name: 'Engrenada' }, b: { name: 'Invasora' }, c: { name: 'Voraz' } },
+  };
+  const plano = planejar(
+    [
+      ['GRUPO A', ''],
+      ['ENGRENADA', ''],
+      ['INVASORA', ''],
+      ['JOGO 1', 'ENGRENANDA X INVASORA', '', '', '', '', 'GINÁSIO A', '', '', '08:00'],
+    ],
+    estado,
+  );
+
+  const aviso = plano.avisos.find((a) => a.includes('ENGRENANDA'));
+  assert.match(aviso ?? '', /parece ser "Engrenada"/);
+  // E o jogo não entra: quem decide é quem lê o aviso.
+  assert.equal(plano.daFaseDeGrupos.length, 0);
+});

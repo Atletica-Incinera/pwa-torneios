@@ -532,6 +532,51 @@ async function despachar(token, acao) {
   return corpo;
 }
 
+/**
+ * A equipe da edicao mais parecida com o que a planilha escreveu.
+ *
+ * Erro de digitacao num nome faz o jogo inteiro sumir da agenda, e o aviso
+ * "equipe desconhecida" nao diz o que corrigir. Sugerir e util; ACEITAR seria
+ * perigoso -- o palpite errado agendaria o jogo com a equipe errada, e ninguem
+ * perceberia. Por isso a sugestao vai para o aviso, e a decisao continua sendo
+ * de quem le.
+ *
+ * Duas letras trocadas ou uma a mais: e o tamanho do erro que se ve nas
+ * planilhas ("ENGRENANDA" por "ENGRENADA").
+ */
+function maisParecida(nome, equipes) {
+  const alvo = chave(nome);
+  if (!alvo) return null;
+  let melhor = null;
+  let menor = Infinity;
+  for (const equipe of equipes) {
+    const distancia = distanciaDeEdicao(alvo, chave(equipe));
+    if (distancia < menor) {
+      menor = distancia;
+      melhor = equipe;
+    }
+  }
+  return menor <= 2 ? melhor : null;
+}
+
+function distanciaDeEdicao(a, b) {
+  const linha = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i += 1) {
+    let anterior = linha[0];
+    linha[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const guardado = linha[j];
+      linha[j] = Math.min(
+        linha[j] + 1,
+        linha[j - 1] + 1,
+        anterior + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      anterior = guardado;
+    }
+  }
+  return linha[b.length];
+}
+
 export function planejar(grade, estado) {
   const avisos = [];
   const grupos = lerGrupos(grade);
@@ -568,7 +613,12 @@ export function planejar(grade, estado) {
     const casa = lado(jogo.casa);
     const fora = lado(jogo.fora);
     if (!casa || !fora) {
-      avisos.push(`Jogo ${jogo.numero}: equipe desconhecida em "${jogo.casa} × ${jogo.fora}".`);
+      const desconhecida = casa ? jogo.fora : jogo.casa;
+      const parecida = maisParecida(desconhecida, equipesDaEdicao);
+      avisos.push(
+        `Jogo ${jogo.numero}: equipe desconhecida em "${jogo.casa} × ${jogo.fora}"` +
+          (parecida ? ` — "${desconhecida}" parece ser "${parecida}".` : '.'),
+      );
       continue;
     }
     if (casa.nome) emJogos.add(chave(casa.nome));
