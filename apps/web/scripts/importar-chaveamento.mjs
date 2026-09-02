@@ -24,9 +24,12 @@
  *
  * Repita --arquivo/--categoria-id para varias planilhas num login so.
  *
- *   --dia-mata-mata AAAA-MM-DD  o mata-mata costuma ser noutro dia
- *   --so-mata-mata              cadastra so a chave, sem repetir a fase de
- *                               grupos (para categoria ja importada)
+ *   --categoria-id <id>         preenche a categoria que ja existe. Um por
+ *                               --arquivo, na mesma ordem; use "-" para a
+ *                               planilha que deve criar categoria nova
+ *   --dia-mata-mata AAAA-MM-DD  sobrepoe o dia da chave (a agenda ja o traz)
+ *   --so-mata-mata              cadastra so a chave, sem tocar na fase de
+ *                               grupos
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -46,6 +49,24 @@ const ARQUIVOS = args.reduce((lista, atual, indice) => (
   atual === '--arquivo' && args[indice + 1] ? [...lista, args[indice + 1]] : lista
 ), []);
 const ARQUIVO = ARQUIVOS[0];
+/*
+ * Um --categoria-id por --arquivo, na mesma ordem.
+ *
+ * Era uma opcao unica, e com varias planilhas ela valia para todas: a
+ * configuracao do Basquete Feminino iria parar dentro da categoria do Futsal
+ * Masculino, sobrescrevendo grupos e equipes de uma categoria ja publicada.
+ *
+ * Use "-" para a planilha que deve criar categoria nova.
+ */
+const CATEGORIAS = args.reduce(
+  (lista, atual, indice) =>
+    atual === '--categoria-id' && args[indice + 1] ? [...lista, args[indice + 1]] : lista,
+  [],
+);
+const categoriaDoArquivo = (indice) => {
+  const informada = CATEGORIAS[indice];
+  return informada && informada !== '-' ? informada : undefined;
+};
 const DIAS = opcao('dias');
 const DATA = opcao('data');
 const APLICAR = flag('aplicar');
@@ -717,7 +738,7 @@ export function planejar(grade, estado) {
   return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
-async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
+async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID) {
   if (!EMAIL) throw new Error('Informe --email.');
   if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
   if (!ARQUIVO || !existsSync(ARQUIVO)) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
@@ -761,7 +782,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
     console.log('--so-mata-mata: a fase de grupos fica como esta; so a chave sera cadastrada.');
     console.log('');
   }
-  const categoriaAlvo = opcao('categoria-id');
+  const categoriaAlvo = CATEGORIA_ID;
   const daFaseDeGrupos = flag('so-mata-mata') ? [] : plano.daFaseDeGrupos;
   const novos = categoriaAlvo
     ? daFaseDeGrupos.filter((jogo) => !jaAgendado(estado, categoriaAlvo, jogo, DATA))
@@ -782,8 +803,8 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
     }
   }
 
-  if (opcao('categoria-id')) {
-    const alvo = estado.tournaments?.[opcao('categoria-id')];
+  if (CATEGORIA_ID) {
+    const alvo = estado.tournaments?.[CATEGORIA_ID];
     console.log('');
     console.log('Vai PREENCHER a categoria que ja existe: ' + (alvo?.name ?? '(nao encontrada)'));
     if (alvo) {
@@ -865,7 +886,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
     const agenda = lerMataMata(grade, colunaDosJogos(grade));
     if (!agenda.length) throw new Error('A planilha nao tem bloco de mata-mata.');
     const daCategoria = Object.entries(estado.matches ?? {})
-      .filter(([id, partida]) => partida.tournamentId === opcao('categoria-id') && id.includes('-advanced'))
+      .filter(([id, partida]) => partida.tournamentId === CATEGORIA_ID && id.includes('-advanced'))
       .map(([id, partida]) => ({ id, partida, ordem: ordemNoChaveamento(id) }))
       .sort((a, b) => a.ordem - b.ordem);
 
@@ -909,7 +930,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
    * meio. Criar uma segunda deixaria duas com o mesmo nome na lista, e o app
    * nao tem exclusao de categoria -- desfazer sairia caro.
    */
-  const existenteId = opcao('categoria-id');
+  const existenteId = CATEGORIA_ID;
   const existente = existenteId ? estado.tournaments?.[existenteId] : undefined;
   if (existenteId && !existente) throw new Error(`A categoria "${existenteId}" nao existe nesta edicao.`);
   const categoriaId = existenteId ?? novoId('category');
@@ -1079,7 +1100,14 @@ async function main() {
   // agenda diz isso. Sem ler, oito jogos entrariam com dia publicado e errado.
   const agendaDaChave = gradeDaAgenda ? lerDiasDeMataMata(gradeDaAgenda, ano) : new Map();
 
-  for (const arquivo of ARQUIVOS) {
+  if (CATEGORIAS.length && CATEGORIAS.length !== ARQUIVOS.length) {
+    throw new Error(
+      `Informe um --categoria-id por --arquivo, na mesma ordem (use "-" para criar categoria nova). ` +
+        `Vieram ${ARQUIVOS.length} arquivos e ${CATEGORIAS.length} categorias.`,
+    );
+  }
+
+  for (const [indice, arquivo] of ARQUIVOS.entries()) {
     const nomeDoArquivo = arquivo.split(/[\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop().trim();
     // A agenda escreve "VOLEI MASCULINO" e o arquivo "VOLEIBOL MASCULINO": a
     // primeira palavra passa pela mesma traducao usada em todo o resto.
@@ -1099,7 +1127,7 @@ async function main() {
     if (data && diaDaChave && data !== diaDaChave) {
       console.log(`Mata-mata em ${diaDaChave}, um dia diferente do da fase de grupos (${data}) — como a agenda manda.`);
     }
-    await importarArquivo(token, arquivo, data, diaDaChave);
+    await importarArquivo(token, arquivo, data, diaDaChave, categoriaDoArquivo(indice));
   }
 }
 
