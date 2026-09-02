@@ -66,7 +66,11 @@ export function CategoryCreationForm() {
   return (
     <AppShell active="tournaments" eyebrow="NOVA CATEGORIA" title="CRIAR CATEGORIA" subtitle="A disputa dentro de uma modalidade">
       <form className="entity-form" onSubmit={(event) => void submit(event)} noValidate>
-        <div className="form-contract-note"><Info size={18} /><p>A categoria nasce como <strong>rascunho</strong>: inscreva participantes, defina fases e gere os confrontos na aba Regras antes de publicar.</p></div>
+        {/* A nota dizia para inscrever, definir fases e gerar confrontos "antes de
+          publicar" -- deixou de ser verdade quando publicar passou a nao exigir
+          equipe inscrita. Prometer uma exigencia que nao existe faz a montagem
+          parecer mais pesada do que e. */}
+        <div className="form-contract-note"><Info size={18} /><p>Aqui só o nome. O resto — quem disputa, fases e confrontos — fica na aba <strong>Gestão</strong>, em quatro etapas, e pode ser preenchido aos poucos. A categoria nasce como <strong>rascunho</strong>, invisível ao público até você publicar.</p></div>
         <label><span>Modalidade</span><select value={discipline} onChange={(event) => { setChosen(event.target.value); setError(''); }} required>{disciplines.map((item) => <option key={item.name}>{item.name}</option>)}</select></label>
         <label><span>Nome da categoria</span><input value={name} onChange={(event) => { setName(event.target.value); setError(''); }} placeholder="Ex.: Futsal Masculino" autoFocus required /></label>
         {error ? <p className="form-feedback form-feedback-error" role="alert">{error}</p> : null}

@@ -47,14 +47,20 @@ export function isEliminationPhase(phase?: string) {
 export type StartPolicy = { earlyToleranceMinutes: number; lateToleranceMinutes: number };
 export const defaultStartPolicy: StartPolicy = { earlyToleranceMinutes: 30, lateToleranceMinutes: 180 };
 
-export type StartCheck = { allowed: boolean; requiresJustification: boolean; reasonCode: 'ok' | 'estado-invalido' | 'antecipado' | 'atrasado' | 'sem-horario'; message: string };
+export type StartCheck = { allowed: boolean; requiresJustification: boolean; reasonCode: 'ok' | 'estado-invalido' | 'antecipado' | 'atrasado' | 'sem-horario' | 'a-definir'; message: string };
 
 /**
  * Abrir a tela do placar não inicia a partida. O operador precisa confirmar, e
  * fora da janela prevista a confirmação exige justificativa registrada.
  */
-export function evaluateStart(match: Pick<MatchState, 'status' | 'date' | 'time'>, now: Date, policy: StartPolicy = defaultStartPolicy): StartCheck {
+export function evaluateStart(match: Pick<MatchState, 'status' | 'date' | 'time' | 'aDefinirA' | 'aDefinirB'>, now: Date, policy: StartPolicy = defaultStartPolicy): StartCheck {
   const status = (match.status ?? 'Agendada') as MatchStatus;
+  // Jogo do mata-mata que já está na agenda mas ainda espera o resultado
+  // anterior. A API recusa do mesmo jeito; aqui a recusa vem antes, com a
+  // frase que explica o que falta em vez de um erro genérico.
+  if (status !== 'Ao vivo' && (match.aDefinirA || match.aDefinirB)) {
+    return { allowed: false, requiresJustification: false, reasonCode: 'a-definir', message: 'Esta partida ainda depende de um resultado anterior. Ela pode ser iniciada quando os dois participantes forem definidos.' };
+  }
   if (status === 'Ao vivo') return { allowed: true, requiresJustification: false, reasonCode: 'ok', message: 'Partida em andamento.' };
   if (!canTransition(status, 'Ao vivo')) return { allowed: false, requiresJustification: false, reasonCode: 'estado-invalido', message: `Uma partida ${status.toLocaleLowerCase('pt-BR')} não pode ser iniciada.` };
   const scheduled = match.date && match.time ? absoluteMinutes(match.date, match.time) : null;

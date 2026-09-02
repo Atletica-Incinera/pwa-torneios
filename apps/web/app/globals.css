@@ -504,6 +504,11 @@ ul.form-feedback li { line-height: 1.45; }
    atras dela virava uma segunda moldura briga com a primeira. */
 .mark-blue:not(.team-mark-logo) { background: var(--blue); }
 .mark-pink:not(.team-mark-logo) { background: var(--pink); }
+/* Confronto do mata-mata que ainda espera um resultado. O rótulo é da chave, não
+   de uma atlética: fica sem cor de equipe e um pouco apagado, para o olho não o
+   ler como um time e para o cartão continuar tendo o mesmo tamanho dos outros. */
+.mark-neutral:not(.team-mark-logo) { background: var(--muted, #9aa3af); color: #fff; }
+.team-side-a-definir strong { opacity: 0.72; font-style: italic; }
 .mark-orange:not(.team-mark-logo) { background: var(--orange); color: #000; }
 .team-mark-logo { background: none; overflow: visible; }
 .team-mark-logo img { width: 100%; height: 100%; display: block; object-fit: contain; }
@@ -1490,8 +1495,13 @@ small,
 /* `.team-mark` sai do :is() acima so para poder poupar o escudo sem inflar a
    especificidade dos outros seletores da lista -- `:is()` adota a
    especificidade do argumento mais forte, entao um `:not()` la dentro mudaria
-   a cascata de todos eles. */
-.theme-matches .team-mark:not(.team-mark-logo) {
+   a cascata de todos eles.
+
+   `.mark-neutral` sai pelo mesmo motivo do escudo: e a marca do confronto que
+   ainda espera um resultado, e pintada de rosa ela vira um time. Tres regras
+   pintavam a marca sem olhar o tom, e cada uma vencia `.mark-neutral` na
+   cascata -- medido no navegador, nao deduzido. */
+.theme-matches .team-mark:not(.team-mark-logo):not(.mark-neutral) {
   background: var(--pink);
   color: var(--white);
 }
@@ -2521,7 +2531,7 @@ small,
   color: var(--black);
 }
 
-.management-screen.theme-matches:has(.scheduled-score) :is(.scheduled-score .team-mark, .detail-card svg) {
+.management-screen.theme-matches:has(.scheduled-score) :is(.scheduled-score .team-mark:not(.mark-neutral), .detail-card svg) {
   background: var(--orange);
   color: var(--black);
 }
@@ -2615,12 +2625,14 @@ small,
   text-align: center;
 }
 
-.match-summary-teams .team-mark {
+.match-summary-teams .team-mark:not(.mark-neutral) {
   width: 70px;
   height: 76px;
   background: var(--orange);
   color: var(--black);
 }
+
+.match-summary-teams .team-mark { width: 70px; height: 76px; }
 
 .match-summary-teams strong {
   max-width: 100%;
@@ -3985,3 +3997,8 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .acesso-revogado { font-size: .76rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: rgba(247, 240, 227, .55); }
 .acesso-form { margin-top: 16px; }
 .acesso-form .form-hint { display: flex; align-items: center; gap: 7px; }
+
+/* Abertura das Regras: a sequência das quatro etapas em uma frase. */
+.passo-a-passo { margin: 0 0 18px; padding: 13px 15px; background: var(--surface); border-left: 3px solid var(--orange); color: rgba(247, 240, 227, .78); font-size: .93rem; line-height: 1.55; }
+.passo-a-passo strong { color: var(--white); font-weight: 600; }
+.management-panel > p code { padding: 1px 5px; background: var(--black); font-family: ui-monospace, monospace; font-size: .86em; }
