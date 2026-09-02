@@ -96,3 +96,12 @@ export function lerDiasDeMataMata(grade: string[][], ano: number): Map<string, s
 export function lerRodadas(grade: string[][]): Jogo[];
 
 export function lerLocais(grade: string[][]): Map<string, string>;
+
+export type PartidaAgendada = { id: string; venue?: string; entryA?: string; entryB?: string };
+export function partidaAgendada(
+  estado: { matches?: Record<string, Record<string, unknown>> },
+  categoriaId: string,
+  jogo: { casa?: string; fora?: string; rotuloCasa?: string; rotuloFora?: string; horario?: string },
+  data?: string,
+): PartidaAgendada | null;
+export function localAPreencher(partida: { venue?: string }, desejado?: string): string | null;

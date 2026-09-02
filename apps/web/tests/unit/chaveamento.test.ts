@@ -577,3 +577,18 @@ test('a agenda também diz o local de cada categoria', async () => {
   // inventar qual jogo vai para qual quadra.
   assert.equal(locais.get('volei masculino'), 'GINÁSIO B');
 });
+
+test('"A definir" é preenchido; local escolhido não é tocado', async () => {
+  // Os nove jogos de grupo do Queimado entraram com "A definir", antes de o
+  // importador saber ler o local da agenda. Preencher agora completa o que
+  // ficou em branco — sobrescrever um local que alguém escolheu seria outra
+  // coisa, e não acontece.
+  const { localAPreencher } = await import('../../scripts/importar-chaveamento.mjs');
+
+  assert.equal(localAPreencher({ venue: 'A definir' }, 'QUADRA DE VÔLEI'), 'QUADRA DE VÔLEI');
+  assert.equal(localAPreencher({ venue: '' }, 'QUADRA DE VÔLEI'), 'QUADRA DE VÔLEI');
+  assert.equal(localAPreencher({ venue: 'GINÁSIO A' }, 'QUADRA DE VÔLEI'), null);
+  // Sem local desejado não há o que preencher.
+  assert.equal(localAPreencher({ venue: 'A definir' }, ''), null);
+  assert.equal(localAPreencher({ venue: 'A definir' }, 'A definir'), null);
+});

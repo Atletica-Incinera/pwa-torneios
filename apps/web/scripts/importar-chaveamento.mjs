@@ -725,15 +725,34 @@ function distanciaDeEdicao(a, b) {
  * nao pelo id, que e sorteado e muda a cada execucao. O lado pode ser equipe
  * ou rotulo; comparar os dois textos normalizados cobre os dois casos.
  */
-export function jaAgendado(estado, categoriaId, jogo, data) {
+export function partidaAgendada(estado, categoriaId, jogo, data) {
   const lados = [chave(jogo.casa ?? jogo.rotuloCasa), chave(jogo.fora ?? jogo.rotuloFora)];
-  return Object.values(estado.matches ?? {}).some((partida) => {
+  const achada = Object.entries(estado.matches ?? {}).find(([, partida]) => {
     if (partida.tournamentId !== categoriaId) return false;
     if (data && partida.date && partida.date !== data) return false;
     if (jogo.horario && partida.time && partida.time !== jogo.horario) return false;
     const dela = [chave(partida.entryA ?? ''), chave(partida.entryB ?? '')];
     return lados.every((lado) => dela.includes(lado));
   });
+  return achada ? { id: achada[0], ...achada[1] } : null;
+}
+
+export function jaAgendado(estado, categoriaId, jogo, data) {
+  return Boolean(partidaAgendada(estado, categoriaId, jogo, data));
+}
+
+/**
+ * "A definir" nao e um local: e a marca de que nao havia nenhum.
+ *
+ * Os nove jogos de grupo do Queimado entraram assim, antes de o importador
+ * saber ler o local da agenda. Preencher agora e completar o que ficou em
+ * branco -- nunca sobrescrever um local que alguem escolheu, que continua
+ * intocado.
+ */
+const SEM_LOCAL = new Set(['a definir', 'a confirmar', '']);
+export function localAPreencher(partida, desejado) {
+  if (!desejado || SEM_LOCAL.has(chave(desejado))) return null;
+  return SEM_LOCAL.has(chave(partida.venue ?? '')) ? desejado : null;
 }
 
 export function planejar(grade, estado) {
@@ -898,6 +917,13 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID,
   const novos = categoriaAlvo
     ? daFaseDeGrupos.filter((jogo) => !jaAgendado(estado, categoriaAlvo, jogo, DATA))
     : daFaseDeGrupos;
+  const aPreencher = categoriaAlvo
+    ? daFaseDeGrupos.flatMap((jogo) => {
+        const existente = partidaAgendada(estado, categoriaAlvo, jogo, DATA);
+        const local = existente && localAPreencher(existente, jogo.local || LOCAL_DA_AGENDA);
+        return local ? [{ existente, local }] : [];
+      })
+    : [];
   console.log(`Jogos da fase de grupos a agendar: ${novos.length}` +
     (daFaseDeGrupos.length !== novos.length ? `  (${daFaseDeGrupos.length - novos.length} ja estao na agenda)` : ''));
   for (const jogo of novos) {
@@ -920,6 +946,14 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID,
     (vaga) => !(categoriaAlvo && estado.matches?.[`${categoriaAlvo}-${vaga.sufixo}`]),
   );
   const chaveJaAgendada = (plano.doMataMata?.length ?? 0) - vagasNovas.length;
+  if (aPreencher.length) {
+    console.log('');
+    console.log(`Jogos que vao ganhar o local que esta "A definir": ${aPreencher.length}`);
+    for (const { existente, local } of aPreencher) {
+      console.log(`  ${existente.entryA} × ${existente.entryB}  "${existente.venue}" -> "${local}"`);
+    }
+  }
+
   if (plano.doMataMata?.length) {
     console.log('');
     console.log(`Mata-mata a agendar: ${vagasNovas.length}` +
@@ -1156,10 +1190,22 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID,
    * O mata-mata nao precisa disso: o id vem da vaga na chave, e a API recusa o
    * segundo com o mesmo id.
    */
+  let locaisPreenchidos = 0;
   if (!flag('so-mata-mata')) {
     for (const jogo of plano.daFaseDeGrupos) {
-      if (jaAgendado(estado, categoriaId, jogo, DATA)) {
-        jaEstavam += 1;
+      const existente = partidaAgendada(estado, categoriaId, jogo, DATA);
+      if (existente) {
+        const local = localAPreencher(existente, jogo.local || LOCAL_DA_AGENDA);
+        if (local) {
+          await despachar(token, {
+            type: 'match/update',
+            payload: { id: existente.id, patch: { venue: local } },
+            audit: { action: 'Local do jogo preenchido', entity: `${existente.entryA} x ${existente.entryB}`, before: existente.venue, after: local },
+          });
+          locaisPreenchidos += 1;
+        } else {
+          jaEstavam += 1;
+        }
         continue;
       }
       if (await agendar({ ...jogo, id: novoId('match'), fase: jogo.grupo, data: DATA })) agendados += 1;
@@ -1203,6 +1249,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID,
 
   console.log('');
   console.log(`Concluido: ${agendados} jogos da fase de grupos e ${daChave} do mata-mata, ${falhas.length} falhas.`);
+  if (locaisPreenchidos) console.log(`${locaisPreenchidos} jogos ganharam o local que estava "A definir".`);
   if (jaEstavam || chaveJaEstava) {
     const partes = [
       jaEstavam && `${jaEstavam} da fase de grupos`,
