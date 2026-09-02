@@ -377,6 +377,42 @@ export function lerDiasDeMataMata(grade, ano) {
   return porCategoria;
 }
 
+/**
+ * O local de cada categoria, da mesma agenda que da o dia.
+ *
+ * A coluna seguinte a de cada data e o local. Serve de recurso para o jogo
+ * cuja linha nao traz local nenhum -- o bloco "RODADAS" do Queimado e assim, e
+ * os nove jogos dele entrariam com "A definir" mesmo a organizacao tendo
+ * escrito QUADRA DE VOLEI aqui e no bloco do mata-mata da propria aba.
+ *
+ * Recurso, nao preferencia: o local escrito na linha do jogo continua mandando,
+ * porque e o mais especifico. Uma celula pode trazer mais de um local em linhas
+ * separadas (o volei masculino usa dois ginasios); nesse caso vale o primeiro,
+ * que e o unico que da para atribuir sem inventar.
+ */
+export function lerLocais(grade) {
+  const cabecalho = grade.findIndex((linha) =>
+    linha.some((celula) => /^\d{2}\/\d{2}$/.test((celula ?? '').trim())),
+  );
+  if (cabecalho < 0) return new Map();
+  const porCategoria = new Map();
+  grade[cabecalho].forEach((celula, coluna) => {
+    if (!/^\d{2}\/\d{2}$/.test((celula ?? '').trim())) return;
+    for (let l = cabecalho + 1; l < grade.length; l += 1) {
+      const categoria = (grade[l][coluna] ?? '').trim();
+      // A celula com dois locais chega unida ("GINASIO B | GINASIO A"): vale o
+      // primeiro, que e o unico que da para atribuir sem inventar.
+      const local = (grade[l][coluna + 1] ?? '')
+        .split(/\s*[|\n]\s*/)
+        .map((v) => v.trim())
+        .find(Boolean);
+      if (!categoria || !local) continue;
+      if (!porCategoria.has(chave(categoria))) porCategoria.set(chave(categoria), local);
+    }
+  });
+  return porCategoria;
+}
+
 export function emCaixaDeTitulo(texto) {
   const minusculas = new Set(['de', 'do', 'da', 'dos', 'das', 'e']);
   return texto
@@ -813,7 +849,7 @@ export function planejar(grade, estado) {
   return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
-async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID) {
+async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID, LOCAL_DA_AGENDA) {
   if (!EMAIL) throw new Error('Informe --email.');
   if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
   if (!ARQUIVO || !existsSync(ARQUIVO)) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
@@ -867,7 +903,8 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
   for (const jogo of novos) {
     const casa = jogo.casa ?? jogo.rotuloCasa;
     const fora = jogo.fora ?? jogo.rotuloFora;
-    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${jogo.local.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
+    const onde = jogo.local || LOCAL_DA_AGENDA || 'A definir';
+    console.log(`  J${String(jogo.numero).padStart(2)} ${jogo.horario.padEnd(6)} ${onde.padEnd(20)} ${casa} × ${fora}  [${jogo.grupo}]`);
   }
 
   /*
@@ -889,7 +926,8 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
       (chaveJaAgendada ? `  (${chaveJaAgendada} ja estao na agenda)` : '') +
       `  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
     for (const vaga of vagasNovas) {
-      console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${vaga.local.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
+      const onde = vaga.local || LOCAL_DA_AGENDA || 'A definir';
+      console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${onde.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
     }
   }
 
@@ -1085,7 +1123,7 @@ async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE, CATEGORIA_ID)
             phase: fase,
             date: data,
             time: horario || '08:00',
-            venue: local || 'A definir',
+            venue: local || LOCAL_DA_AGENDA || 'A definir',
             status: 'Agendada',
             scoreA: null,
             scoreB: null,
@@ -1203,6 +1241,7 @@ async function main() {
   // O mata-mata do futsal masculino e no dia seguinte ao dos grupos, e a mesma
   // agenda diz isso. Sem ler, oito jogos entrariam com dia publicado e errado.
   const agendaDaChave = gradeDaAgenda ? lerDiasDeMataMata(gradeDaAgenda, ano) : new Map();
+  const agendaDeLocais = gradeDaAgenda ? lerLocais(gradeDaAgenda) : new Map();
 
   if (CATEGORIAS.length && CATEGORIAS.length !== ARQUIVOS.length) {
     throw new Error(
@@ -1218,6 +1257,10 @@ async function main() {
     const [modalidade, ...resto] = nomeDoArquivo.split(/\s+/);
     const chaveDaAgenda = chave([nomeNoApp(modalidade), ...resto].join(' '));
     const data = DATA ?? agenda.get(chaveDaAgenda) ?? agenda.get(chave(nomeDoArquivo));
+    // Recurso para o jogo cuja linha nao traz local: o bloco "RODADAS" do
+    // Queimado e assim, e a organizacao ja escreveu o local na agenda.
+    const localDaAgenda =
+      agendaDeLocais.get(chaveDaAgenda) ?? agendaDeLocais.get(chave(nomeDoArquivo));
     const diaDaChave =
       opcao('dia-mata-mata') ??
       agendaDaChave.get(chaveDaAgenda) ??
@@ -1231,7 +1274,7 @@ async function main() {
     if (data && diaDaChave && data !== diaDaChave) {
       console.log(`Mata-mata em ${diaDaChave}, um dia diferente do da fase de grupos (${data}) — como a agenda manda.`);
     }
-    await importarArquivo(token, arquivo, data, diaDaChave, categoriaDoArquivo(indice));
+    await importarArquivo(token, arquivo, data, diaDaChave, categoriaDoArquivo(indice), localDaAgenda);
   }
 }
 

@@ -561,3 +561,19 @@ test('as abas que já funcionavam continuam com o mesmo local e horário', async
     assert.equal(primeira.local, local, arquivo);
   }
 });
+
+test('a agenda também diz o local de cada categoria', async () => {
+  // Serve de recurso para o jogo cuja linha não traz local — o bloco "RODADAS"
+  // do Queimado é assim. O local escrito na linha do jogo continua mandando,
+  // porque é o mais específico.
+  const { lerLocais } = await import('../../scripts/importar-chaveamento.mjs');
+  const pasta = dirname(fileURLToPath(import.meta.url));
+  const locais = lerLocais(lerGrade(join(pasta, '../fixtures/chaveamento-dias.csv')));
+
+  assert.equal(locais.get('queimado'), 'QUADRA DE VÔLEI');
+  assert.equal(locais.get('xadrez'), 'CLUBE UNIVERSITÁRIO');
+  assert.equal(locais.get('natacao'), 'PISCINA OLÍMPICA');
+  // Célula com dois locais: vale o primeiro, que é o único atribuível sem
+  // inventar qual jogo vai para qual quadra.
+  assert.equal(locais.get('volei masculino'), 'GINÁSIO B');
+});
