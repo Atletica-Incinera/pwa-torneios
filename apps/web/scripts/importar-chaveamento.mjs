@@ -199,6 +199,45 @@ export function ordemNoChaveamento(id) {
   return 999;
 }
 
+/**
+ * Configuração da categoria a partir do que a planilha diz.
+ *
+ * Fica separada do envio para poder ser verificada sem servidor. A primeira
+ * versão referenciava uma variável que não existia (`groups` em vez de
+ * `grupos`) e o erro atravessou build, `node --check` e três simulações — só
+ * apareceu no `--aplicar`, porque a simulação retorna antes de montar isto.
+ * Toda a montagem estava sem teste, e um erro de digitação sobreviveu a isso.
+ */
+export function montarConfiguracao(plano, { editionId, nome, modalidade }) {
+  const grupos = plano.grupos.map((g) => g.nome);
+  const assignments = {};
+  for (const grupo of plano.grupos) {
+    for (const equipe of grupo.equipes) {
+      const resolvida = plano.participantes.find((p) => chave(p) === chave(equipe));
+      if (resolvida) assignments[resolvida] = grupo.nome;
+    }
+  }
+  return {
+    created: true,
+    editionId,
+    name: nome,
+    discipline: modalidade,
+    status: 'Rascunho',
+    participants: plano.participantes,
+    seeds: Object.fromEntries(plano.participantes.map((equipe, i) => [equipe, i + 1])),
+    assignments,
+    generated: false,
+    phases: [
+      { id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups: grupos, qualifiers: 2 },
+      { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 },
+    ],
+    // O mata-mata da planilha: os dois primeiros de cada grupo mais os dois
+    // melhores terceiros fecham as oito vagas das quartas. Com zero melhores
+    // terceiros sobram seis, e o chaveamento nao fecha.
+    advancement: { perGroup: 2, bestThirds: 2, crossing: 'padrao', thirdPlaceMatch: true },
+  };
+}
+
 async function entrar() {
   const resposta = await fetch(API + '/auth/login', {
     method: 'POST',
@@ -424,34 +463,11 @@ async function main() {
   const existente = existenteId ? estado.tournaments?.[existenteId] : undefined;
   if (existenteId && !existente) throw new Error(`A categoria "${existenteId}" nao existe nesta edicao.`);
   const categoriaId = existenteId ?? novoId('category');
-  const grupos = plano.grupos.map((g) => g.nome);
-  const assignments = {};
-  for (const grupo of plano.grupos) {
-    for (const equipe of grupo.equipes) {
-      const resolvida = plano.participantes.find((p) => chave(p) === chave(equipe));
-      if (resolvida) assignments[resolvida] = grupo.nome;
-    }
-  }
-
-  const configuracao = {
-    created: true,
+  const configuracao = montarConfiguracao(plano, {
     editionId: estado.editions?.find((e) => e.active)?.id,
-    name: nomeDaCategoria,
-    discipline: modalidade,
-    status: 'Rascunho',
-    participants: plano.participantes,
-    seeds: Object.fromEntries(plano.participantes.map((nome, i) => [nome, i + 1])),
-    assignments,
-    generated: false,
-    phases: [
-      { id: 'groups', name: 'Fase de grupos', format: 'Grupos', groups, qualifiers: 2 },
-      { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 },
-    ],
-    // O mata-mata da planilha: os dois primeiros de cada grupo mais os dois
-    // melhores terceiros fecham as oito vagas das quartas. Com zero melhores
-    // terceiros sobram seis, e o chaveamento nao fecha.
-    advancement: { perGroup: 2, bestThirds: 2, crossing: 'padrao', thirdPlaceMatch: true },
-  };
+    nome: nomeDaCategoria,
+    modalidade,
+  });
 
   if (existente) {
     // Nome, modalidade e situacao sao de quem criou a categoria: o importador

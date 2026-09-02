@@ -23,3 +23,16 @@ export function lerJogos(grade: string[][]): Jogo[];
 export function dependeDeResultado(nome: string): boolean;
 export function lerMataMata(grade: string[][]): Jogo[];
 export function ordemNoChaveamento(id: string): number;
+
+export type Plano = { grupos: Grupo[]; participantes: string[] };
+export function montarConfiguracao(
+  plano: Plano,
+  contexto: { editionId?: string; nome: string; modalidade: string },
+): {
+  participants: string[];
+  seeds: Record<string, number>;
+  assignments: Record<string, string>;
+  phases: { id: string; name: string; format: string; groups: string[]; qualifiers: number }[];
+  advancement: { perGroup: number; bestThirds: number; crossing: string; thirdPlaceMatch: boolean };
+  [chave: string]: unknown;
+};

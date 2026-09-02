@@ -134,3 +134,40 @@ test('a ordem do chaveamento segue quartas, semis, terceiro e final', async () =
   // Os nomes antigos de semifinal continuam ordenando junto com a rodada 2.
   assert.ok(ordemNoChaveamento('cat-advanced-semi-1') < ordemNoChaveamento('cat-advanced-third'));
 });
+
+test('monta a configuração da categoria a partir da planilha', async () => {
+  const { montarConfiguracao, lerGrupos } = await import('../../scripts/importar-chaveamento.mjs');
+  const grupos = lerGrupos(grade);
+  // Os nomes vêm resolvidos contra as equipes da edição, com a grafia delas.
+  const participantes = [
+    'Tubarões', 'Incinera', 'Cangaceiros', 'Caótica',
+    'Tríade', 'Engenhosa', 'Graxeiros', 'Engrenada',
+    'Tormenta', 'Voraz', 'Invasora',
+  ];
+  const config = montarConfiguracao({ grupos, participantes }, {
+    editionId: 'ed-2026',
+    nome: 'Futsal Masculino',
+    modalidade: 'Futsal',
+  });
+
+  assert.deepEqual(config.phases[0].groups, ['GRUPO A', 'GRUPO B', 'GRUPO C']);
+  assert.deepEqual(config.phases[1].groups, []);
+  assert.equal(config.participants.length, 11);
+
+  // Cada equipe cai no grupo da planilha, com a grafia da edição de um lado e
+  // a da planilha do outro — é aqui que acento e caixa precisam casar.
+  assert.equal(config.assignments['Tubarões'], 'GRUPO A');
+  assert.equal(config.assignments['Caótica'], 'GRUPO A');
+  assert.equal(config.assignments['Tríade'], 'GRUPO B');
+  assert.equal(config.assignments['Invasora'], 'GRUPO C');
+  assert.equal(Object.keys(config.assignments).length, 11);
+
+  // Dois por grupo mais dois melhores terceiros fecham as oito vagas das
+  // quartas; com zero melhores terceiros sobram seis e o chaveamento não fecha.
+  assert.deepEqual(config.advancement, {
+    perGroup: 2,
+    bestThirds: 2,
+    crossing: 'padrao',
+    thirdPlaceMatch: true,
+  });
+});
