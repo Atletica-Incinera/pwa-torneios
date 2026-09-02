@@ -79,6 +79,17 @@ export const seedTournaments: Record<string, TournamentState> = {
 export const seedMatches: Record<string, MatchState> = {
   'semifinal-1': { editionId, tournamentId: 'futsal-m', time: '20:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Alcateia', logoA: '/teams/alcateia.webp', entryB: 'Cangaceiros', logoB: '/teams/cangaceiros.webp', scoreA: 2, scoreB: 1, venue: 'Ginásio CIn', phase: 'Semifinal', status: 'Ao vivo' },
   'volei-grupo-a': { editionId, tournamentId: 'volei-f', time: '21:30', date: 'Hoje', discipline: 'Vôlei', entryA: 'Caótica', logoA: '/teams/caotica.webp', entryB: 'Energizada', logoB: '/teams/energizada.webp', scoreA: null, scoreB: null, venue: 'Quadra 2', phase: 'Grupo A', status: 'Agendada' },
+  /*
+   * Confronto do mata-mata que ainda espera um resultado: entra na agenda com
+   * o rotulo no lugar do participante. Esta na semente porque e o unico jeito
+   * de a tela da mesa ser exercitada nesse estado.
+   *
+   * Fica no Futsal, e nao no Volei, porque partida de mata-mata TRANCA o
+   * elenco da modalidade (`lock: 'knockout'`) -- e o Futsal ja tem uma
+   * semifinal aqui, entao o elenco dele ja estava trancado. No Volei, esta
+   * partida trancaria um elenco que os testes de gestao ainda editam.
+   */
+  'futsal-m-advanced-r1-1': { editionId, tournamentId: 'futsal-m', time: '19:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Vencedor do Jogo 1', entryB: 'Vencedor do Jogo 2', aDefinirA: true, aDefinirB: true, scoreA: null, scoreB: null, venue: 'Ginásio CIn', phase: 'Semifinal', status: 'Agendada' },
   'futsal-quartas': { editionId, tournamentId: 'futsal-m', time: '18:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Engenhosa', logoA: '/teams/engenhosa.webp', entryB: 'Incinera', logoB: '/teams/incinera.webp', scoreA: 3, scoreB: 3, venue: 'Ginásio CIn', phase: 'Quartas', status: 'Encerrada' },
 };
 
