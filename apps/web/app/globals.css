@@ -2615,11 +2615,19 @@ small,
   text-align: center;
 }
 
+/* A cor de fundo identifica a equipe quando so aparece a inicial. Atras do
+   escudo ela vira uma segunda moldura brigando com a arte -- e aqui, no
+   detalhe da partida, era um quadrado laranja atras de cada brasao. Esta
+   regra escapou da limpeza que ja poupou o placar publico e o painel ao
+   vivo, porque nomeia `.team-mark` e nao `.team-mark-logo`. */
+.match-summary-teams .team-mark:not(.team-mark-logo) {
+  background: var(--orange);
+  color: var(--black);
+}
+
 .match-summary-teams .team-mark {
   width: 70px;
   height: 76px;
-  background: var(--orange);
-  color: var(--black);
 }
 
 .match-summary-teams strong {
