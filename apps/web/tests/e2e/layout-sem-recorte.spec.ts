@@ -57,10 +57,33 @@ test(`nenhuma tela esconde ou recorta conteudo a ${largura}px`, async ({ page })
       await page.evaluate((y) => window.scrollTo(0, y), deslocamento);
       await page.waitForTimeout(60);
     const achados = await page.evaluate(() => {
+      /*
+       * Elemento clipado por um ancestral nao esta na tela, por mais que tenha
+       * tamanho proprio.
+       *
+       * O acordeao de elencos e um `<details>` recolhido com `overflow:
+       * hidden`: o conteudo continua medindo 263px e sobra 250px para fora da
+       * caixa de 76px. Enquanto nao havia nada abaixo, esse fantasma caia em
+       * espaco vazio e ninguem via. Bastou existir uma secao depois dele para
+       * o detector acusar "texto coberto" -- coberto por uma secao legitima,
+       * que ocupa um lugar onde nao ha texto nenhum visivel.
+       */
+      const clipadoPorAncestral = (el: Element) => {
+        const r = el.getBoundingClientRect();
+        for (let pai = el.parentElement; pai && pai !== document.body; pai = pai.parentElement) {
+          const cs = getComputedStyle(pai);
+          if (cs.overflow === 'visible' && cs.overflowY === 'visible' && cs.overflowX === 'visible') continue;
+          const rp = pai.getBoundingClientRect();
+          const dentroY = Math.min(r.bottom, rp.bottom) - Math.max(r.top, rp.top);
+          const dentroX = Math.min(r.right, rp.right) - Math.max(r.left, rp.left);
+          if (dentroY <= 2 || dentroX <= 2) return true;
+        }
+        return false;
+      };
       const visivel = (el: Element) => {
         const cs = getComputedStyle(el);
         const r = el.getBoundingClientRect();
-        return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05 && r.width > 1 && r.height > 1;
+        return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05 && r.width > 1 && r.height > 1 && !clipadoPorAncestral(el);
       };
       const texto = (el: Element) => (el.textContent ?? '').trim();
 

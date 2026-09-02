@@ -76,10 +76,16 @@ export function selectEditionRole(roleAssignmentId: string): boolean {
   const selected = current.editionRoles.find((role) => role.roleAssignmentId === roleAssignmentId);
   if (!selected) return false;
   if (selected.role === 'DISCIPLINE_MANAGER' && (!selected.editionDisciplineId || !selected.disciplineName)) return false;
+  if (selected.role === 'TEAM_MANAGER' && !selected.teamName) return false;
   writeStoredSession({
     ...current,
     role: selected.role,
-    scope: selected.role === 'DISCIPLINE_MANAGER' ? selected.disciplineName ?? undefined : undefined,
+    // O escopo e um texto so: modalidade para um papel, equipe para o outro.
+    scope: selected.role === 'DISCIPLINE_MANAGER'
+      ? selected.disciplineName ?? undefined
+      : selected.role === 'TEAM_MANAGER'
+        ? selected.teamName ?? undefined
+        : undefined,
     selectedRoleAssignmentId: selected.roleAssignmentId,
     selectedEditionId: selected.editionId,
     selectedEditionDisciplineId: selected.role === 'DISCIPLINE_MANAGER'
@@ -121,7 +127,7 @@ export function isSuperAdmin(session: FrontendSession | null) { return session?.
 export function canManageEdition(session: FrontendSession | null) { return isSuperAdmin(session) || session?.role === 'EDITION_ADMIN'; }
 
 /** Só o super admin cria ou promove Admin da edição. */
-export function canGrantRole(session: FrontendSession | null, role: 'Admin da edição' | 'Gestor de modalidade') {
+export function canGrantRole(session: FrontendSession | null, role: 'Admin da edição' | 'Gestor de modalidade' | 'Responsável da atlética') {
   return role === 'Admin da edição' ? isSuperAdmin(session) : canManageEdition(session);
 }
 
@@ -135,4 +141,17 @@ export function visibleSessionName(session: FrontendSession | null) {
 
 export function visibleSessionEmail(session: FrontendSession | null) {
   return isSuperAdmin(session) ? undefined : session?.email;
+}
+
+/** Responsável de atlética: alcança uma equipe só, e nela apenas o elenco. */
+export function isTeamManager(session: FrontendSession | null) { return session?.role === 'TEAM_MANAGER'; }
+
+/** A equipe do responsável, pelo nome — é assim que o escopo é guardado. */
+export function teamManagerScope(session: FrontendSession | null) { return isTeamManager(session) ? session?.scope : undefined; }
+
+/** Quem pode montar o elenco desta equipe. */
+export function canManageRoster(session: FrontendSession | null, teamName?: string) {
+  if (canManageEdition(session)) return true;
+  if (session?.role === 'DISCIPLINE_MANAGER') return true;
+  return isTeamManager(session) && Boolean(teamName) && session?.scope === teamName;
 }

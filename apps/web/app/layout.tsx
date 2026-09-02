@@ -51,6 +51,13 @@ export const metadata: Metadata = {
   description: 'Gestão e acompanhamento das edições do InterEng',
   applicationName: 'InterEng Pernambuco',
   manifest: appPath('/manifest.webmanifest'),
+  /*
+   * Os ícones passam por `appPath`. O Next aplica o `basePath` no endereço do
+   * manifesto, mas não no dos ícones — em produção eles apontavam para a raiz
+   * do domínio, que é outro site, e respondiam 404. O `apple-touch-icon` é o
+   * mais visível dos três: é ele que o iPhone usa ao adicionar à tela de
+   * início, e sem ele o iOS põe um retrato da página no lugar do ícone.
+   */
   icons: {
     icon: [
       { url: appPath('/icon-192.png'), sizes: '192x192', type: 'image/png' },

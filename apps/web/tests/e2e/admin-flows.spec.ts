@@ -322,10 +322,13 @@ test('admin configura pontos e publica o ranking geral', async ({ page }) => {
   await awardForm.getByRole('button', { name: /Conceder pontos/i }).click();
   const alcateia = page.locator('.overall-ranking-row').filter({ hasText: 'Alcateia' });
   await expect(alcateia).toContainText('10');
+  // O espectador nao ve a classificacao geral: ate a rodada anterior esta
+  // mesma checagem exigia o contrario -- que a pontuacao aparecesse na area
+  // publica. A organizacao decidiu manter o ranking entre modalidades
+  // restrito, e o endereco antigo passa a levar para as categorias.
   await page.goto('/public/standings/general');
-  await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÃO GERAL' })).toBeVisible();
-  await expect(page.locator('.overall-ranking-row').filter({ hasText: 'Alcateia' })).toContainText('10');
-  await expect(page.getByText(/Conceder pontos|Métricas de pontuação/i)).toHaveCount(0);
+  await expect(page).toHaveURL(/\/public\/tournaments$/);
+  await expect(page.locator('.overall-ranking-row')).toHaveCount(0);
 });
 
 test('falha ao gravar mostra erro e preserva o que foi digitado', async ({ page }) => {

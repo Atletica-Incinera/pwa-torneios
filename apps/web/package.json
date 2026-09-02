@@ -8,7 +8,7 @@
     "start": "next start -p 3001",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:components",
-    "test:unit": "node --no-warnings --test tests/unit/bracket-rules.test.ts tests/unit/create-id.test.ts tests/unit/date-utils.test.ts tests/unit/discipline-rules.test.ts tests/unit/eligibility.test.ts tests/unit/escudos.test.ts tests/unit/match-lifecycle.test.ts tests/unit/overall-ranking.test.ts tests/unit/reducer.test.ts tests/unit/regulation.test.ts tests/unit/repository.test.ts tests/unit/scheduling-rules.test.ts tests/unit/sound-effects.test.ts tests/unit/tournament-engine.test.ts tests/unit/tournament-progression.test.ts",
+    "test:unit": "node --no-warnings --test tests/unit/bracket-rules.test.ts tests/unit/create-id.test.ts tests/unit/date-utils.test.ts tests/unit/discipline-rules.test.ts tests/unit/eligibility.test.ts tests/unit/escudos.test.ts tests/unit/manifest.test.ts tests/unit/match-lifecycle.test.ts tests/unit/overall-ranking.test.ts tests/unit/reducer.test.ts tests/unit/regulation.test.ts tests/unit/repository.test.ts tests/unit/scheduling-rules.test.ts tests/unit/sound-effects.test.ts tests/unit/tournament-engine.test.ts tests/unit/tournament-progression.test.ts",
     "test:components": "vitest run",
     "test:e2e": "node scripts/build-local.mjs && node scripts/run-e2e.mjs",
     "test:visual:update": "node scripts/build-local.mjs && node scripts/run-e2e.mjs --grep \"regressão visual\" --update-snapshots",

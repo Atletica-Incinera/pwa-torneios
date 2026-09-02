@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Brackets, Flag, Trophy, Users } from 'lucide-react';
+import { Brackets, Flag, Users } from 'lucide-react';
 import { useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { PublicAppShell } from './PublicAppShell';
@@ -94,7 +94,6 @@ export function PublicTournamentDetailView({ id }: { id: string }) {
       </div>
 
       <div className="public-secondary-actions">
-        <Link href="/public/standings/general" className="wide-action"><Trophy size={18} /> CLASSIFICAÇÃO GERAL <span>›</span></Link>
         <Link href="/public/teams" className="wide-action"><Users size={18} /> EQUIPES E ELENCOS <span>›</span></Link>
       </div>
     </PublicAppShell>

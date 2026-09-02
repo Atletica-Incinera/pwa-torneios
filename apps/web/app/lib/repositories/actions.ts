@@ -20,6 +20,12 @@ export type MatchAction =
   | (WithAudit & { type: 'match/start'; payload: { id: string; patch: Partial<MatchState> } })
   /** Relógio e etapa: retomar, pausar, encerrar tempo, avançar, prorrogação. */
   | (WithAudit & { type: 'match/updateClock'; payload: { id: string; patch: Partial<MatchState> } })
+  /**
+   * Diz quem fez um lance ja registrado. Separado do registro porque o placar
+   * nao espera pela atribuicao: o gol entra no toque, e o autor vem depois.
+   * `athleteId: null` limpa, para corrigir sem desfazer o gol.
+   */
+  | (WithAudit & { type: 'match/attributeEvent'; payload: { id: string; eventId: string; athleteId: string | null } })
   | (WithAudit & { type: 'match/registerEvent'; payload: { id: string; event: MatchEventState; patch: Partial<MatchState>; periodResult?: { period: number; scoreA: number; scoreB: number } } })
   /** Trava do operador: o reducer decide se renova, ignora ou recusa. */
   | (WithAudit & { type: 'match/claimOperator'; payload: { id: string; operatorId: string; operatorName: string; force?: boolean } })
@@ -121,7 +127,13 @@ export type EditionAction =
  * staff vem semeada da edição e ainda não existe no estado quando é alterada.
  */
 export type StaffAction =
-  | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState } })
+  /**
+   * `initialPassword` so viaja na criacao de um acesso novo: o responsavel de
+   * atletica e convidado um a um, por fora, e a senha de convite compartilhada
+   * nao serve para doze pessoas de fora da organizacao. Ela nao fica no estado
+   * local -- e enviada e esquecida.
+   */
+  | (WithAudit & { type: 'staff/upsert'; payload: { email: string; member: StaffState & { initialPassword?: string } } })
   /** Exclusao de verdade, distinta de `revoked: true`. */
   | (WithAudit & { type: 'staff/remove'; payload: { email: string } })
   /**

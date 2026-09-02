@@ -49,7 +49,9 @@ test('espectador navega por três destinos e vê as abas da categoria', async ({
   await expect(page.getByText(/registrar gol|editar partida|configurações/i)).toHaveCount(0);
 
   const nav = page.getByRole('navigation', { name: 'Navegação pública' });
-  await expect(nav.getByRole('link')).toHaveCount(3);
+  // Quatro desde que a artilharia ganhou aba propria: ao vivo, modalidades,
+  // equipes e artilharia.
+  await expect(nav.getByRole('link')).toHaveCount(4);
 
   await nav.getByRole('link', { name: 'Modalidades' }).click();
   await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
@@ -100,11 +102,13 @@ test('barra de navegação permanece fixa durante a rolagem', async ({ page }) =
   expect(Math.abs((afterScroll?.y ?? 0) - (initial?.y ?? 0))).toBeLessThan(2);
 });
 
-test('detalhe da equipe apresenta classificação e desempenho por modalidade', async ({ page }) => {
+test('detalhe da equipe apresenta desempenho por modalidade, sem o ranking geral', async ({ page }) => {
   await page.goto('/public/teams/alcateia');
   await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÕES' })).toBeVisible();
-  await expect(page.getByText(/Ranking geral do InterEng/i)).toBeVisible();
   await expect(page.getByRole('link', { name: /ver classificação/i }).first()).toBeVisible();
+  // O ranking entre modalidades e restrito a organizacao: ate a rodada
+  // anterior esta checagem exigia o oposto, que o resumo aparecesse aqui.
+  await expect(page.getByText(/Ranking geral do InterEng/i)).toHaveCount(0);
 });
 
 test('admin entra e preserva a modalidade ao navegar', async ({ page }) => {

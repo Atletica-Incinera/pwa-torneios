@@ -111,8 +111,13 @@ function reduce(current: FrontendState, action: Action): FrontendState {
     case 'edition/activate':
       return { ...current, editions: current.editions.map((item) => ({ ...item, active: item.id === action.payload.id })) };
 
-    case 'staff/upsert':
-      return { ...current, staff: { ...current.staff, [action.payload.email]: action.payload.member } };
+    case 'staff/upsert': {
+      // A senha inicial e enviada e esquecida: guarda-la no estado local seria
+      // deixar a senha de outra pessoa no armazenamento do navegador de quem
+      // convidou.
+      const { initialPassword, ...membro } = action.payload.member;
+      return { ...current, staff: { ...current.staff, [action.payload.email]: membro } };
+    }
 
     case 'staff/remove': {
       const { [action.payload.email]: removido, ...restante } = current.staff;
@@ -171,6 +176,19 @@ function reduce(current: FrontendState, action: Action): FrontendState {
       const stored = current.matches[id] ?? {};
       const periodResults = periodResult ? [...(stored.periodResults ?? []), periodResult] : stored.periodResults;
       return patchMatch(current, id, { ...patch, periodResults, events: [event, ...(stored.events ?? [])] });
+    }
+
+    case 'match/attributeEvent': {
+      const { id, eventId, athleteId } = action.payload;
+      const stored = current.matches[id] ?? {};
+      return patchMatch(current, id, {
+        events: (stored.events ?? []).map((event) => {
+          if (event.id !== eventId) return event;
+          // `null` limpa: quem errou o nome corrige sem desfazer o gol.
+          const { athleteId: anterior, ...resto } = event;
+          return athleteId ? { ...resto, athleteId } : resto;
+        }),
+      });
     }
 
     case 'match/undoEvent': {

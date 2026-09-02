@@ -2,6 +2,7 @@
 
 import { AppShell, EmptyState, SectionTitle } from './AppShell';
 import { TeamManager } from './TeamManager';
+import { TeamAccessManager } from './TeamAccessManager';
 import { TeamRosterManager } from './TeamRosterManager';
 import { TeamPerformance } from './TeamPerformance';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
@@ -15,5 +16,5 @@ export function TeamDetailView({ id }: { id: string }) {
   if (!team) return <AppShell active="teams" eyebrow="EQUIPE" title="CARREGANDO" subtitle="Buscando dados locais"><EmptyState title="EQUIPE NÃO ENCONTRADA" copy="Volte à lista e selecione uma equipe cadastrada." /></AppShell>;
   // O ano vinha escrito no código: a tela dizia "InterEng 2026" em qualquer
   // edição, e continuaria dizendo depois da virada do ano.
-  return <AppShell active="teams" eyebrow="EQUIPE PARTICIPANTE" title={team.name.toUpperCase()} subtitle={`Modalidades, classificação e elencos da edição ${activeEdition?.year ?? ''}`.trim()} actionHref={`/teams/${id}/athletes/new`} actionLabel={`Cadastrar atleta em ${team.name}`} actionShortLabel="Atleta"><TeamManager team={team} /><TeamPerformance teamId={id} teamName={team.name} /><section className="section-block team-modalities-section"><SectionTitle eyebrow="MODALIDADES" title="ELENCOS" /><TeamRosterManager teamId={id} disciplines={disciplines} /></section></AppShell>;
+  return <AppShell active="teams" eyebrow="EQUIPE PARTICIPANTE" title={team.name.toUpperCase()} subtitle={`Modalidades, classificação e elencos da edição ${activeEdition?.year ?? ''}`.trim()} actionHref={`/teams/${id}/athletes/new`} actionLabel={`Cadastrar atleta em ${team.name}`} actionShortLabel="Atleta"><TeamManager team={team} /><TeamPerformance teamId={id} teamName={team.name} /><section className="section-block team-modalities-section"><SectionTitle eyebrow="MODALIDADES" title="ELENCOS" /><TeamRosterManager teamId={id} disciplines={disciplines} /></section><TeamAccessManager teamId={id} teamName={team.name} /></AppShell>;
 }
