@@ -797,6 +797,19 @@ export function planejar(grade, estado) {
     }
   }
 
+  /*
+   * Jogo sem horario na planilha entra com 08:00, porque a partida precisa de
+   * um horario para existir. Isso e um preenchimento, nao um dado: treze jogos
+   * do Queimado empilhados as 08:00 nao sao uma agenda.
+   *
+   * O aviso existe para a organizacao saber que precisa preencher, em vez de
+   * descobrir no dia por uma agenda que parecia pronta.
+   */
+  const semHorario = [...daFaseDeGrupos, ...doMataMata].filter((jogo) => !jogo.horario).length;
+  if (semHorario) {
+    avisos.push(`${semHorario} ${semHorario === 1 ? 'jogo nao tem' : 'jogos nao tem'} horario na planilha e ${semHorario === 1 ? 'vai entrar' : 'vao entrar'} as 08:00. Corrija na agenda do app depois, ou preencha a planilha e rode de novo.`);
+  }
+
   return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 

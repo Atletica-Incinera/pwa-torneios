@@ -507,9 +507,13 @@ test('a aba do Queimado, que foge do formato, é lida inteira', async () => {
   };
   const plano = planejar(lerGrade(fixture('queimado')), estado);
 
-  assert.equal(plano.avisos.length, 0, plano.avisos.join(' | '));
   assert.equal(plano.daFaseDeGrupos.length, 9);
   assert.equal(plano.doMataMata.length, 4);
+  // Nenhuma equipe fica de fora e nenhum nome fica sem casar. O único aviso é
+  // o do horário, que a aba realmente não tem — e que precisa ser dito, porque
+  // treze jogos empilhados às 08:00 não são uma agenda.
+  assert.equal(plano.avisos.length, 1, plano.avisos.join(' | '));
+  assert.match(plano.avisos[0], /13 jogos nao tem horario/);
 
   // Grupo A tem 4 equipes: os seis confrontos possíveis entre elas.
   const grupoA = plano.daFaseDeGrupos.filter((j) => j.grupo === 'GRUPO A');
