@@ -222,6 +222,26 @@ const COM_REGULAMENTO_PRONTO = new Set(['Futsal', 'Vôlei', 'Handebol', 'Xadrez'
 /** Esporte disputado por pessoa, nao por equipe. */
 const INDIVIDUAIS = new Set(['Xadrez', 'Natação', 'Tênis de Mesa']);
 
+/**
+ * "HANDEBOL MASCULINO" vira "Handebol Masculino".
+ *
+ * Preposicao fica minuscula: "Tenis de Mesa Feminino", nao "Tenis De Mesa
+ * Feminino".
+ */
+export function emCaixaDeTitulo(texto) {
+  const minusculas = new Set(['de', 'do', 'da', 'dos', 'das', 'e']);
+  return texto
+    .toLocaleLowerCase('pt-BR')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((palavra, i) =>
+      i > 0 && minusculas.has(palavra)
+        ? palavra
+        : palavra.charAt(0).toLocaleUpperCase('pt-BR') + palavra.slice(1),
+    )
+    .join(' ');
+}
+
 export function nomeNoApp(daPlanilha) {
   return NOMES_DO_APP[chave(daPlanilha)] ?? daPlanilha.trim();
 }
@@ -380,7 +400,13 @@ async function main() {
   const estado = await estadoAtual(token);
   const plano = planejar(grade, estado);
 
-  const nomeDaCategoria = (opcao('categoria') ?? ARQUIVO.split(/[\\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop()).trim();
+  /*
+   * O nome vem do arquivo, e o arquivo vem da planilha em caixa alta:
+   * "HANDEBOL MASCULINO". As categorias que ja existem no app sao "Futsal
+   * Masculino". Importar sem normalizar deixaria a lista com metade gritando.
+   */
+  const nomeDoArquivo = (opcao('categoria') ?? ARQUIVO.split(/[\\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop()).trim();
+  const nomeDaCategoria = opcao('categoria') ? nomeDoArquivo : emCaixaDeTitulo(nomeDoArquivo);
   /*
    * A modalidade tem de sair com a grafia que existe na edicao, nao a da
    * planilha. A API busca por nome exato: a planilha escreve "FUTSAL" em caixa

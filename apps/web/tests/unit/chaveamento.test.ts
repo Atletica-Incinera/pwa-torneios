@@ -228,3 +228,13 @@ test('lê as abas que fogem do formato do Futsal Masculino', async () => {
   const volei = abrir('chaveamento-voleibol-feminino.csv');
   assert.equal(lerMataMata(volei, colunaDosJogos(volei)).length, 4);
 });
+
+test('o nome da categoria sai da planilha sem gritar', async () => {
+  const { emCaixaDeTitulo } = await import('../../scripts/importar-chaveamento.mjs');
+  // O arquivo vem em caixa alta; as categorias que já existem no app não.
+  assert.equal(emCaixaDeTitulo('HANDEBOL MASCULINO'), 'Handebol Masculino');
+  assert.equal(emCaixaDeTitulo('FUTSAL FEMININO'), 'Futsal Feminino');
+  // Preposição fica minúscula.
+  assert.equal(emCaixaDeTitulo('TÊNIS DE MESA FEMININO'), 'Tênis de Mesa Feminino');
+  assert.equal(emCaixaDeTitulo('QUEIMADO'), 'Queimado');
+});

@@ -40,3 +40,5 @@ export function montarConfiguracao(
 export function nomeNoApp(daPlanilha: string): string;
 
 export function colunaDosJogos(grade: string[][]): number;
+
+export function emCaixaDeTitulo(texto: string): string;
