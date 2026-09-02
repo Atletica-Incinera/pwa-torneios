@@ -272,6 +272,34 @@ export function lerDias(grade, ano) {
   return porCategoria;
 }
 
+/**
+ * O dia do mata-mata de cada categoria, da mesma agenda.
+ *
+ * Aqui manda a ULTIMA ocorrencia, e nao a primeira: o futsal masculino aparece
+ * no dia 6 e no 7, e o segundo e o dia da chave. Para quem so aparece uma vez,
+ * os dois dias coincidem -- que e o certo, a chave e no mesmo dia dos grupos.
+ *
+ * Sem isto, o mata-mata do futsal masculino entraria na agenda no dia errado:
+ * oito jogos com dia e hora publicados, todos vinte e quatro horas adiantados.
+ */
+export function lerDiasDeMataMata(grade, ano) {
+  const cabecalho = grade.findIndex((linha) =>
+    linha.some((celula) => /^\d{2}\/\d{2}$/.test((celula ?? '').trim())),
+  );
+  if (cabecalho < 0) return new Map();
+  const porCategoria = new Map();
+  grade[cabecalho].forEach((celula, coluna) => {
+    const dia = /^(\d{2})\/(\d{2})$/.exec((celula ?? '').trim());
+    if (!dia) return;
+    const data = `${ano}-${dia[2]}-${dia[1]}`;
+    for (let l = cabecalho + 1; l < grade.length; l += 1) {
+      const categoria = (grade[l][coluna] ?? '').trim();
+      if (categoria) porCategoria.set(chave(categoria), data);
+    }
+  });
+  return porCategoria;
+}
+
 export function emCaixaDeTitulo(texto) {
   const minusculas = new Set(['de', 'do', 'da', 'dos', 'das', 'e']);
   return texto
@@ -689,7 +717,7 @@ export function planejar(grade, estado) {
   return { grupos, jogos, modalidades, daFaseDeGrupos, doMataMata, avisos, participantes: inscritas.map(resolver).filter(Boolean) };
 }
 
-async function importarArquivo(token, ARQUIVO, DATA) {
+async function importarArquivo(token, ARQUIVO, DATA, DIA_DA_CHAVE) {
   if (!EMAIL) throw new Error('Informe --email.');
   if (!SENHA) throw new Error('Defina INTERENG_SENHA. Ela não entra por argumento: argumento fica no histórico do terminal.');
   if (!ARQUIVO || !existsSync(ARQUIVO)) throw new Error('Informe --arquivo com o caminho do CSV da categoria.');
@@ -748,7 +776,7 @@ async function importarArquivo(token, ARQUIVO, DATA) {
 
   if (plano.doMataMata?.length) {
     console.log('');
-    console.log(`Mata-mata a agendar: ${plano.doMataMata.length}  (dia ${opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
+    console.log(`Mata-mata a agendar: ${plano.doMataMata.length}  (dia ${DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA ?? '(--data)'})`);
     for (const vaga of plano.doMataMata) {
       console.log(`  J${String(vaga.numero).padStart(2)} ${vaga.horario.padEnd(6)} ${vaga.local.padEnd(20)} ${vaga.rotuloA} × ${vaga.rotuloB}  [${vaga.sufixo}]`);
     }
@@ -1000,7 +1028,7 @@ async function importarArquivo(token, ARQUIVO, DATA) {
    * mesma data dos grupos, que e melhor que nao existir, mas raramente e o
    * que a organizacao publicou.
    */
-  const diaDoMataMata = opcao('dia-mata-mata') ?? DATA;
+  const diaDoMataMata = DIA_DA_CHAVE ?? opcao('dia-mata-mata') ?? DATA;
   let daChave = 0;
   for (const vaga of plano.doMataMata ?? []) {
     const feito = await agendar({
@@ -1044,7 +1072,12 @@ async function main() {
   }
 
   const token = await entrar();
-  const agenda = DIAS ? lerDias(lerGrade(DIAS), Number(opcao('ano', '2026'))) : new Map();
+  const gradeDaAgenda = DIAS ? lerGrade(DIAS) : null;
+  const ano = Number(opcao('ano', '2026'));
+  const agenda = gradeDaAgenda ? lerDias(gradeDaAgenda, ano) : new Map();
+  // O mata-mata do futsal masculino e no dia seguinte ao dos grupos, e a mesma
+  // agenda diz isso. Sem ler, oito jogos entrariam com dia publicado e errado.
+  const agendaDaChave = gradeDaAgenda ? lerDiasDeMataMata(gradeDaAgenda, ano) : new Map();
 
   for (const arquivo of ARQUIVOS) {
     const nomeDoArquivo = arquivo.split(/[\/]/).pop().replace(/\.csv$/i, '').split(' - ').pop().trim();
@@ -1053,12 +1086,20 @@ async function main() {
     const [modalidade, ...resto] = nomeDoArquivo.split(/\s+/);
     const chaveDaAgenda = chave([nomeNoApp(modalidade), ...resto].join(' '));
     const data = DATA ?? agenda.get(chaveDaAgenda) ?? agenda.get(chave(nomeDoArquivo));
+    const diaDaChave =
+      opcao('dia-mata-mata') ??
+      agendaDaChave.get(chaveDaAgenda) ??
+      agendaDaChave.get(chave(nomeDoArquivo)) ??
+      data;
     if (ARQUIVOS.length > 1) {
       console.log('');
       console.log('══════ ' + nomeDoArquivo + ' ══════');
       if (!data) console.log('! Sem data na agenda para "' + nomeDoArquivo + '" — esta planilha nao sera gravada.');
     }
-    await importarArquivo(token, arquivo, data);
+    if (data && diaDaChave && data !== diaDaChave) {
+      console.log(`Mata-mata em ${diaDaChave}, um dia diferente do da fase de grupos (${data}) — como a agenda manda.`);
+    }
+    await importarArquivo(token, arquivo, data, diaDaChave);
   }
 }
 

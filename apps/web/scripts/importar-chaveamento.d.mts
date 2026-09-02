@@ -90,3 +90,5 @@ export function jaAgendado(
   jogo: { casa?: string; fora?: string; rotuloCasa?: string; rotuloFora?: string; horario?: string },
   data?: string,
 ): boolean;
+
+export function lerDiasDeMataMata(grade: string[][], ano: number): Map<string, string>;

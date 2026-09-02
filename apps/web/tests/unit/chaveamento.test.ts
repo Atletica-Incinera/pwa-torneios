@@ -444,3 +444,17 @@ test('reimportar não duplica o que já está na agenda', async () => {
     true,
   );
 });
+
+test('a agenda também diz o dia do mata-mata', async () => {
+  // O futsal masculino aparece no dia 6 (grupos) e no 7 (mata-mata). `lerDias`
+  // fica com a primeira ocorrência; aqui manda a última. Para quem aparece uma
+  // vez só, os dois coincidem — a chave é no mesmo dia dos grupos.
+  const { lerDiasDeMataMata } = await import('../../scripts/importar-chaveamento.mjs');
+  const pasta = dirname(fileURLToPath(import.meta.url));
+  const dias = lerDiasDeMataMata(lerGrade(join(pasta, '../fixtures/chaveamento-dias.csv')), 2026);
+
+  assert.equal(dias.get('futsal masculino'), '2026-09-07');
+  assert.equal(dias.get('basquete masculino'), '2026-09-07');
+  assert.equal(dias.get('volei masculino'), '2026-09-05');
+  assert.equal(dias.get('handebol masculino'), '2026-09-06');
+});
