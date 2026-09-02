@@ -413,7 +413,10 @@ async function main() {
    * alta e a edicao tem "Futsal", e sem casar isso a criacao da categoria
    * falha logo na primeira acao com "a modalidade nao pertence a esta edicao".
    */
-  const pedida = opcao('modalidade') ?? nomeDaCategoria.split(/\s+/)[0];
+  // Passa pela mesma traducao que o modo de criar modalidades usa: a planilha
+  // diz "VOLEIBOL" e a edicao tem "Vôlei". Sem isto, a categoria de voleibol
+  // era recusada por uma modalidade que existe.
+  const pedida = nomeNoApp(opcao('modalidade') ?? nomeDaCategoria.split(/\s+/)[0]);
   const naEdicao = Object.values(estado.disciplines ?? {})
     .map((d) => d?.name)
     .filter(Boolean);
