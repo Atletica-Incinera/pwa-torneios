@@ -49,9 +49,9 @@ test('espectador navega por três destinos e vê as abas da categoria', async ({
   await expect(page.getByText(/registrar gol|editar partida|configurações/i)).toHaveCount(0);
 
   const nav = page.getByRole('navigation', { name: 'Navegação pública' });
-  // Quatro desde que a artilharia ganhou aba propria: ao vivo, modalidades,
+  // Cinco desde que a artilharia e jogos ganharam abas proprias: ao vivo, jogos, modalidades,
   // equipes e artilharia.
-  await expect(nav.getByRole('link')).toHaveCount(4);
+  await expect(nav.getByRole('link')).toHaveCount(5);
 
   await nav.getByRole('link', { name: 'Modalidades' }).click();
   await expect(page.getByRole('heading', { name: 'MODALIDADES' })).toBeVisible();
@@ -85,7 +85,7 @@ test('cards mostram inscrição pendente em vez de número inventado', async ({ 
 });
 
 test('as rotas públicas antigas levam para modalidades', async ({ page }) => {
-  for (const legacy of ['/public/matches', '/public/standings', '/public/results', '/public/phases']) {
+  for (const legacy of ['/public/standings', '/public/results', '/public/phases']) {
     await page.goto(legacy);
     await expect(page).toHaveURL(/\/public\/tournaments/);
   }
