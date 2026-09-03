@@ -3,7 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: false,
-  workers: 2,
+  workers: process.env.CI ? 1 : 2,
   timeout: 30_000,
   expect: { timeout: 7_000, toHaveScreenshot: { maxDiffPixelRatio: 0.025, animations: 'disabled' } },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
