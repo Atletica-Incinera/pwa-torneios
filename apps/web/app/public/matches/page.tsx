@@ -1,6 +1,5 @@
-import { permanentRedirect } from 'next/navigation';
+import { PublicMatchesHub } from '../../components/PublicMatchesHub';
 
-/** Agenda, tabela, resultados e fases agora vivem dentro de cada categoria. */
-export default function LegacyPublicmatchesPage() {
-  permanentRedirect('/public/tournaments');
+export default function PublicMatchesPage() {
+  return <PublicMatchesHub />;
 }

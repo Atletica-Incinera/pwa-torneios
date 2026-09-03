@@ -4,9 +4,10 @@ import { StatusBadge, TeamMark } from './AppShell';
 import { getMatchStatusLabel } from '../lib/status';
 
 type MatchScoreCardProps = {
-  href: string;
+  href?: string;
   dateLabel: string;
   discipline?: string;
+  categoryLabel?: string;
   status: string;
   statusTone?: 'blue' | 'pink' | 'orange' | 'neutral';
   teamA: string;
@@ -26,6 +27,7 @@ export function MatchScoreCard({
   href,
   dateLabel,
   discipline = 'Futsal',
+  categoryLabel,
   status,
   statusTone = 'neutral',
   teamA,
@@ -39,12 +41,9 @@ export function MatchScoreCard({
   venue,
   className = '',
 }: MatchScoreCardProps) {
-  return (
-    <Link
-      className={`next-match-card next-match-link match-score-card ${className}`.trim()}
-      href={href}
-      aria-label={`${teamA} contra ${teamB}, ${status}`}
-    >
+  const inner = (
+    <>
+      {categoryLabel ? <span className="match-category-tag">{categoryLabel}</span> : null}
       <div className="match-date">
         {discipline ? <span className="match-discipline">{discipline}</span> : null}
         <CalendarDays size={18} />
@@ -59,7 +58,7 @@ export function MatchScoreCard({
           <strong>{teamA}</strong>
         </div>
         <div className="versus-mark">
-          <span>{scoreA ?? '–'} — {scoreB ?? '–'}</span>
+          <span>{scoreA ?? '—'} — {scoreB ?? '—'}</span>
           <small>{venue}</small>
         </div>
         <div className={`team-side align-right${aDefinirB ? ' team-side-a-definir' : ''}`}>
@@ -67,6 +66,23 @@ export function MatchScoreCard({
           <strong>{teamB}</strong>
         </div>
       </div>
+    </>
+  );
+
+  const cssClass = `next-match-card next-match-link match-score-card ${className}`.trim();
+  const ariaLabel = `${teamA} contra ${teamB}, ${status}`;
+
+  if (!href) {
+    return (
+      <div className={cssClass} aria-label={ariaLabel}>
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={href} className={cssClass} aria-label={ariaLabel}>
+      {inner}
     </Link>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Radio, Shield, Target, Trophy } from 'lucide-react';
+import { CalendarDays, Radio, Shield, Target, Trophy } from 'lucide-react';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { PageNavigation } from './AppShell';
 import { ConnectionBadge } from './ConnectionBadge';
@@ -9,7 +9,7 @@ import { ErrorScreen } from './ErrorScreen';
 import { LoadingScreen } from './LoadingScreen';
 
 /** Três destinos: o que acontece agora, as modalidades e as equipes. */
-type PublicNavKey = 'live' | 'disciplines' | 'teams' | 'scorers';
+type PublicNavKey = 'live' | 'matches' | 'disciplines' | 'teams' | 'scorers';
 
 type PublicAppShellProps = {
   active: PublicNavKey;
@@ -21,6 +21,7 @@ type PublicAppShellProps = {
 
 const themes: Record<PublicNavKey, string> = {
   live: 'theme-matches public-live-readonly',
+  matches: 'theme-matches',
   disciplines: 'theme-tournaments',
   teams: 'theme-teams',
   scorers: 'theme-tournaments',
@@ -28,6 +29,7 @@ const themes: Record<PublicNavKey, string> = {
 
 const navItems = [
   { key: 'live', label: 'Ao vivo', href: '/public', icon: Radio },
+  { key: 'matches', label: 'Jogos', href: '/public/matches', icon: CalendarDays },
   { key: 'disciplines', label: 'Modalidades', href: '/public/tournaments', icon: Trophy },
   { key: 'teams', label: 'Equipes', href: '/public/teams', icon: Shield },
   { key: 'scorers', label: 'Artilharia', href: '/public/scorers', icon: Target },
@@ -45,8 +47,11 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
   // mostrado como se fosse definitivo.
   if (status === 'loading') return <LoadingScreen message="Carregando a edição..." />;
   if (status === 'error') return <ErrorScreen message={error} onRetry={() => void refresh()} />;
+
+  const isMatches = active === 'matches';
+
   return (
-    <main id="app-main" className={`app-screen management-screen public-readonly-screen ${themes[active]} motion-page`}>
+    <main id="app-main" className={`app-screen management-screen ${!isMatches ? 'public-readonly-screen' : ''} ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
         {competition ? <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition?.year ?? ''}`}>
           <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>

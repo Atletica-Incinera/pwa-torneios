@@ -12,6 +12,7 @@ import { resolveRegulation } from '../lib/regulation';
 import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
 import { analyzeCorrectionImpact } from '../lib/tournament-progression';
 import { createId } from '../lib/create-id';
+import { resolveMatchDate } from '../lib/date-utils';
 
 type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string; aDefinirA?: boolean; aDefinirB?: boolean; tournamentId?: string };
 
@@ -23,14 +24,15 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const override = state.matches[match.id] ?? {};
   const currentStatus = (override.status ?? match.status) as MatchStatus;
   const regulation = resolveRegulation(match.discipline, state.disciplines[match.discipline], override.rules);
+  const rawDate = override.date ?? match.date;
   const initial = useMemo(() => ({
-    date: override.date ?? match.date,
+    date: rawDate ? resolveMatchDate(rawDate) : '',
     time: override.time ?? match.time,
     venue: override.venue ?? match.venue,
     status: currentStatus,
     reason: override.reason ?? '',
     walkoverWinner: override.walkoverWinner ?? '',
-  }), [currentStatus, match.date, match.time, match.venue, override.date, override.reason, override.time, override.venue, override.walkoverWinner]);
+  }), [currentStatus, rawDate, match.time, match.venue, override.date, override.reason, override.time, override.venue, override.walkoverWinner]);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
