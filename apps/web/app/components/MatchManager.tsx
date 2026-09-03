@@ -24,14 +24,15 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const override = state.matches[match.id] ?? {};
   const currentStatus = (override.status ?? match.status) as MatchStatus;
   const regulation = resolveRegulation(match.discipline, state.disciplines[match.discipline], override.rules);
+  const rawDate = override.date ?? match.date;
   const initial = useMemo(() => ({
-    date: override.date ?? (match.date ? resolveMatchDate(match.date) : ''),
+    date: rawDate ? resolveMatchDate(rawDate) : '',
     time: override.time ?? match.time,
     venue: override.venue ?? match.venue,
     status: currentStatus,
     reason: override.reason ?? '',
     walkoverWinner: override.walkoverWinner ?? '',
-  }), [currentStatus, match.date, match.time, match.venue, override.date, override.reason, override.time, override.venue, override.walkoverWinner]);
+  }), [currentStatus, rawDate, match.time, match.venue, override.date, override.reason, override.time, override.venue, override.walkoverWinner]);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
