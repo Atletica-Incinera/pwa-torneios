@@ -44,7 +44,7 @@ export function MatchSchedule({ discipline, hrefBase = '/matches', allowedStatus
         <button type="button" onClick={() => setSelectedDate(moveDateKey(currentDate, 1))} aria-label="Próximo dia">›</button>
       </div>
       <section className="match-list" aria-label="Jogos filtrados por modalidade e data">
-        {visibleMatches.map((match) => <MatchCard key={match.id} match={{ ...match, phase: '' }} href={`${hrefBase}/${match.id}`} />)}
+        {visibleMatches.map((match) => <MatchCard key={match.id} match={{ ...match, phase: '' }} href={publicView ? undefined : `${hrefBase}/${match.id}`} />)}
         {!visibleMatches.length ? <div className="empty-state"><strong>SEM JOGOS NESTA DATA</strong>
           <p>{day.long}. {scheduled.length ? `A agenda de ${disciplineLabel} tem ${scheduled.length} ${scheduled.length === 1 ? 'jogo' : 'jogos'}${nextDate ? ` — o mais próximo em ${formatAgendaDate(nextDate, today).short}.` : '.'}` : `Nenhum jogo agendado em ${disciplineLabel} nesta edição.`}</p>
           {nextDate ? <button type="button" className="secondary-button" onClick={() => setSelectedDate(nextDate)}>Ir para {formatAgendaDate(nextDate, today).short}</button> : null}
