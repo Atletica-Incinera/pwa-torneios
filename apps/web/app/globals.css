@@ -3253,7 +3253,7 @@ small,
 .spectator-match-state { display: grid; gap: 14px; margin-top: 18px; }
 .spectator-match-state > .game-clock { justify-self: center; }
 .field-help { display: block; margin-top: -8px; color: var(--screen-text-muted, rgba(247,240,227,.62)); font-size: .72rem; }
-.pwa-banner { position: fixed; z-index: 8800; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); width: min(500px, calc(100vw - 24px)); min-height: 48px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 30px; align-items: center; gap: 9px; padding: 9px 10px 9px 14px; border: 1px solid var(--orange); background: var(--black); color: var(--white); transform: translateX(-50%); box-shadow: 6px 6px 0 var(--orange); animation: component-in .3s ease both; }
+.pwa-banner { position: fixed; z-index: 8800; left: 50%; bottom: calc(100px + env(safe-area-inset-bottom)); width: min(500px, calc(100vw - 24px)); min-height: 48px; display: grid; grid-template-columns: 22px minmax(0, 1fr) auto 30px; align-items: center; gap: 9px; padding: 9px 10px 9px 14px; border: 1px solid var(--orange); background: var(--black); color: var(--white); transform: translateX(-50%); box-shadow: 6px 6px 0 var(--orange); animation: component-in .3s ease both; }
 .pwa-banner.is-offline { grid-template-columns: 22px minmax(0, 1fr); border-color: var(--pink); box-shadow-color: var(--pink); }
 .pwa-banner.has-update { grid-template-columns: 22px minmax(0, 1fr) auto; border-color: var(--blue-light); box-shadow: 6px 6px 0 var(--blue-light); }
 .pwa-banner > svg { color: var(--orange); }
@@ -3284,7 +3284,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
   .date-switcher-current > span { display: grid; gap: 0; text-align: center; }
   .date-switcher-current small { font-size: .66rem; }
   .toast-region { top: max(8px, env(safe-area-inset-top)); right: 8px; width: calc(100vw - 16px); }
-  .pwa-banner { grid-template-columns: 20px minmax(0, 1fr) auto 28px; bottom: calc(80px + env(safe-area-inset-bottom)); }
+  .pwa-banner { grid-template-columns: 20px minmax(0, 1fr) auto 28px; bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
 
 /* O nome da modalidade é o título principal de cada card de torneio. */
