@@ -12,6 +12,7 @@ import { resolveRegulation } from '../lib/regulation';
 import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
 import { analyzeCorrectionImpact } from '../lib/tournament-progression';
 import { createId } from '../lib/create-id';
+import { resolveMatchDate } from '../lib/date-utils';
 
 type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string; aDefinirA?: boolean; aDefinirB?: boolean; tournamentId?: string };
 
@@ -24,7 +25,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const currentStatus = (override.status ?? match.status) as MatchStatus;
   const regulation = resolveRegulation(match.discipline, state.disciplines[match.discipline], override.rules);
   const initial = useMemo(() => ({
-    date: override.date ?? match.date,
+    date: override.date ?? (match.date ? resolveMatchDate(match.date) : ''),
     time: override.time ?? match.time,
     venue: override.venue ?? match.venue,
     status: currentStatus,
