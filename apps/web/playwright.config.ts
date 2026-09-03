@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 7_000, toHaveScreenshot: { maxDiffPixelRatio: 0.025, animations: 'disabled' } },
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
-  use: { baseURL: 'http://127.0.0.1:3101', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
+  use: { baseURL: 'http://127.0.0.1:3101', channel: 'chromium', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   // Este ramo só vale para quem chama a CLI do Playwright direto: `npm run
   // test:e2e` e o CI passam por `scripts/run-e2e.mjs`, que sobe o servidor
   // por conta própria e declara E2E_EXTERNAL_SERVER — ou seja, nada aqui é
