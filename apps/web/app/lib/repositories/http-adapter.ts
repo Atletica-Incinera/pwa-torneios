@@ -90,6 +90,8 @@ export type HttpAdapterOptions = {
   getToken?: () => string | null;
   adapter?: AxiosAdapter;
   connect?: RealtimeConnect;
+  /** Intervalo da sondagem que cobre o stream mudo. Existe para o teste poder encurtar. */
+  pollingIntervalMilliseconds?: number;
 };
 
 /**
@@ -338,6 +340,7 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
       const receiveRevision = (event: EditionRevision) => {
         if (event.editionId === appliedEditionId && event.revision <= appliedRevision) return;
         queueRevision(event);
+        marcarEntrega();
         void refreshFromServer();
       };
       const updateConnection = (state: ConnectionState) => {
@@ -359,9 +362,42 @@ export function createHttpStateAdapter(options: HttpAdapterOptions = {}): StateA
       };
       connectStream();
 
+      /*
+       * Rede de seguranca: buscar o estado de tempos em tempos quando o stream
+       * nao traz nada.
+       *
+       * O tempo real e por SSE, e SSE atravessa proxy mal: basta uma camada com
+       * buffer ligado para a conexao abrir, ficar de pe e nunca entregar um
+       * byte. Foi o que aconteceu em producao -- vinte e cinco segundos sem
+       * nenhum evento, com o servidor mandando um batimento a cada vinte.
+       *
+       * Sem isto, so quem opera ve o que mudou: cada acao devolve o estado novo
+       * a quem a fez. O telao e o segundo aparelho ficam congelados ate alguem
+       * recarregar a pagina.
+       *
+       * A sondagem e o plano B, nao o plano A. Ela para sozinha assim que o
+       * stream entrega alguma coisa, e so roda com a aba visivel -- telao
+       * esquecido aberto num canto nao fica batendo no servidor.
+       */
+      let streamEntregou = false;
+      const marcarEntrega = () => {
+        streamEntregou = true;
+      };
+      let sondagem: ReturnType<typeof setInterval> | undefined;
+      const sondar = () => {
+        if (closed || streamEntregou) return;
+        if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+        refreshRequested = true;
+        void refreshFromServer();
+      };
+      if (typeof setInterval === 'function') {
+        sondagem = setInterval(sondar, options.pollingIntervalMilliseconds ?? 12_000);
+      }
+
       return () => {
         closed = true;
         clearRetryTimer();
+        if (sondagem !== undefined) clearInterval(sondagem);
         disconnectStream();
       };
     },
