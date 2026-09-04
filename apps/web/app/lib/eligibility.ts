@@ -35,8 +35,22 @@ export function disciplineStarted(state: Pick<FrontendState, 'matches' | 'tourna
 }
 
 /** Já existe partida eliminatória criada nesta modalidade? */
+/**
+ * O mata-mata COMECOU -- nao apenas foi agendado.
+ *
+ * A diferenca virou tudo quando a chave passou a entrar na agenda antes de
+ * existir resultado: com "existe partida de mata-mata" bastando, o elenco de
+ * toda modalidade com chave publicada nascia trancado, e a organizacao nao
+ * conseguia inscrever ninguem em modalidade nenhuma. Sem elenco nao ha a quem
+ * creditar um gol, e a artilharia ficaria vazia o evento inteiro.
+ *
+ * A trava existe para impedir que uma equipe reforce o time entre a fase de
+ * grupos e a chave. Um jogo apenas agendado nao reforca nada -- quem fecha a
+ * janela e o apito do primeiro jogo do mata-mata. E o mesmo criterio que
+ * `disciplineStarted` ja usava.
+ */
 export function knockoutStarted(state: Pick<FrontendState, 'matches'>, discipline: string, editionId?: string) {
-  return Object.values(state.matches).some((match) => match.discipline === discipline && (!editionId || match.editionId === editionId) && isEliminationPhase(match.phase));
+  return Object.values(state.matches).some((match) => match.discipline === discipline && (!editionId || match.editionId === editionId) && isEliminationPhase(match.phase) && hasStarted(match.status));
 }
 
 export type RosterLockCheck = { allowed: boolean; message: string };

@@ -88,8 +88,73 @@ test('o elenco trava conforme a fase definida no regulamento', () => {
   const parado: Pick<FrontendState, 'matches' | 'tournaments'> = { matches: {}, tournaments: {} };
   assert.equal(checkRosterLock(parado, futsal).allowed, true);
 
-  const noMataMata = { matches: { jogo: { discipline: 'Futsal', phase: 'Semifinal', status: 'Agendada' as const } }, tournaments: {} };
-  assert.equal(checkRosterLock(noMataMata, futsal).allowed, false);
+  /*
+   * Este caso mudou de resposta, e a premissa e que mudou.
+   *
+   * Quando o teste foi escrito, partida de mata-mata so existia DEPOIS de a
+   * fase de grupos acabar -- entao uma semifinal "Agendada" implicava que os
+   * grupos ja tinham terminado, e travar o elenco ali estava certo.
+   *
+   * Hoje a chave inteira entra na agenda antes de existir resultado. Uma
+   * semifinal agendada nao diz mais nada sobre a fase de grupos, e travar por
+   * causa dela deixaria o elenco fechado desde o primeiro dia.
+   */
+  const soAgendada = { matches: { jogo: { discipline: 'Futsal', phase: 'Semifinal', status: 'Agendada' as const } }, tournaments: {} };
+  assert.equal(checkRosterLock(soAgendada, futsal).allowed, true);
 
-  assert.equal(checkRosterLock(noMataMata, xadrez).allowed, true);
+  const emJogo = { matches: { jogo: { discipline: 'Futsal', phase: 'Semifinal', status: 'Ao vivo' as const } }, tournaments: {} };
+  assert.equal(checkRosterLock(emJogo, futsal).allowed, false);
+
+  assert.equal(checkRosterLock(emJogo, xadrez).allowed, true);
+});
+
+/*
+ * A trava de elenco existe para impedir que uma equipe reforce o time entre a
+ * fase de grupos e o mata-mata. Quando a chave passou a entrar na agenda antes
+ * de existir resultado, "existe partida de mata-mata" deixou de significar
+ * "o mata-mata começou" — e o elenco de toda modalidade com chave publicada
+ * nascia trancado.
+ *
+ * O efeito era pior do que parece: sem poder inscrever atleta em modalidade,
+ * não há a quem creditar um gol, e a artilharia ficaria vazia o evento inteiro.
+ */
+test('chave apenas agendada não tranca o elenco', async () => {
+  const { checkRosterLock } = await import('../../app/lib/eligibility.ts');
+  const { resolveRegulation } = await import('../../app/lib/regulation.ts');
+  const regulamento = resolveRegulation('Futsal');
+  assert.equal(regulamento.roster.lock, 'knockout');
+
+  const agendada = {
+    matches: {
+      m1: { discipline: 'Futsal', phase: 'Mata-mata', status: 'Agendada' },
+    },
+    tournaments: {},
+  } as never;
+
+  assert.equal(checkRosterLock(agendada, regulamento).allowed, true);
+});
+
+test('o apito do primeiro jogo do mata-mata tranca o elenco', async () => {
+  const { checkRosterLock } = await import('../../app/lib/eligibility.ts');
+  const { resolveRegulation } = await import('../../app/lib/regulation.ts');
+  const regulamento = resolveRegulation('Futsal');
+
+  for (const status of ['Ao vivo', 'Encerrada']) {
+    const emJogo = {
+      matches: { m1: { discipline: 'Futsal', phase: 'Mata-mata', status } },
+      tournaments: {},
+    } as never;
+    assert.equal(checkRosterLock(emJogo, regulamento).allowed, false, status);
+  }
+});
+
+test('jogo de outra modalidade não tranca o elenco desta', async () => {
+  const { checkRosterLock } = await import('../../app/lib/eligibility.ts');
+  const { resolveRegulation } = await import('../../app/lib/regulation.ts');
+  const outra = {
+    matches: { m1: { discipline: 'Vôlei', phase: 'Mata-mata', status: 'Ao vivo' } },
+    tournaments: {},
+  } as never;
+
+  assert.equal(checkRosterLock(outra, resolveRegulation('Futsal')).allowed, true);
 });
