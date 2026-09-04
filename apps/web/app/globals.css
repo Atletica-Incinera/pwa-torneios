@@ -509,6 +509,16 @@ ul.form-feedback li { line-height: 1.45; }
    de uma atlética: fica sem cor de equipe e um pouco apagado, para o olho não o
    ler como um time e para o cartão continuar tendo o mesmo tamanho dos outros. */
 .mark-neutral:not(.team-mark-logo) { background: var(--muted, #9aa3af); color: #fff; }
+/* Quem marcou, informado depois do jogo: um lance por linha, com o seletor de
+   autor ao lado. Linha larga de proposito -- a mesa usa isso no celular, com o
+   ginasio em volta, e alvo pequeno ali custa caro. */
+.match-scorers-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.match-scorers-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); background: var(--surface); }
+.match-scorers-event { display: flex; flex-direction: column; min-width: 140px; flex: 1 1 140px; }
+.match-scorers-event small { color: var(--text-secondary); }
+.match-scorers-list label { flex: 1 1 200px; }
+.match-scorers-list select { width: 100%; min-height: 48px; background: var(--surface); color: var(--white); border: 1px solid var(--line); }
+.match-scorers-list .form-hint { flex: 1 1 100%; }
 .team-side-a-definir strong { opacity: 0.72; font-style: italic; }
 .mark-orange:not(.team-mark-logo) { background: var(--orange); color: #000; }
 .team-mark-logo { background: none; overflow: visible; }

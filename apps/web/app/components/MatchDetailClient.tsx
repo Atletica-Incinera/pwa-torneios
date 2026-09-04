@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Clock3, Pencil, Radio } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { MatchSummary } from './MatchSummary';
+import { MatchScorers } from './MatchScorers';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
 import { formatClock } from '../lib/tournament-engine';
@@ -59,6 +60,9 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
         {operable ? <Link href={`/matches/live?partida=${match.id}`} className="primary-button"><Radio size={17} aria-hidden="true" /> {isLive(current.status) ? 'Continuar placar' : 'Abrir placar'}</Link> : null}
       </div>
     ) : null}
+    {/* Depois do apito, dizer quem marcou deixa de ser operar e vira registro:
+        a mesa acerta a artilharia com o jogo terminado, sem o placar na mao. */}
+    {!readOnly && canOperate && isTerminalMatch(current.status) ? <MatchScorers match={current} /> : null}
     {!readOnly && !canOperate ? <div className="info-banner"><p>Seu perfil não pode editar ou operar partidas de {current.discipline}.</p></div> : null}
     {operation.periodResults?.length ? <p className="period-results">Parciais: {operation.periodResults.map((item) => `${item.scoreA}-${item.scoreB}`).join(' · ')}</p> : null}
     {operation.tiebreak ? <div className="info-banner"><p><strong>{operation.tiebreak.label}:</strong> {operation.tiebreak.winner} ({operation.tiebreak.scoreA} × {operation.tiebreak.scoreB}) · {operation.tiebreak.reason}</p></div> : null}

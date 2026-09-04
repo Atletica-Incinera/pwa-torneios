@@ -90,6 +90,21 @@ export const seedMatches: Record<string, MatchState> = {
    * partida trancaria um elenco que os testes de gestao ainda editam.
    */
   'futsal-m-advanced-r1-1': { editionId, tournamentId: 'futsal-m', time: '19:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Vencedor do Jogo 1', entryB: 'Vencedor do Jogo 2', aDefinirA: true, aDefinirB: true, scoreA: null, scoreB: null, venue: 'Ginásio CIn', phase: 'Semifinal', status: 'Agendada' },
+  /*
+   * Jogo encerrado com gols SEM AUTOR -- o estado em que a mesa termina a
+   * partida no ginasio, porque escolher quem marcou no meio do jogo custa
+   * placar errado. E o estado que o painel de artilharia pos-jogo existe para
+   * resolver, e o unico jeito de exercita-lo.
+   */
+  'futsal-grupo-encerrado': {
+    editionId, tournamentId: 'futsal-m', time: '16:00', date: 'Hoje', discipline: 'Futsal',
+    entryA: 'Alcateia', logoA: '/teams/alcateia.webp', entryB: 'Cangaceiros', logoB: '/teams/cangaceiros.webp',
+    scoreA: 1, scoreB: 1, venue: 'Ginásio CIn', phase: 'Grupo A', status: 'Encerrada',
+    events: [
+      { id: 'gol-cangaceiros', at: '2026-10-13T16:20:00-03:00', elapsedSeconds: 1200, period: 2, type: 'Gol', detail: 'Gol do Cangaceiros', side: 'away', scoreA: 1, scoreB: 1, points: 1 },
+      { id: 'gol-alcateia', at: '2026-10-13T16:05:00-03:00', elapsedSeconds: 300, period: 1, type: 'Gol', detail: 'Gol da Alcateia', side: 'home', scoreA: 1, scoreB: 0, points: 1 },
+    ],
+  },
   'futsal-quartas': { editionId, tournamentId: 'futsal-m', time: '18:00', date: 'Hoje', discipline: 'Futsal', entryA: 'Engenhosa', logoA: '/teams/engenhosa.webp', entryB: 'Incinera', logoB: '/teams/incinera.webp', scoreA: 3, scoreB: 3, venue: 'Ginásio CIn', phase: 'Quartas', status: 'Encerrada' },
 };
 
