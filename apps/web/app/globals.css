@@ -512,6 +512,11 @@ ul.form-feedback li { line-height: 1.45; }
 /* Quem marcou, informado depois do jogo: um lance por linha, com o seletor de
    autor ao lado. Linha larga de proposito -- a mesa usa isso no celular, com o
    ginasio em volta, e alvo pequeno ali custa caro. */
+/* Aviso de lacuna, nao de erro: a modalidade funciona, mas o regulamento dela
+   ainda e um palpite do app. Laranja para separar do informativo neutro. */
+.info-banner.banner-atencao { border-color: var(--orange); }
+.info-banner.banner-atencao svg { color: var(--orange); }
+
 .match-scorers-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .match-scorers-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); background: var(--surface); }
 .match-scorers-event { display: flex; flex-direction: column; min-width: 140px; flex: 1 1 140px; }
