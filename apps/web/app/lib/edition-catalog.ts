@@ -98,6 +98,10 @@ export type MatchView = {
   aDefinirB?: boolean;
   scoreA: number | null;
   scoreB: number | null;
+  currentPeriod?: number;
+  periodScoreA?: number;
+  periodScoreB?: number;
+  isSetBased?: boolean;
   date: string;
   time: string;
   venue: string;
@@ -109,11 +113,13 @@ export type MatchView = {
 export type MatchFilter = { discipline?: string; tournamentId?: string };
 
 function matchView(id: string, match: MatchState): MatchView {
+  const discipline = match.discipline ?? 'Modalidade';
+  const regulation = regulationFromRule(discipline, resolveDisciplineRule(discipline, match.rules ? { rules: match.rules } : undefined));
   return {
     id,
     editionId: match.editionId,
     tournamentId: match.tournamentId,
-    discipline: match.discipline ?? 'Modalidade',
+    discipline,
     entryA: match.entryA ?? 'Equipe A',
     logoA: match.logoA ?? '',
     entryB: match.entryB ?? 'Equipe B',
@@ -122,6 +128,10 @@ function matchView(id: string, match: MatchState): MatchView {
     aDefinirB: match.aDefinirB ?? false,
     scoreA: match.scoreA ?? null,
     scoreB: match.scoreB ?? null,
+    currentPeriod: match.currentPeriod ?? 1,
+    periodScoreA: match.periodScoreA ?? 0,
+    periodScoreB: match.periodScoreB ?? 0,
+    isSetBased: regulation.completion.mode === 'sets',
     date: match.date ?? 'A definir',
     time: match.time ?? '--:--',
     venue: match.venue ?? 'A definir',
