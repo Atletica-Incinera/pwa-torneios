@@ -18,5 +18,8 @@ export function MatchCard({ match, href, className }: { match: MatchView; href?:
   const { state } = useFrontendState();
   const categoryName = match.tournamentId ? state.tournaments[match.tournamentId]?.name : undefined;
   const tone = isLive(match.status) ? 'orange' : match.status === matchStatus.finished ? 'neutral' : match.status === matchStatus.cancelled ? 'pink' : 'blue';
-  return <MatchScoreCard className={className} href={href} dateLabel={`${formatMatchDateLabel(match.date)} • ${match.time}`} status={match.status} statusTone={tone} discipline={match.discipline} categoryLabel={categoryName} teamA={match.entryA} teamALogo={match.logoA} teamB={match.entryB} teamBLogo={match.logoB} aDefinirA={match.aDefinirA} aDefinirB={match.aDefinirB} scoreA={match.scoreA} scoreB={match.scoreB} venue={match.venue} />;
+  const currentSet = isLive(match.status) && match.isSetBased
+    ? { number: match.currentPeriod ?? 1, scoreA: match.periodScoreA ?? 0, scoreB: match.periodScoreB ?? 0 }
+    : undefined;
+  return <MatchScoreCard className={className} href={href} dateLabel={`${formatMatchDateLabel(match.date)} • ${match.time}`} status={match.status} statusTone={tone} discipline={match.discipline} categoryLabel={categoryName} teamA={match.entryA} teamALogo={match.logoA} teamB={match.entryB} teamBLogo={match.logoB} aDefinirA={match.aDefinirA} aDefinirB={match.aDefinirB} scoreA={match.scoreA} scoreB={match.scoreB} currentSet={currentSet} venue={match.venue} />;
 }

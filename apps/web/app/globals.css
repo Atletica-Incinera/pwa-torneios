@@ -358,6 +358,7 @@ ul.form-feedback li { line-height: 1.45; }
 .pink-shield { background: var(--pink); }
 .versus-mark { text-align: center; display: grid; gap: 5px; }
 .versus-mark span { font-size: clamp(42px, 10vw, 56px); font-weight: 900; line-height: .82; white-space: nowrap; }
+.current-set-score { color: var(--orange); font-size: var(--type-caption); line-height: 1.1; text-transform: uppercase; white-space: nowrap; }
 .versus-mark small { color: rgba(251,254,249,.5); }
 .quick-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .quick-card { min-height: 92px; border: 1px solid var(--line); background: var(--surface); color: var(--white); display: grid; place-items: center; gap: 6px; padding: 12px; text-align: center; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%); }
@@ -2662,6 +2663,16 @@ small,
   font-size: clamp(2.1rem, 10vw, 3.25rem);
   line-height: 1;
   text-align: center;
+}
+
+.match-summary-current-set {
+  margin: -8px 0 20px;
+  color: var(--orange);
+  font-size: var(--type-caption);
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .match-summary-info {

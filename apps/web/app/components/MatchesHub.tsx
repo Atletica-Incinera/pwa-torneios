@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AppShell } from './AppShell';
-import { allDisciplinesOption, DisciplineSelector } from './DisciplineSelector';
+import { allDisciplinesOption, DisciplineSelector, resolveSelectedDiscipline } from './DisciplineSelector';
 import { MatchSchedule } from './MatchSchedule';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { useFrontendSession } from '../lib/frontend-session';
@@ -24,19 +24,15 @@ export function MatchesHub() {
     .filter((role) => role.role === 'DISCIPLINE_MANAGER' && role.editionId === activeEdition?.id)
     .map((role) => role.disciplineName)
     .filter((name): name is string => Boolean(name));
-  const mixedAccess = session?.role !== 'SUPER_ADMIN' && editionRoles.some((role) => role.role === 'EDITION_ADMIN') && scopedDisciplines.length > 0;
-  const options = mixedAccess
-    ? [allDisciplinesOption, ...new Set([...disciplines.map((item) => item.name), ...scopedDisciplines])]
-    : [...new Set([...disciplines.map((item) => item.name), ...scopedDisciplines])];
+  const canSeeAllDisciplines = session?.role === 'SUPER_ADMIN' || session?.role === 'EDITION_ADMIN' || editionRoles.some((role) => role.role === 'EDITION_ADMIN');
+  const availableDisciplines = [...new Set([...disciplines.map((item) => item.name), ...scopedDisciplines])];
+  const options = canSeeAllDisciplines
+    ? [allDisciplinesOption, ...availableDisciplines]
+    : scopedDisciplines.length > 0 ? scopedDisciplines : availableDisciplines;
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
-  const selected = session?.role === 'EDITION_ADMIN' && options.includes(requested) && requested !== allDisciplinesOption
-    ? requested
-    : session?.role === 'EDITION_ADMIN' && mixedAccess
-      ? allDisciplinesOption
-      : session?.role === 'DISCIPLINE_MANAGER' && session.scope && options.includes(session.scope)
-        ? session.scope
-        : options.includes(requested) ? requested : options.includes(preferred) ? preferred : options[0] ?? 'Futsal';
+  const managerScope = session?.role === 'DISCIPLINE_MANAGER' ? session.scope : undefined;
+  const selected = resolveSelectedDiscipline(options, requested, preferred, managerScope);
   const showingAll = selected === allDisciplinesOption;
 
   return (

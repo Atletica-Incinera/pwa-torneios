@@ -11,6 +11,27 @@ type DisciplineSelectorProps = {
 
 export const allDisciplinesOption = 'Todas as modalidades';
 
+export function resolveSelectedDiscipline(
+  options: readonly string[],
+  requested: string,
+  preferred?: string,
+  managerScope?: string
+): string {
+  if (requested && options.includes(requested)) {
+    return requested;
+  }
+  if (options.includes(allDisciplinesOption)) {
+    return allDisciplinesOption;
+  }
+  if (managerScope && options.includes(managerScope)) {
+    return managerScope;
+  }
+  if (preferred && options.includes(preferred)) {
+    return preferred;
+  }
+  return options[0] ?? '';
+}
+
 export function DisciplineSelector({ options, onScopeChange }: DisciplineSelectorProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -20,16 +41,8 @@ export function DisciplineSelector({ options, onScopeChange }: DisciplineSelecto
   const activeEdition = getActiveEdition(state);
   const requested = searchParams.get('modalidade') ?? '';
   const preferred = state.preferences.selectedDiscipline;
-  // Super admin enxerga a edição inteira, como o admin dela: os dois têm a
-  // opção "Todas as modalidades" e nenhum fica preso a um escopo.
-  const seesEveryDiscipline = session?.role === 'EDITION_ADMIN' || session?.role === 'SUPER_ADMIN';
-  const selected = seesEveryDiscipline && options.includes(requested) && requested !== allDisciplinesOption
-    ? requested
-    : seesEveryDiscipline && options.includes(allDisciplinesOption)
-      ? allDisciplinesOption
-      : session?.role === 'DISCIPLINE_MANAGER' && session.scope && options.includes(session.scope)
-        ? session.scope
-        : options.includes(requested) ? requested : options.includes(preferred) ? preferred : (options[0] ?? '');
+  const managerScope = session?.role === 'DISCIPLINE_MANAGER' ? session.scope : undefined;
+  const selected = resolveSelectedDiscipline(options, requested, preferred, managerScope);
 
   function handleChange(value: string) {
     const adminRole = session?.editionRoles.find((role) => role.role === 'EDITION_ADMIN' && role.editionId === activeEdition?.id);
@@ -44,11 +57,11 @@ export function DisciplineSelector({ options, onScopeChange }: DisciplineSelecto
     // simplesmente não fazia nada).
     if (session?.role === 'SUPER_ADMIN') { /* segue direto */ }
     else if (value === allDisciplinesOption) {
-      if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;
+      if (adminRole) selectEditionRole(adminRole.roleAssignmentId);
     } else if (editionRole) {
-      if (!selectEditionRole(editionRole.roleAssignmentId)) return;
-    } else if (session?.role === 'DISCIPLINE_MANAGER') {
-      if (!adminRole || !selectEditionRole(adminRole.roleAssignmentId)) return;
+      selectEditionRole(editionRole.roleAssignmentId);
+    } else if (session?.role === 'DISCIPLINE_MANAGER' && adminRole) {
+      selectEditionRole(adminRole.roleAssignmentId);
     }
     void onScopeChange?.();
     if (value !== allDisciplinesOption) void setPreference({ selectedDiscipline: value });

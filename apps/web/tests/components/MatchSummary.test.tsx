@@ -18,4 +18,9 @@ describe('MatchSummary', () => {
     expect(screen.getByText('×')).toBeInTheDocument();
     expect(screen.getByText('Próximo')).toBeInTheDocument();
   });
+
+  it('mostra a parcial do set atual em partida de vôlei ao vivo', () => {
+    render(<MatchSummary match={{ phase: 'Grupo A', status: 'Ao vivo', entryA: 'Caótica', logoA: '', entryB: 'Energizada', logoB: '', scoreA: 1, scoreB: 0, currentPeriod: 2, periodScoreA: 18, periodScoreB: 14, isSetBased: true, date: '2026-10-14', time: '09:00', venue: 'Quadra 1' }} />);
+    expect(screen.getByText(/set 2:/i)).toHaveTextContent('Set 2: 18 — 14');
+  });
 });

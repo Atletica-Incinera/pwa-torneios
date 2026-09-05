@@ -19,6 +19,7 @@ type MatchScoreCardProps = {
   aDefinirB?: boolean;
   scoreA: number | null;
   scoreB: number | null;
+  currentSet?: { number: number; scoreA: number; scoreB: number };
   venue: string;
   className?: string;
 };
@@ -38,6 +39,7 @@ export function MatchScoreCard({
   aDefinirB = false,
   scoreA,
   scoreB,
+  currentSet,
   venue,
   className = '',
 }: MatchScoreCardProps) {
@@ -59,6 +61,7 @@ export function MatchScoreCard({
         </div>
         <div className="versus-mark">
           <span>{scoreA ?? '—'} — {scoreB ?? '—'}</span>
+          {currentSet ? <b className="current-set-score">Set {currentSet.number}: {currentSet.scoreA} — {currentSet.scoreB}</b> : null}
           <small>{venue}</small>
         </div>
         <div className={`team-side align-right${aDefinirB ? ' team-side-a-definir' : ''}`}>

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { PublicAppShell } from './PublicAppShell';
-import { allDisciplinesOption, DisciplineSelector } from './DisciplineSelector';
+import { allDisciplinesOption, DisciplineSelector, resolveSelectedDiscipline } from './DisciplineSelector';
 import { MatchSchedule } from './MatchSchedule';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { disciplineHref, listDisciplines } from '../lib/edition-catalog';
@@ -15,7 +15,7 @@ export function PublicMatchesHub() {
   const disciplines = listDisciplines(state, activeEdition?.id).filter((item) => item.enabled);
   const options = [allDisciplinesOption, ...new Set(disciplines.map((item) => item.name))];
   const requested = searchParams.get('modalidade') ?? '';
-  const selected = options.includes(requested) ? requested : options[0] ?? 'Futsal';
+  const selected = resolveSelectedDiscipline(options, requested);
   const showingAll = selected === allDisciplinesOption;
 
   return (
