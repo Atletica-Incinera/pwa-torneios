@@ -3971,7 +3971,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 /* Quem marcou: aparece depois do lance entrar no placar, nunca antes.
    Cabe numa faixa para nao empurrar os botoes de lance para fora da tela --
    a mesa opera de pe, com o polegar. */
-.autor-do-lance { margin-top: 14px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--orange); }
+.autor-do-lance { position: fixed; z-index: 1010; right: 0; bottom: calc(76px + env(safe-area-inset-bottom)); left: 0; max-width: 520px; max-height: min(42vh, 320px); overflow-y: auto; margin: 0 auto; padding: 18px max(18px, env(safe-area-inset-right)) 18px max(18px, env(safe-area-inset-left)); background: var(--black); border: 1px solid var(--orange); box-shadow: 0 -16px 40px rgba(0, 0, 0, .45); clip-path: polygon(0 14px, 14px 0, 100% 0, 100% 100%, 0 100%); }
 .autor-do-lance > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .autor-do-lance > header span { display: inline-flex; align-items: center; gap: 7px; font-size: .84rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .autor-do-lance > header button { padding: 4px; background: none; border: 0; color: inherit; cursor: pointer; }
@@ -3981,6 +3981,9 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .autor-chip { padding: 9px 13px; min-height: 44px; background: var(--black); border: 1px solid var(--line); color: var(--white); font-size: .9rem; font-weight: 600; cursor: pointer; }
 .autor-chip:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
 .autor-chip.autor-pular { border-style: dashed; color: rgba(247, 240, 227, .68); font-weight: 400; }
+
+
+.live-screen .match-controls { position: sticky; z-index: 12; bottom: 74px; padding: 10px 0; background: linear-gradient(180deg, rgba(0, 69, 112, 0), var(--blue) 26%); }
 
 /* Artilharia publica: lista curta, lida de relance no ginasio. */
 .artilharia-bloco + .artilharia-bloco { margin-top: 34px; }

@@ -109,7 +109,7 @@ export const defaultRegulations: Record<string, RegulationExtension> = {
   },
   Basquete: {
     scoring: [action('Lance livre', 1), action('Cesta de 2', 2), action('Cesta de 3', 3)],
-    secondary: [secondary('Falta', { fairPlayPoints: 1 }), secondary('Tempo técnico', { requiresSide: true })],
+    secondary: [secondary('Falta', { fairPlayPoints: 1 })],
     completion: { mode: 'periods', allowDraw: false, overtimePeriods: 1, overtimeDurationMinutes: 5 },
     roster: { required: true, min: 5, max: 12, lock: 'knockout' },
     // FIBA: vitória vale 2 e derrota vale 1; empate não existe.
@@ -119,7 +119,7 @@ export const defaultRegulations: Record<string, RegulationExtension> = {
   },
   'Vôlei': {
     scoring: [action('Ponto', 1)],
-    secondary: [secondary('Falta'), secondary('Tempo técnico')],
+    secondary: [secondary('Falta')],
     completion: { mode: 'sets', setsToWin: 3, pointsToWinSet: 25, pointsToWinDecidingSet: 15, minAdvantage: 2 },
     roster: { required: true, min: 6, max: 12, lock: 'knockout' },
     standings: { win: 3, draw: 0, loss: 0, tiebreakers: ['confronto-direto', 'vitorias', 'saldo', 'marcados', 'sorteio'] },
@@ -249,4 +249,3 @@ export function estimatedMatchMinutes(regulation: Regulation) {
   const breaks = Math.max(0, base.periodCount - 1) * 5;
   return playing + breaks + completion.overtimePeriods * completion.overtimeDurationMinutes;
 }
-

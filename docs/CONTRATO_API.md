@@ -74,7 +74,7 @@ As 32 operações que o servidor precisa aceitar:
 
 | Domínio | `type` |
 | --- | --- |
-| Partida | `match/schedule`, `match/update`, `match/start`, `match/updateClock`, `match/registerEvent`, `match/claimOperator`, `match/releaseOperator`, `match/undoEvent`, `match/finish`, `match/correctResult` |
+| Partida | `match/schedule`, `match/update`, `match/start`, `match/updateClock`, `match/registerEvent`, `match/attributeEvent`, `match/claimOperator`, `match/releaseOperator`, `match/undoEvent`, `match/finish`, `match/correctResult` |
 | Categoria | `category/create`, `category/update`, `category/generateMatches` |
 | Modalidade | `discipline/update` |
 | Equipe e atleta | `team/create`, `team/update`, `athlete/create`, `athlete/update` |
