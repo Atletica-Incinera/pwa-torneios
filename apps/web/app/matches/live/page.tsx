@@ -80,7 +80,7 @@ function LiveMatchContent() {
   const inOvertime = currentPeriod > totalPeriods;
   const periodDurationMinutes = inOvertime && completion.mode === 'periods' ? completion.overtimeDurationMinutes : regulation.base.periodDurationMinutes;
   const periodDurationSeconds = periodDurationMinutes * 60;
-  const hasClock = regulation.base.clockMode !== 'none' && periodDurationSeconds > 0;
+  const hasClock = false;
   const periodLabel = inOvertime ? 'Prorrogação' : regulation.base.periodLabel;
   const [clock, setClock] = useState(0);
   const [impact, setImpact] = useState<EventTone | null>(null);
@@ -227,12 +227,13 @@ function LiveMatchContent() {
       const nextSetsB = awayScore + (decided === 'away' ? 1 : 0);
       const matchOver = nextSetsA >= completion.setsToWin || nextSetsB >= completion.setsToWin;
       const nextPeriod = decided && !matchOver ? currentPeriod + 1 : currentPeriod;
-      writeEvent(actionLabel, team, side, {
+      const { event: registrado } = writeEvent(actionLabel, team, side, {
         scoreA: nextSetsA, scoreB: nextSetsB,
         periodScoreA: decided && !matchOver ? 0 : nextPeriodA,
         periodScoreB: decided && !matchOver ? 0 : nextPeriodB,
         currentPeriod: nextPeriod,
       }, points, decided ? { period: currentPeriod, scoreA: nextPeriodA, scoreB: nextPeriodB } : undefined);
+      setAtribuindo({ eventId: registrado.id, side, rotulo: actionLabel, equipe: team });
       if (decided) {
         announce(`${regulation.base.periodLabel} ${currentPeriod} para ${decided === 'home' ? match.entryA : match.entryB}: ${nextPeriodA} a ${nextPeriodB}.`);
         playSound(soundForLifecycle('period-end', match.discipline));
@@ -511,16 +512,18 @@ function LiveMatchContent() {
   const eventTime = (event: MatchEventState) => hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, event.periodElapsedSeconds ?? event.elapsedSeconds)) : '';
   const tiedAtRegulationEnd = completion.mode === 'periods' && !completion.allowDraw && homeScore === awayScore && currentPeriod >= totalPeriods && overtimePeriods > 0 && currentPeriod < totalPeriods + overtimePeriods;
   const setLabel = isSets && completion.mode === 'sets' ? `${setTarget(regulation, currentPeriod)} pontos · vantagem ${completion.minAdvantage}` : '';
+  // Pedido de tempo exige outra operação e não pertence a esta primeira mesa.
+  const visibleSecondary = regulation.secondary.filter((action) => action.label.toLocaleLowerCase('pt-BR') !== 'tempo técnico');
 
   return (
-    <main className={`app-screen live-screen theme-matches motion-page ${paused ? 'is-paused' : ''}`}>
+    <main className={`app-screen live-screen theme-matches motion-page ${paused && hasClock ? 'is-paused' : ''}`}>
       <div className={`diagonal-impact impact-${impact ?? 'none'}`} aria-hidden="true" />
       <PageNavigation title="PLACAR AO VIVO" />
       <header className="live-topbar motion-enter motion-delay-1">
         <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · INTERENG 2026</p><h1>{phase}</h1></div>
         <div className="live-status-actions">
           <button type="button" className="sound-toggle" onClick={() => void setPreference({ soundEffects: !soundEnabled })} aria-label={soundEnabled ? 'Desativar sons do placar' : 'Ativar sons do placar'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
-          <span className={`live-status ${paused ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : live ? (paused ? 'PAUSADA' : 'AO VIVO') : String(status).toUpperCase()}</span>
+          <span className={`live-status ${paused && hasClock ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : live ? (paused && hasClock ? 'PAUSADA' : 'AO VIVO') : String(status).toUpperCase()}</span>
         </div>
       </header>
 
@@ -541,7 +544,7 @@ function LiveMatchContent() {
       {/* O gol ja esta no placar; isto so pergunta o autor. Fechar sem escolher
           e um caminho legitimo -- artilharia e desejavel, nao obrigatoria. */}
       {atribuindo ? (
-        <section className="autor-do-lance" aria-label={`Quem marcou o ${atribuindo.rotulo.toLocaleLowerCase('pt-BR')} de ${atribuindo.equipe}`}>
+        <section className="autor-do-lance" role="dialog" aria-modal="true" aria-label={`Quem marcou o ${atribuindo.rotulo.toLocaleLowerCase('pt-BR')} de ${atribuindo.equipe}`}>
           <header>
             <span><UserRound size={16} aria-hidden="true" /> Quem marcou pelo {atribuindo.equipe}?</span>
             <button type="button" onClick={() => atribuirAutor(null)} aria-label="Não identificar quem marcou"><X size={16} aria-hidden="true" /></button>
@@ -584,7 +587,7 @@ function LiveMatchContent() {
             <button key={`${action.id}-home`} className="event-btn blue sport-press" onClick={() => registerScore(action.label, action.points, 'home', 'blue')} disabled={actionDisabled}><Goal size={25} /><span>{action.label}{action.points > 1 ? ` +${action.points}` : ''}<small>{match.entryA}</small></span></button>,
             <button key={`${action.id}-away`} className="event-btn pink sport-press" onClick={() => registerScore(action.label, action.points, 'away', 'pink')} disabled={actionDisabled}><CircleDot size={25} /><span>{action.label}{action.points > 1 ? ` +${action.points}` : ''}<small>{match.entryB}</small></span></button>,
           ]))}
-          {regulation.secondary.flatMap((action, index) => (action.requiresSide ? [
+          {visibleSecondary.flatMap((action, index) => (action.requiresSide ? [
             <button key={`${action.id}-home`} className={`event-btn ${index === 0 ? 'orange' : 'neutral'} sport-press`} onClick={() => registerSecondary(action.label, 'home', action.allowedWhenStopped)} disabled={!live || finished || (hasClock && paused && !action.allowedWhenStopped)}>{index === 0 ? <Flag size={25} /> : <Square size={24} />}<span>{action.label}<small>{match.entryA}</small></span></button>,
             <button key={`${action.id}-away`} className={`event-btn ${index === 0 ? 'orange' : 'neutral'} sport-press`} onClick={() => registerSecondary(action.label, 'away', action.allowedWhenStopped)} disabled={!live || finished || (hasClock && paused && !action.allowedWhenStopped)}>{index === 0 ? <Flag size={25} /> : <Square size={24} />}<span>{action.label}<small>{match.entryB}</small></span></button>,
           ] : [
@@ -594,7 +597,7 @@ function LiveMatchContent() {
 
         <section className="match-controls motion-enter motion-delay-4">
           {hasClock ? <button type="button" className="sport-press" onClick={togglePause} disabled={finished || clock >= periodDurationSeconds}>{paused ? <Play size={19} /> : <Pause size={19} />}{paused ? 'Retomar' : 'Pausar'}</button> : null}
-          <button type="button" className="sport-press" onClick={() => void advancePeriod()} disabled={finished || currentPeriod >= totalPeriods}><SkipForward size={19} />Próximo {periodLabel.toLowerCase()}</button>
+          <button type="button" className="sport-press" onClick={() => void advancePeriod()} disabled={finished || currentPeriod >= totalPeriods}><SkipForward size={19} />Avançar {periodLabel.toLowerCase()}</button>
           {tiedAtRegulationEnd ? <button type="button" className="sport-press" onClick={() => void startOvertime()}><TimerReset size={19} />Prorrogação</button> : null}
           <button type="button" className="sport-press" onClick={() => void undoLastAction()} disabled={finished || !events.length}><RotateCcw size={19} aria-hidden="true" />Desfazer último lance</button>
           <button type="button" className="finish sport-press" onClick={() => void finishMatch()} disabled={finished}><TimerReset size={19} aria-hidden="true" />Encerrar partida</button>
@@ -622,7 +625,7 @@ function LiveMatchContent() {
 
       <section className="timeline-block motion-enter motion-delay-5">
         <div className="section-title-row"><div><p className="eyebrow">PARTIDA</p><h2>EVENTOS</h2></div></div>
-        <div className="event-timeline">{events.length ? events.map((event, index) => { const tone: EventTone = event.side === 'home' ? 'blue' : event.side === 'away' ? 'pink' : 'orange'; return <article className={`timeline-item ${index === 0 ? 'timeline-new' : ''}`} key={event.id}><span className={`timeline-minute minute-${tone}`}><small>{event.period ?? 1}º {regulation.base.periodLabel.slice(0, 1)}</small>{eventTime(event)}</span><div><strong>{event.type}{event.points ? ` (+${event.points})` : ''}</strong><p>{event.detail}</p></div></article>; }) : <p className="match-filter-empty">Nenhum evento registrado nesta partida.</p>}</div>
+        <div className="event-timeline">{events.length ? events.map((event, index) => { const tone: EventTone = event.side === 'home' ? 'blue' : event.side === 'away' ? 'pink' : 'orange'; const athlete = event.athleteId ? state.athletes[event.athleteId] : undefined; return <article className={`timeline-item ${index === 0 ? 'timeline-new' : ''}`} key={event.id}><span className={`timeline-minute minute-${tone}`}><small>{event.period ?? 1}º {regulation.base.periodLabel.slice(0, 1)}</small>{eventTime(event)}</span><div><strong>{event.type}{event.points ? ` (+${event.points})` : ''}</strong><p>{event.detail}{athlete ? ` · ${athlete.name}` : ''}</p></div></article>; }) : <p className="match-filter-empty">Nenhum evento registrado nesta partida.</p>}</div>
       </section>
       <BottomNav active="matches" />
     </main>
