@@ -171,3 +171,46 @@ test('criar torneio traz junto a primeira edição', () => {
   assert.equal(next.competitions.at(-1)?.slug, 'copa');
   assert.equal(next.editions[0].competitionId, 'copa');
 });
+
+test('alteração de adversários atualiza a partida, limpa marcas de a definir e registra justificativa na auditoria', () => {
+  const base = {
+    ...initialFrontendState,
+    matches: {
+      'semifinal-1': {
+        entryA: 'Vencedor J1',
+        entryB: 'Búfalos',
+        aDefinirA: true,
+        aDefinirB: false,
+        status: 'Agendada' as const,
+      },
+    },
+  };
+
+  const next = applyAction(base, {
+    type: 'match/update',
+    payload: {
+      id: 'semifinal-1',
+      patch: {
+        entryA: 'Alcateia',
+        entryB: 'Cangaceiros',
+        reason: 'Ajuste presencial da comissão',
+      },
+    },
+    audit: {
+      action: 'Adversários alterados',
+      entity: 'Vencedor J1 × Búfalos',
+      before: 'Vencedor J1 × Búfalos',
+      after: 'Alcateia × Cangaceiros',
+      reason: 'Ajuste presencial da comissão',
+    },
+  }, context);
+
+  assert.equal(next.matches['semifinal-1'].entryA, 'Alcateia');
+  assert.equal(next.matches['semifinal-1'].entryB, 'Cangaceiros');
+  assert.equal(next.matches['semifinal-1'].aDefinirA, false);
+  assert.equal(next.matches['semifinal-1'].aDefinirB, false);
+  assert.equal(next.audit.length, 1);
+  assert.equal(next.audit[0].action, 'Adversários alterados');
+  assert.equal(next.audit[0].reason, 'Ajuste presencial da comissão');
+  assert.equal(next.audit[0].actor, 'Ana Coordenadora');
+});
