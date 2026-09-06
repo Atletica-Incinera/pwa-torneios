@@ -9,12 +9,12 @@ import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session
 import { canCorrectResult, matchTransitions, statusRequirements, walkoverScores, type MatchStatus } from '../lib/match-lifecycle';
 import { isTerminalMatch } from '../lib/status';
 import { resolveRegulation } from '../lib/regulation';
-import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
-import { analyzeCorrectionImpact, isKnockoutMatch } from '../lib/tournament-progression';
+import { collectScheduledMatches, findScheduleConflicts, scheduledDuration } from '../lib/scheduling-rules';
+import { analyzeCorrectionImpact } from '../lib/tournament-progression';
 import { createId } from '../lib/create-id';
 import { resolveMatchDate } from '../lib/date-utils';
 
-type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; phase: string; status: string; aDefinirA?: boolean; aDefinirB?: boolean; tournamentId?: string };
+type MatchBase = { id: string; discipline: string; entryA: string; entryB: string; date: string; time: string; venue: string; status: string; aDefinirA?: boolean; aDefinirB?: boolean; tournamentId?: string };
 
 export function MatchManager({ match }: { match: MatchBase }) {
   const { state, dispatch } = useFrontendState();
@@ -47,8 +47,6 @@ export function MatchManager({ match }: { match: MatchBase }) {
     const categoria = tournamentId ? state.tournaments[tournamentId] : undefined;
     return categoria?.participants ?? [];
   }, [state.tournaments, tournamentId]);
-  const tournament = tournamentId ? state.tournaments[tournamentId] : undefined;
-  const knockout = isKnockoutMatch(match.id, tournamentId, override.phase ?? match.phase, tournament);
   const [definindo, setDefinindo] = useState({ entryA: '', entryB: '' });
   const [definindoErro, setDefinindoErro] = useState('');
   const [definindoEnviando, setDefinindoEnviando] = useState(false);
@@ -111,7 +109,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const allowed = canManageDiscipline(session, match.discipline);
   const locked = isTerminalMatch(currentStatus);
   const isScheduled = currentStatus === 'Agendada';
-  const canEditOpponents = knockout && isScheduled;
+  const canEditOpponents = isScheduled;
   const options = matchTransitions[currentStatus] ?? [currentStatus];
   useUnsavedChanges(dirty && !submitting);
 
@@ -123,7 +121,6 @@ export function MatchManager({ match }: { match: MatchBase }) {
       { window: { start: activeEdition.start, end: activeEdition.end } },
     );
   }, [activeEdition, draft.date, draft.time, draft.venue, match.discipline, draft.entryA, draft.entryB, match.id, regulation, state]);
-  const blockingConflicts = conflicts.filter(isBlocking);
   const impact = useMemo(() => analyzeCorrectionImpact(state, match.id), [match.id, state]);
 
   function update(field: keyof typeof draft, value: string) {
@@ -135,14 +132,13 @@ export function MatchManager({ match }: { match: MatchBase }) {
     event.preventDefault();
     if (!allowed || locked || submitting || !dirty) return;
     const mudouAdversarios = draft.entryA !== initial.entryA || draft.entryB !== initial.entryB;
-    if (mudouAdversarios && !canEditOpponents) { setError('Os adversários só podem ser alterados em confrontos de mata-mata agendados.'); return; }
+    if (mudouAdversarios && !canEditOpponents) { setError('Os adversários só podem ser alterados em partidas agendadas.'); return; }
     if (mudouAdversarios && (!draft.entryA || !draft.entryB)) { setError('Informe as duas equipes da partida.'); return; }
     if (mudouAdversarios && draft.entryA === draft.entryB) { setError('Os participantes devem ser equipes diferentes.'); return; }
     if (!draft.date || !draft.time || draft.venue.trim().length < 2) { setError('Preencha data, horário e local.'); return; }
     if (requirement.reason && draft.reason.trim().length < 5) { setError('Descreva o motivo da alteração excepcional.'); return; }
     if (requirement.winner && !draft.walkoverWinner) { setError('Informe qual equipe vence o W.O.'); return; }
     if (requirement.reschedule && draft.date === initial.date && draft.time === initial.time) { setError('Adiar exige uma nova data ou horário para a partida.'); return; }
-    if (blockingConflicts.length) { setError(blockingConflicts[0].message); return; }
 
     let motivoAdversarios = '';
 
@@ -252,7 +248,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
         <p>
           {locked
             ? `Esta partida está em estado final (${currentStatus}). Use a retificação de resultado para corrigir o placar.`
-            : knockout && !isScheduled
+            : !isScheduled
               ? `Partida em andamento (${currentStatus}). Os participantes só podem ser alterados antes do início do jogo.`
               : requirement.consequence}
         </p>
@@ -318,9 +314,9 @@ export function MatchManager({ match }: { match: MatchBase }) {
       {requirement.winner ? <label><span>Equipe vencedora do W.O.</span><select value={draft.walkoverWinner} onChange={(event) => update('walkoverWinner', event.target.value)} required disabled={locked}><option value="" disabled>Selecione</option><option>{draft.entryA}</option><option>{draft.entryB}</option></select><small>Placar regulamentar aplicado: {regulation.walkover.winnerScore} × {regulation.walkover.loserScore}.</small></label> : null}
       {requirement.reason ? <label><span>Motivo</span><input value={draft.reason} onChange={(event) => update('reason', event.target.value)} placeholder="Informe o motivo registrado na auditoria" required disabled={locked} /></label> : null}
       {requirement.reschedule ? <p className="form-hint">Adiar exige uma nova data ou horário: a partida volta ao calendário e sai dos resultados oficiais.</p> : null}
-      {conflicts.length ? <ul className={`form-feedback ${blockingConflicts.length ? 'form-feedback-error' : ''}`} role={blockingConflicts.length ? 'alert' : 'status'}>{conflicts.map((item) => <li key={`${item.code}-${item.matchId ?? ''}`}>{item.message}</li>)}</ul> : null}
+      {conflicts.length ? <ul className="form-feedback" role="status">{conflicts.map((item) => <li key={`${item.code}-${item.matchId ?? ''}`}>{item.message}</li>)}</ul> : null}
       {error ? <p className="form-feedback form-feedback-error" role="alert">{error}</p> : null}
-      <div className="form-actions"><button type="submit" className="primary-button" disabled={!dirty || submitting || locked || blockingConflicts.length > 0}>{submitting ? 'Salvando…' : 'Salvar alterações'}</button></div>
+      <div className="form-actions"><button type="submit" className="primary-button" disabled={!dirty || submitting || locked}>{submitting ? 'Salvando…' : 'Salvar alterações'}</button></div>
     </form>
 
     {canCorrectResult(currentStatus) ? (

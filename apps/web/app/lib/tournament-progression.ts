@@ -26,23 +26,6 @@ function knockoutRound(matchId: string, tournamentId: string): number | null {
   return null;
 }
 
-/**
- * Identifica confrontos eliminatórios pela relação estrutural com a categoria,
- * nunca pelo texto exibido da rodada. As partidas geradas trazem um ID
- * canônico; integrações que persistem a fase da categoria usam o nome da fase
- * configurada como alternativa.
- */
-export function isKnockoutMatch(
-  matchId: string,
-  tournamentId: string | undefined,
-  matchPhase: string | undefined,
-  tournament: Pick<TournamentState, 'phases'> | undefined,
-) {
-  if (!tournamentId || !tournament) return false;
-  if (knockoutRound(matchId, tournamentId) !== null || matchId === `${tournamentId}-advanced-third`) return true;
-  return tournament.phases.some((phase) => phase.format === 'Mata-mata' && phase.name === matchPhase);
-}
-
 function bracketOrder(matchId: string) {
   const modern = /-advanced-r\d+-(\d+)$/.exec(matchId);
   if (modern) return Number(modern[1]);

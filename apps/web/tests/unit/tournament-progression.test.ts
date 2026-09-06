@@ -1,21 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { seededFrontendState } from '../../app/lib/frontend-state.ts';
-import { isKnockoutMatch, progressTournament } from '../../app/lib/tournament-progression.ts';
-
-test('reconhece mata-mata pela estrutura da categoria, sem inferir pelo nome da rodada', () => {
-  const tournament = {
-    phases: [
-      { id: 'groups', name: 'Fase de grupos', format: 'Grupos' as const, groups: ['Grupo A', 'Grupo B'], qualifiers: 2 },
-      { id: 'knockout', name: 'Mata-mata', format: 'Mata-mata' as const, groups: [], qualifiers: 1 },
-    ],
-  };
-
-  assert.equal(isKnockoutMatch('cup-advanced-r1-1', 'cup', 'Semifinal', tournament), true);
-  assert.equal(isKnockoutMatch('cup-generated-1', 'cup', 'Grupo A', tournament), false);
-  assert.equal(isKnockoutMatch('manual-final', 'cup', 'Mata-mata', tournament), true);
-  assert.equal(isKnockoutMatch('manual-semi', 'cup', 'Semifinal', tournament), false);
-});
+import { progressTournament } from '../../app/lib/tournament-progression.ts';
 
 test('gera semifinais automaticamente após a conclusão dos grupos', () => {
   const tournamentId = 'cup';

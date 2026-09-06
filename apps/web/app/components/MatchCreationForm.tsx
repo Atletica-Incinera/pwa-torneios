@@ -9,7 +9,7 @@ import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 import { formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
 import { describeCompletion, resolveRegulation } from '../lib/regulation';
-import { collectScheduledMatches, findScheduleConflicts, isBlocking, scheduledDuration } from '../lib/scheduling-rules';
+import { collectScheduledMatches, findScheduleConflicts, scheduledDuration } from '../lib/scheduling-rules';
 import { checkMatchEligibility } from '../lib/eligibility';
 import { createId } from '../lib/create-id';
 import { disciplineHref, findTeamByName, listCategories, listDisciplines } from '../lib/edition-catalog';
@@ -78,8 +78,6 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
     );
   }, [activeEdition, date, discipline, regulation, state, teamA, teamB, time, venue]);
   const eligibility = useMemo(() => (teamA && teamB ? checkMatchEligibility(state, regulation, effectiveSetup, teamA, teamB) : { ok: true, blocking: [], warnings: [] }), [effectiveSetup, regulation, state, teamA, teamB]);
-  const blockingConflicts = conflicts.filter(isBlocking);
-  const advisoryConflicts = conflicts.filter((conflict) => !isBlocking(conflict));
 
   function changeDiscipline(value: string) {
     setChosenDiscipline(value);
@@ -97,7 +95,6 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
     if (!activeEdition || !discipline || !tournament || !teamA || !teamB || !dateTime || !venue.trim()) { setError('Selecione modalidade, categoria e preencha todos os dados do jogo.'); return; }
     if (teamA === teamB) { setError('Selecione equipes diferentes para o confronto.'); return; }
     if (!eligibility.ok) { setError(eligibility.blocking[0]); return; }
-    if (blockingConflicts.length) { setError(blockingConflicts[0].message); return; }
 
     const logoFor = (team: string) => findTeamByName(state, team)?.logo ?? '';
     setSubmitting(true);
@@ -118,8 +115,8 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
         action: 'Partida agendada',
         entity: `${teamA} × ${teamB}`,
         after: `${discipline} · ${formatDisciplineRule(disciplineRule)} · ${dateTime} · ${venue.trim()}`,
-        // O alerta aceito vai sozinho para a auditoria: o operador não precisa redigitá-lo.
-        reason: advisoryConflicts.length ? advisoryConflicts.map((item) => item.message).join(' ') : undefined,
+        // Alertas de agenda são registrados, mas nunca impedem a operação.
+        reason: conflicts.length ? conflicts.map((item) => item.message).join(' ') : undefined,
       },
     });
     if (saved.ok) { router.push(`/matches?modalidade=${encodeURIComponent(discipline)}&created=1`); router.refresh(); } else setSubmitting(false);
@@ -145,13 +142,12 @@ export function MatchCreationForm({ requestedDiscipline }: { requestedDiscipline
       <label><span>Data e hora</span><input type="datetime-local" value={dateTime} onChange={(event) => { setDateTime(event.target.value); setError(''); }} required /></label>
       <label><span>Local</span><input value={venue} onChange={(event) => { setVenue(event.target.value); setError(''); }} placeholder="Ex.: Ginásio CIn" required /></label>
       {eligibility.blocking.length ? <ul className="form-feedback form-feedback-error" role="alert">{eligibility.blocking.map((item) => <li key={item}>{item}</li>)}</ul> : null}
-      {blockingConflicts.length ? <ul className="form-feedback form-feedback-error" role="alert">{blockingConflicts.map((item) => <li key={`${item.code}-${item.matchId ?? ''}`}>{item.message}</li>)}</ul> : null}
       {eligibility.warnings.length ? <div className="info-banner" role="status"><TriangleAlert size={18} /><div><strong>Elenco incompleto</strong><ul>{eligibility.warnings.map((item) => <li key={item}>{item}</li>)}</ul><p>O jogo pode ser agendado; ajuste o elenco antes da partida.</p></div></div> : null}
-      {advisoryConflicts.length ? <div className="info-banner" role="status"><TriangleAlert size={18} /><div><strong>Alerta de agenda</strong><ul>{advisoryConflicts.map((item) => <li key={`${item.code}-${item.matchId ?? ''}`}>{item.message}</li>)}</ul><p>O alerta fica registrado na auditoria ao confirmar.</p></div></div> : null}
+      {conflicts.length ? <div className="info-banner" role="status"><TriangleAlert size={18} /><div><strong>Alerta de agenda</strong><ul>{conflicts.map((item) => <li key={`${item.code}-${item.matchId ?? ''}`}>{item.message}</li>)}</ul><p>O alerta fica registrado na auditoria ao confirmar, mas não impede o agendamento.</p></div></div> : null}
       {error ? <p className="form-feedback form-feedback-error" role="alert">{error}</p> : null}
       <div className="form-actions">
         <Link href={`/matches?modalidade=${encodeURIComponent(discipline || requestedDiscipline)}`} className="secondary-button">Cancelar</Link>
-        <button type="submit" className="primary-button" disabled={submitting || !tournament || !eligibility.ok || blockingConflicts.length > 0}>{submitting ? 'Agendando…' : 'Agendar jogo'}</button>
+        <button type="submit" className="primary-button" disabled={submitting || !tournament || !eligibility.ok}>{submitting ? 'Agendando…' : 'Agendar jogo'}</button>
       </div>
     </form>
   );
