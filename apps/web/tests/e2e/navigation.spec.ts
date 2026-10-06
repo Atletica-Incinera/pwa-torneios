@@ -108,7 +108,7 @@ test('detalhe da equipe apresenta desempenho por modalidade, sem o ranking geral
   await expect(page.getByRole('link', { name: /ver classificação/i }).first()).toBeVisible();
   // O ranking entre modalidades e restrito a organizacao: ate a rodada
   // anterior esta checagem exigia o oposto, que o resumo aparecesse aqui.
-  await expect(page.getByText(/Ranking geral do InterEng/i)).toHaveCount(0);
+  await expect(page.getByText(/Ranking geral da Copa Halterada/i)).toHaveCount(0);
 });
 
 test('admin entra e preserva a modalidade ao navegar', async ({ page }) => {
