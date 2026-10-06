@@ -47,7 +47,7 @@ export function PublicTournamentDetailView({ id }: { id: string }) {
   const onTabKeys = useTablistKeys(tabIds, activeTab, openTab);
 
   if (!category || !isPublicTournamentStatus(category.status)) {
-    return <PublicAppShell active="disciplines" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="MODALIDADE" subtitle="Conteúdo ainda não publicado">
+    return <PublicAppShell active="disciplines" eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="MODALIDADE" subtitle="Conteúdo ainda não publicado">
       <EmptyState title="INDISPONÍVEL" copy="Esta categoria ainda não foi publicada para o público." />
     </PublicAppShell>;
   }

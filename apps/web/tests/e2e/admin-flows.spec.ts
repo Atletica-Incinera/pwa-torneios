@@ -207,10 +207,10 @@ test('renomeia categoria e torneio, e a correção aparece nas listas', async ({
 
   await loginAs(page, 'super@intereng.com', 'super2026');
   await page.goto('/competitions');
-  await page.getByRole('button', { name: /Renomear InterEng/i }).click();
-  await page.getByLabel('Nome do torneio').fill('InterEng UFPE');
+  await page.getByRole('button', { name: /Renomear Copa Halterada/i }).click();
+  await page.getByLabel('Nome do torneio').fill('Copa Halterada UFPE');
   await page.getByRole('button', { name: 'Salvar nome' }).click();
-  await expect(page.getByRole('button', { name: 'InterEng UFPE', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Copa Halterada UFPE', exact: true })).toBeVisible();
 });
 
 test('a migalha do cadastro de atleta não leva a lugar nenhum', async ({ page }) => {
