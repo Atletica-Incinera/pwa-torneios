@@ -106,7 +106,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
 
   return <>
     <section className="section-block overall-ranking-section">
-      <SectionTitle eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="RANKING GERAL" />
+      <SectionTitle eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="RANKING GERAL" />
       <p className="section-intro">Pontuação acumulada das equipes em todas as modalidades da edição.</p>
       {closed ? <div className="info-banner" role="status"><Lock size={18} /><div><strong>Classificação oficial e fechada</strong><p>Fechada em {new Date(closure!.at).toLocaleString('pt-BR')} por {closure!.actor}. Alterações posteriores aparecem como retificação na auditoria.</p></div></div> : null}
       <div className="overall-ranking-list" aria-label="Classificação geral das equipes">

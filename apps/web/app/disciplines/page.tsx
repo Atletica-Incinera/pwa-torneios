@@ -18,13 +18,13 @@ export default function DisciplinesPage() {
   return (
     <AppShell
       active="tournaments"
-      eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`}
+      eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`}
       title="MODALIDADES"
       subtitle={`${enabled.length} modalidades habilitadas · ${enabled.reduce((total, item) => total + item.categories.length, 0)} categorias`}
       actionHref={canManageEdition(session) ? "/disciplines/new" : undefined}
       actionLabel="Adicionar modalidade"
     >
-      <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DO INTERENG <span>›</span></Link>
+      <Link href="/standings" className="wide-action ranking-entry-action"><ListOrdered size={18} /> CLASSIFICAÇÃO GERAL DA COPA <span>›</span></Link>
       <section className="poster-list">
         {disciplines.map((discipline, index) => (
           <Link href={disciplineHref(discipline.name)} className={`discipline-card accent-${discipline.tone}${discipline.enabled ? '' : ' is-disabled'}`} key={discipline.name}>

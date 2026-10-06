@@ -15,7 +15,7 @@ export function PublicLiveView() {
   const activeEdition = getActiveEdition(state);
 
   return (
-    <PublicAppShell active="live" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="AO VIVO" subtitle="Placares oficiais acontecendo agora">
+    <PublicAppShell active="live" eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="AO VIVO" subtitle="Placares oficiais acontecendo agora">
       <PublicMatchCollection mode="live" />
       <Link href="/public/tournaments" className="wide-action"><Trophy size={18} /> VER TODAS AS MODALIDADES <span>›</span></Link>
     </PublicAppShell>

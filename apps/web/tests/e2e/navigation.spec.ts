@@ -95,7 +95,7 @@ test('barra de navegação permanece fixa durante a rolagem', async ({ page }) =
 test('detalhe da equipe apresenta classificação e desempenho por modalidade', async ({ page }) => {
   await page.goto('/public/teams/alcateia');
   await expect(page.getByRole('heading', { name: 'CLASSIFICAÇÕES' })).toBeVisible();
-  await expect(page.getByText(/Ranking geral do InterEng/i)).toBeVisible();
+  await expect(page.getByText(/Ranking geral da Copa Halterada/i)).toBeVisible();
   await expect(page.getByRole('link', { name: /ver classificação/i }).first()).toBeVisible();
 });
 

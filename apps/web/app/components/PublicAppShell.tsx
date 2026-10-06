@@ -44,6 +44,7 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
     <main id="app-main" className={`app-screen management-screen public-readonly-screen ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
         <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition.year}`}>
+          <img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" />
           <span className="context-mark">{String(edition.year).slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
         </Link>

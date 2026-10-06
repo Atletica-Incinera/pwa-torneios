@@ -21,7 +21,7 @@ export default function StaffPage() {
   function save(member: StaffState, patch: Partial<StaffState>, action = 'Permissão alterada') {
     const next = { ...member, ...patch };
     if (!canEdit(member) || !canGrantRole(session, next.role)) { toast('Somente o super administrador do app altera acessos de admin da edição.', 'error'); return; }
-    if (next.role === 'Admin da edição') next.scope = 'InterEng 2026';
+    if (next.role === 'Admin da edição') next.scope = 'Copa Halterada';
     void dispatch({
       type: 'staff/upsert',
       payload: { email: member.email, member: next },

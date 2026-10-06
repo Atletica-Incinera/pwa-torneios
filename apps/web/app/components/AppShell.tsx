@@ -34,6 +34,7 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
     <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">
         <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, edição ${edition.year}, contexto ativo`}>
+          <img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" />
           <span className="context-mark">{String(edition.year).slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition.year}</strong></span>
           <ChevronDown size={16} />

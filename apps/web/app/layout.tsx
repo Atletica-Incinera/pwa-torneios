@@ -1,42 +1,25 @@
-import localFont from 'next/font/local';
+import { Archivo, Outfit } from 'next/font/google';
 import './globals.css';
 import './motion.css';
 import { PwaRegistration } from './components/PwaRegistration';
 import { UiProvider } from './components/UiProvider';
 
-const kenyanCoffee = localFont({
-  src: [
-    { path: './fonts/kenyan-coffee-regular.otf', weight: '400', style: 'normal' },
-    { path: './fonts/kenyan-coffee-regular-italic.otf', weight: '400', style: 'italic' },
-    { path: './fonts/kenyan-coffee-bold.otf', weight: '700', style: 'normal' },
-    { path: './fonts/kenyan-coffee-bold-italic.otf', weight: '700', style: 'italic' },
-  ],
-  variable: '--font-kenyan-coffee-loaded',
+const archivo = Archivo({
+  subsets: ['latin'],
+  weight: ['600', '700', '800', '900'],
+  variable: '--font-display-loaded',
   display: 'swap',
 });
 
-const ttTravelsNext = localFont({
-  src: [
-    { path: './fonts/tt-travels-next-regular.ttf', weight: '400', style: 'normal' },
-    { path: './fonts/tt-travels-next-regular-italic.ttf', weight: '400', style: 'italic' },
-    { path: './fonts/tt-travels-next-medium.ttf', weight: '500', style: 'normal' },
-    { path: './fonts/tt-travels-next-medium-italic.ttf', weight: '500', style: 'italic' },
-    { path: './fonts/tt-travels-next-demibold.ttf', weight: '600', style: 'normal' },
-    { path: './fonts/tt-travels-next-demibold-italic.ttf', weight: '600', style: 'italic' },
-    { path: './fonts/tt-travels-next-bold.ttf', weight: '700', style: 'normal' },
-    { path: './fonts/tt-travels-next-bold-italic.ttf', weight: '700', style: 'italic' },
-    { path: './fonts/tt-travels-next-extrabold.ttf', weight: '800', style: 'normal' },
-    { path: './fonts/tt-travels-next-extrabold-italic.ttf', weight: '800', style: 'italic' },
-    { path: './fonts/tt-travels-next-black.ttf', weight: '900', style: 'normal' },
-    { path: './fonts/tt-travels-next-black-italic.ttf', weight: '900', style: 'italic' },
-  ],
-  variable: '--font-tt-travels-next-loaded',
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-interface-loaded',
   display: 'swap',
 });
 
 export const metadata = {
-  title: 'InterEng Pernambuco 2026',
-  description: 'Gestão e acompanhamento das edições do InterEng',
+  title: 'Copa Halterada',
+  description: 'Gestão e acompanhamento da Copa Halterada',
   manifest: '/manifest.webmanifest',
   icons: {
     icon: [
@@ -45,12 +28,12 @@ export const metadata = {
     ],
     apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
-  appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const },
+  appleWebApp: { capable: true, title: 'Copa Halterada', statusBarStyle: 'black-translucent' as const },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={`${kenyanCoffee.variable} ${ttTravelsNext.variable}`}>
+    <html lang="pt-BR" className={`${archivo.variable} ${outfit.variable}`}>
       <body><PwaRegistration /><UiProvider>{children}</UiProvider></body>
     </html>
   );

@@ -71,7 +71,7 @@ const eventName = stateChangeEvent;
 const sessionKey = 'intereng:frontend-session';
 
 export const initialFrontendState: FrontendState = {
-  competitions: [{ id: 'jogos-engenharia', name: 'InterEng', slug: 'intereng', active: true }],
+  competitions: [{ id: 'jogos-engenharia', name: 'Copa Halterada', slug: 'copa-halterada', active: true }],
   editions: [
     { id: 'intereng-2026', name: '2026', year: 2026, start: '2026-10-12', end: '2026-10-19', status: 'Em andamento', active: true, competitionId: 'jogos-engenharia' },
     { id: 'intereng-2025', name: '2025', year: 2025, start: '2025-10-13', end: '2025-10-20', status: 'Finalizada', active: false, competitionId: 'jogos-engenharia' },
@@ -125,7 +125,7 @@ function parseState(value: string | null): FrontendState {
   if (!value) return seededFrontendState;
   try {
     const parsed = JSON.parse(value) as Partial<FrontendState>;
-    const competitions = (parsed.competitions ?? seededFrontendState.competitions).map((competition) => competition.id === 'jogos-engenharia' && competition.name === 'Jogos de Engenharia' ? { ...competition, name: 'InterEng', slug: 'intereng' } : competition);
+    const competitions = (parsed.competitions ?? seededFrontendState.competitions).map((competition) => competition.id === 'jogos-engenharia' && (competition.name === 'Jogos de Engenharia' || competition.name === 'InterEng') ? { ...competition, name: 'Copa Halterada', slug: 'copa-halterada' } : competition);
     const editions = (parsed.editions ?? seededFrontendState.editions).map((edition) => /^InterEng\s+\d{4}$/i.test(edition.name) ? { ...edition, name: String(edition.year) } : edition);
     const activeEditionId = getActiveEdition({ competitions, editions })?.id ?? 'intereng-2026';
     const tournaments = Object.fromEntries(Object.entries(parsed.tournaments ?? {}).map(([id, item]) => [id, { ...item, editionId: item.editionId ?? activeEditionId }]));
