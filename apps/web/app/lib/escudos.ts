@@ -26,6 +26,7 @@ export const escudosPublicados = [
   'incinera',
   'inquisidores',
   'invasora',
+  'predadora',
   'kinesis',
   'mafiosa',
   'manguezal',
