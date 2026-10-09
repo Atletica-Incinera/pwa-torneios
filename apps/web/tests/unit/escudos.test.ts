@@ -13,6 +13,10 @@ test('acha pelo nome completo da atlética', () => {
   assert.equal(acharEscudo('Atlética Tríade'), '/teams/triade.webp');
 });
 
+test('reconhece o escudo Predadora no catálogo publicado', () => {
+  assert.equal(acharEscudo('Atlética Predadora'), '/teams/predadora.webp');
+});
+
 test('ignora acento e caixa', () => {
   assert.equal(acharEscudo('CAÓTICA'), '/teams/caotica.webp');
   assert.equal(acharEscudo('tubarões'), '/teams/tubaroes.webp');

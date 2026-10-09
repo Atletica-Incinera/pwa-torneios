@@ -20,6 +20,18 @@ test('a ação aplica a mudança e registra a auditoria com autor e horário', (
   assert.match(next.audit[0].id, /^audit-/);
 });
 
+test('vincular equipe do catálogo não duplica o registro global no modo local', () => {
+  const base = { ...initialFrontendState, teams: { alcateia: { name: 'Alcateia', created: true } } };
+  const next = applyAction(base, {
+    type: 'team/attach',
+    payload: { id: 'alcateia' },
+    audit: { action: 'Equipe adicionada à edição', entity: 'Alcateia' },
+  }, context);
+
+  assert.deepEqual(next.teams, base.teams);
+  assert.equal(next.audit[0].action, 'Equipe adicionada à edição');
+});
+
 test('o registro mais recente entra no topo da auditoria', () => {
   const first = applyAction(initialFrontendState, { type: 'competition/rename', payload: { id: 'jogos-engenharia', name: 'InterEng' }, audit: { action: 'Primeira', entity: 'X' } }, context);
   const second = applyAction(first, { type: 'competition/rename', payload: { id: 'jogos-engenharia', name: 'InterEng' }, audit: { action: 'Segunda', entity: 'X' } }, context);
