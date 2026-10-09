@@ -2,7 +2,7 @@ import type { MetadataRoute } from 'next';
 import { loadPublicSnapshot } from './lib/public-snapshot';
 import { isPublicMatch, isPublicTournamentStatus } from './lib/publication';
 
-const BASE_URL = 'https://incinera.cin.ufpe.br/intereng';
+const BASE_URL = 'https://incinera.cin.ufpe.br/copahalterada';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const state = await loadPublicSnapshot();

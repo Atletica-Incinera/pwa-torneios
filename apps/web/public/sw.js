@@ -2,7 +2,7 @@ const VERSION = 'halterada-v1';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const PUBLIC_DATA_CACHE = `${VERSION}-public-data`;
-// Em produção o app é servido sob /intereng. O escopo do próprio registro é a
+// Em produção o app é servido sob /copahalterada. O escopo do próprio registro é a
 // única fonte desse prefixo que não exige injetá-lo na compilação, e sem ele
 // todo caminho aqui apontava para a raiz do domínio: o pré-cache falhava
 // inteiro (uma URL ausente derruba o `addAll`) e a página pública nunca era

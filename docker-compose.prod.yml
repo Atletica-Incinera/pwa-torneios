@@ -16,7 +16,7 @@ services:
         # `/intereng-api/health` devolve 404 e `/intereng-api/api/v1/health`
         # devolve 200.
         NEXT_PUBLIC_API_URL: /intereng-api/api/v1
-        NEXT_PUBLIC_BASE_PATH: /intereng
+        NEXT_PUBLIC_BASE_PATH: /copahalterada
     restart: always
     expose:
       - "3001"
