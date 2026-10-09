@@ -54,11 +54,10 @@ export default function LoginPage() {
       <div className="ambient ambient-pink" />
 
       <section className="brand-panel" aria-label="Apresentação do produto">
-        <img className="brand-wordmark" src="/halterada/wordmark.png" alt="Copa Halterada" />
+        <img className="login-mascot" src="/halterada/mascote.webp" alt="Copa Halterada" width={626} height={522} />
         <p className="brand-copy">
           Equipes, jogos e placar ao vivo da Copa Halterada.
         </p>
-        <img className="login-mascot" src="/halterada/mascote.png" alt="" />
         <div className="slash slash-one" />
         <div className="slash slash-two" />
       </section>

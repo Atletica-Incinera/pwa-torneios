@@ -3,11 +3,11 @@ import { PublicTeamsPage } from '../../components/PublicTeamsPage';
 
 export const metadata: Metadata = {
   title: 'Equipes',
-  description: 'Conheça as equipes participantes e seus elencos no InterEng Pernambuco.',
+  description: 'Conheça as equipes participantes e seus elencos na Copa Halterada.',
   alternates: { canonical: '/intereng/public/teams' },
   openGraph: {
-    title: 'Equipes do InterEng Pernambuco',
-    description: 'Conheça as equipes participantes e seus elencos no InterEng Pernambuco.',
+    title: 'Equipes da Copa Halterada',
+    description: 'Conheça as equipes participantes e seus elencos na Copa Halterada.',
     url: '/intereng/public/teams',
   },
 };

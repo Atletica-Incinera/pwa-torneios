@@ -22,7 +22,7 @@ export default function PublicScorersPage() {
   return (
     <PublicAppShell
       active="scorers"
-      eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`}
+      eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`}
       title="ARTILHARIA"
       subtitle="Quem mais marcou em cada modalidade"
     >

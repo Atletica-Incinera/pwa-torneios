@@ -50,7 +50,7 @@ test('service worker instala cache e entrega a tela offline', async ({ context, 
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
   const cacheKeys = await page.evaluate(async () => caches.keys());
-  expect(cacheKeys.some((key) => /^intereng-v\d+-pages$/.test(key))).toBeTruthy();
+  expect(cacheKeys.some((key) => /^halterada-v\d+-pages$/.test(key))).toBeTruthy();
   await context.setOffline(true);
   try {
     await page.goto('/rota-nao-cacheada-e2e', { waitUntil: 'domcontentloaded' });

@@ -3,16 +3,25 @@
   --lime: #8CE303;
   --ink: #000000;
   --paper: #EFEFEE;
-  --black: #000000;
-  --surface: #0A105A;
-  --surface-2: #070f46;
+  /* Regra de marca: o FUNDO de toda tela e azul; o resto -- cartoes, botoes,
+     bordas, selos, texto -- e verde e branco. `--black` e o nome antigo do
+     fundo e aparece em ~150 regras como fundo de pagina, de campo e de
+     painel; apontado para o azul, todas seguem a regra sem uma a uma. O preto
+     de verdade continua em `--ink` e nas sombras. */
+  --black: #0A105A;
+  /* Cartao: o azul de fundo com ~8% de branco, para separar do fundo sem
+     introduzir uma cor nova. `--card-2` e o poco mais fundo, dentro do cartao. */
+  --card: #1C2266;
+  --card-2: #080E4A;
+  --surface: var(--card);
+  --surface-2: var(--card-2);
   --white: #EFEFEE;
-  --blue: #0A105A;
-  --green: #070f46;
-  --pink: #0A105A;
+  --blue: var(--card);
+  --green: var(--card);
+  --pink: var(--card);
   --orange: #8CE303;
   --line: rgba(239, 239, 238, 0.18);
-  --font-display: var(--font-display-loaded), Archivo, 'Arial Narrow', sans-serif;
+  --font-display: var(--font-title-loaded), 'Aldo the Apache', var(--font-display-loaded), Archivo, 'Arial Narrow', sans-serif;
   --font-interface: var(--font-interface-loaded), Outfit, Arial, sans-serif;
   --font-signature: 'Black Signature', cursive;
   --type-label: clamp(.7rem, .67rem + .12vw, .76rem);
@@ -29,18 +38,18 @@
   --text-primary: #EFEFEE;
   --text-secondary: rgba(239, 239, 238, .72);
   --text-muted: rgba(239, 239, 238, .56);
-  --status-info-bg: var(--blue);
+  --status-info-bg: var(--card-2);
   --status-info-text: var(--white);
-  --status-danger-bg: var(--pink);
+  --status-danger-bg: var(--card-2);
   --status-danger-text: var(--white);
   --status-warning-bg: var(--orange);
   --status-warning-text: var(--black);
-  --status-neutral-bg: var(--green);
+  --status-neutral-bg: var(--card-2);
   --status-neutral-text: var(--white);
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--black); color: var(--white); }
+html, body { margin: 0; min-height: 100%; background: var(--navy); color: var(--white); }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; color-scheme: dark; }
 
 /* O app não tem tela clara — os controles nativos do navegador (o popup do
@@ -292,9 +301,8 @@ ul.form-feedback li { line-height: 1.45; }
 .brand-panel, .auth-panel { position: relative; z-index: 1; }
 .brand-panel { min-height: 100vh; padding: 8vw; display: flex; flex-direction: column; justify-content: center; border-right: 1px solid var(--line); }
 .brand-mark { width: 76px; height: 76px; display: grid; place-items: center; background: var(--orange); color: var(--black); clip-path: polygon(0 0, 78% 0, 100% 22%, 100% 100%, 22% 100%, 0 78%); margin-bottom: 34px; box-shadow: 16px 16px 0 rgba(10, 16, 90, 0.32); }
-.brand-wordmark { width: min(100%, 560px); height: auto; display: block; }
 .brand-emblem { width: 46px; height: auto; display: block; flex: 0 0 auto; }
-.login-mascot { width: min(100%, 460px); height: auto; margin-top: 36px; }
+.login-mascot { width: min(100%, 460px); height: auto; display: block; }
 .eyebrow { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.22em; font-weight: 800; color: var(--orange); }
 .eyebrow.orange { color: var(--orange); }
 .brand-panel h1, .auth-heading h2, .mobile-header h1, .live-topbar h1 { font-family: var(--font-display); font-stretch: condensed; font-weight: 800; margin: 0; letter-spacing: -0.025em; line-height: 0.9; text-transform: uppercase; }
@@ -483,11 +491,18 @@ ul.form-feedback li { line-height: 1.45; }
   .team-card { padding: 13px; }
 }
 
+/* Titulos em largura condensada, como a fonte principal da marca. A Archivo
+   variavel tem o eixo `wdth`; o texto corrido (Outfit) nao e afetado. */
+h1, h2, h3 { font-stretch: condensed; }
+
 /* Shared product shell */
 .management-screen { padding-top: 18px; }
 .context-bar { min-height: 58px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 -4px 28px; padding: 8px 10px; border: 1px solid var(--line); background: rgba(10,10,13,.92); clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
 .context-copy { min-width: 0; display: flex; align-items: center; gap: 10px; }
-.context-copy > span:last-child { min-width: 0; display: grid; }
+/* O bloco de texto e o span que NAO e o selo do ano. `:last-child` falha na
+   barra de gestao, onde a seta (ChevronDown) vem depois dele: o grid nao
+   aplicava e "TORNEIO" e "EDICAO" corriam juntos na mesma linha. */
+.context-copy > span:not(.context-mark) { min-width: 0; display: grid; }
 .context-copy small, .context-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .context-copy small { color: rgba(239, 239, 238,.48); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
 .context-copy strong { font-size: 13px; }
@@ -685,6 +700,10 @@ ul.form-feedback li { line-height: 1.45; }
 .qualification-note p { margin: 3px 0 0; color: rgba(239, 239, 238,.48); font-size: 11px; }
 .team-hero, .profile-hero, .discipline-hero { min-height: 150px; display: flex; align-items: center; gap: 20px; padding: 22px; border: 1px solid var(--line); background: var(--surface); clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 22px 100%, 0 calc(100% - 22px)); }
 .team-hero h2, .profile-hero h2, .discipline-hero h2 { margin: 12px 0 4px; font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; }
+/* O texto do cartao precisa poder encolher: sem `min-width: 0` o item flex
+   nunca fica menor que o nome, e "ANA COORDENADORA" vazava 23px a 320px. */
+.team-hero > div, .profile-hero > div, .discipline-hero > div { min-width: 0; }
+.team-hero h2, .profile-hero h2, .discipline-hero h2 { overflow-wrap: break-word; }
 .team-hero p, .profile-hero p, .discipline-hero p { display: flex; align-items: center; gap: 5px; margin: 0; color: rgba(239, 239, 238,.5); }
 /* Cartão de "crie a primeira competição": mesma moldura de .profile-hero, com
    o botão logo abaixo do texto em vez da barra esticada de .wide-action. */
@@ -855,7 +874,7 @@ ul.form-feedback li { line-height: 1.45; }
 /* Responsive typography and navigation area themes */
 .management-screen,
 .live-screen {
-  --screen-bg: var(--black);
+  --screen-bg: var(--navy);
   --screen-text: var(--white);
   --screen-muted: rgba(239, 239, 238, .66);
   --screen-surface: var(--green);
@@ -886,7 +905,7 @@ ul.form-feedback li { line-height: 1.45; }
 }
 
 .theme-home {
-  --screen-bg: var(--black);
+  --screen-bg: var(--navy);
   --screen-text: var(--white);
   --screen-muted: rgba(239, 239, 238, .66);
   --screen-surface: var(--navy);
@@ -905,10 +924,10 @@ ul.form-feedback li { line-height: 1.45; }
 }
 
 .theme-tournaments {
-  --screen-bg: var(--blue);
+  --screen-bg: var(--navy);
   --screen-text: var(--white);
   --screen-muted: rgba(239, 239, 238, .7);
-  --screen-surface: var(--black);
+  --screen-surface: var(--card);
   --screen-on-surface: var(--white);
   --screen-surface-muted: rgba(239, 239, 238, .64);
   --screen-surface-alt: var(--green);
@@ -916,8 +935,8 @@ ul.form-feedback li { line-height: 1.45; }
   --screen-surface-alt-muted: rgba(239, 239, 238, .64);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-on-control: var(--white);
   --screen-nav: var(--black);
   --screen-before: var(--orange);
@@ -940,18 +959,18 @@ ul.form-feedback li { line-height: 1.45; }
   --screen-on-control: var(--white);
   --screen-nav: var(--ink);
   --screen-before: var(--lime);
-  --status-info-bg: var(--navy);
+  --status-info-bg: var(--card-2);
   --status-info-text: var(--white);
-  --status-danger-bg: var(--ink);
+  --status-danger-bg: var(--card-2);
   --status-danger-text: var(--lime);
   --status-warning-bg: var(--lime);
   --status-warning-text: var(--ink);
-  --status-neutral-bg: var(--navy);
+  --status-neutral-bg: var(--card-2);
   --status-neutral-text: var(--white);
 }
 
 .theme-teams {
-  --screen-bg: var(--ink);
+  --screen-bg: var(--navy);
   --screen-text: var(--white);
   --screen-muted: rgba(239, 239, 238, .68);
   --screen-surface: var(--navy);
@@ -967,14 +986,14 @@ ul.form-feedback li { line-height: 1.45; }
   --screen-on-control: var(--white);
   --screen-nav: var(--ink);
   --screen-before: var(--lime);
-  --status-info-bg: var(--green);
+  --status-info-bg: var(--card-2);
   --status-info-text: var(--white);
-  --status-neutral-bg: var(--green);
+  --status-neutral-bg: var(--card-2);
   --status-neutral-text: var(--white);
 }
 
 .theme-profile {
-  --screen-bg: var(--ink);
+  --screen-bg: var(--navy);
   --screen-text: var(--white);
   --screen-muted: rgba(239, 239, 238, .72);
   --screen-surface: var(--navy);
@@ -992,6 +1011,31 @@ ul.form-feedback li { line-height: 1.45; }
   --screen-nav-muted: rgba(239, 239, 238, .62);
   --screen-before: var(--lime);
   --page-wash: rgba(140, 227, 3, .14);
+}
+
+/* Tema unico. Os temas acima davam a cada tela um fundo proprio (preto, azul,
+   ink); a marca pede o mesmo azul em todas. Fica DEPOIS deles e com a mesma
+   especificidade, entao vence sem `!important`. */
+.management-screen,
+.live-screen,
+.theme-home,
+.theme-tournaments,
+.theme-matches,
+.theme-teams,
+.theme-profile {
+  --screen-bg: var(--navy);
+  --screen-text: var(--white);
+  --screen-surface: var(--card);
+  --screen-surface-alt: var(--card);
+  --screen-control: var(--card-2);
+  --screen-on-control: var(--white);
+  --screen-on-surface: var(--white);
+  --screen-on-surface-alt: var(--white);
+  --screen-accent: var(--lime);
+  --screen-on-accent: var(--ink);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-nav: var(--navy);
+  --screen-before: var(--lime);
 }
 
 /* O selo de aviso e laranja: sobre o fundo laranja desta tela ele desaparece. */
@@ -2454,13 +2498,13 @@ small,
 /* Partida ao vivo: segue a linguagem editorial de Torneios. O azul organiza a
    tela, o preto cria as superfícies e os recortes recebem os poucos acentos. */
 .live-screen.theme-matches {
-  --screen-bg: var(--blue);
-  --screen-surface: var(--black);
-  --screen-surface-alt: var(--black);
+  --screen-bg: var(--navy);
+  --screen-surface: var(--card);
+  --screen-surface-alt: var(--card);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-on-control: var(--white);
   --screen-before: var(--orange);
   --screen-nav: var(--black);
@@ -2524,13 +2568,13 @@ small,
 
 /* Detalhes da partida usa a mesma família visual da operação ao vivo. */
 .management-screen.theme-matches:has(.scheduled-score) {
-  --screen-bg: var(--blue);
-  --screen-surface: var(--black);
-  --screen-surface-alt: var(--black);
+  --screen-bg: var(--navy);
+  --screen-surface: var(--card);
+  --screen-surface-alt: var(--card);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-on-control: var(--white);
   --screen-before: var(--orange);
   --screen-nav: var(--black);
@@ -2564,13 +2608,13 @@ small,
 
 /* Detalhe da partida: uma leitura única do confronto antes das operações. */
 .management-screen.theme-matches:has(.match-summary-card) {
-  --screen-bg: var(--blue);
-  --screen-surface: var(--black);
-  --screen-surface-alt: var(--black);
+  --screen-bg: var(--navy);
+  --screen-surface: var(--card);
+  --screen-surface-alt: var(--card);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-on-control: var(--white);
   --screen-before: var(--orange);
   --screen-nav: var(--black);
@@ -2722,8 +2766,8 @@ small,
 
 /* Portal público: a mesma linguagem visual do aplicativo, em largura fluida. */
 .public-app-theme {
-  --public-bg: var(--blue);
-  --public-card: var(--black);
+  --public-bg: var(--navy);
+  --public-card: var(--card);
   --public-accent: var(--orange);
   --public-cut: var(--pink);
   background: var(--public-bg);
@@ -2964,12 +3008,12 @@ small,
 }
 
 .public-live-readonly {
-  --screen-bg: var(--blue);
-  --screen-surface: var(--black);
+  --screen-bg: var(--navy);
+  --screen-surface: var(--card);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-nav: var(--black);
 }
 
@@ -3046,13 +3090,13 @@ small,
 
 /* Detalhes públicos reaproveitam as telas reais; somente os controles operacionais não são renderizados. */
 .public-readonly-screen:has(.match-summary-card) {
-  --screen-bg: var(--blue);
-  --screen-surface: var(--black);
-  --screen-surface-alt: var(--black);
+  --screen-bg: var(--navy);
+  --screen-surface: var(--card);
+  --screen-surface-alt: var(--card);
   --screen-accent: var(--orange);
   --screen-on-accent: var(--black);
-  --screen-border: var(--orange);
-  --screen-control: var(--black);
+  --screen-border: rgba(140, 227, 3, .55);
+  --screen-control: var(--card-2);
   --screen-nav: var(--black);
 }
 
@@ -3857,6 +3901,10 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 }
 
 @media (max-width: 380px) {
+  /* Cartao de identidade: a 320px o avatar e a folga comiam metade da largura
+     e o nome da pessoa nao cabia nem em duas linhas. */
+  .team-hero, .profile-hero, .discipline-hero { gap: 12px; padding: 18px 14px; }
+  .team-hero h2, .profile-hero h2, .discipline-hero h2 { font-size: 19px; }
   /* Reticencia faz sentido em coluna larga e fixa; em 320px ela come 42px de
      "Atleta da equipe" e 13px do nome do torneio. Espaco vertical e barato
      aqui: o texto desce uma linha em vez de sumir. */
@@ -3962,7 +4010,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
     min-height: 116px;
   }
 
-  .theme-teams .team-card .team-copy h2 { font-size: 32px; }
+  .theme-teams .team-card .team-copy h2 { font-size: 28px; }
 }
 
 @media (max-width: 350px) {
@@ -3978,7 +4026,7 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
     min-height: 98px;
   }
 
-  .theme-teams .team-card .team-copy h2 { font-size: 27px; }
+  .theme-teams .team-card .team-copy h2 { font-size: 24px; }
 }
 
 /* Filtro sem nada para filtrar fica visivelmente inerte, em vez de aceitar o
@@ -4037,3 +4085,46 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
 .passo-a-passo { margin: 0 0 18px; padding: 13px 15px; background: var(--surface); border-left: 3px solid var(--orange); color: rgba(247, 240, 227, .78); font-size: .93rem; line-height: 1.55; }
 .passo-a-passo strong { color: var(--white); font-weight: 600; }
 .management-panel > p code { padding: 1px 5px; background: var(--black); font-family: ui-monospace, monospace; font-size: .86em; }
+
+/* ==========================================================================
+   Aldo the Apache e a fonte PRINCIPAL da marca (guia "Tipografia e cores").
+   Alem dos titulos, vale para tres coisas que precisam saltar aos olhos de
+   longe: o numero do placar, o numero dos paineis e o nome de cada atletica.
+   A Outfit fica com o texto corrido e as tabelas de numeros pequenos.
+   ========================================================================== */
+.stat-card strong,
+.mini-stats strong,
+.versus-mark > span,
+.score-numbers strong,
+.score-numbers span,
+.set-scoreboard strong,
+.current-set-score,
+.game-clock,
+.public-result-score strong,
+.public-upcoming-score strong,
+.rank-block,
+.team-side strong,
+.score-team strong,
+.standing-row > div > strong,
+.team-copy h2,
+.team-copy h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+}
+
+/* A Aldo so existe no peso 400: sem isto o navegador "engrossa" as letras por
+   conta propria e o desenho quadrado da fonte borra. As outras fontes do app
+   sao variaveis e tem o peso de verdade, entao nao sao afetadas. */
+html { font-synthesis-weight: none; }
+
+/* Nomes de atletica em caixa alta: a fonte e toda em maiusculas, e as
+   minusculas dela trazem formas proprias (o "i" com ponto) que no meio de um
+   nome parecem erro. */
+.team-side strong,
+.score-team strong,
+.standing-row > div > strong,
+.team-copy h2,
+.team-copy h3 { text-transform: uppercase; }
+
+/* O desenho da Aldo sobe acima da linha: sem folga o numero encosta no icone. */
+.stat-card strong { line-height: 1; padding-top: 8px; }

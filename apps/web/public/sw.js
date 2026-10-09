@@ -1,4 +1,4 @@
-const VERSION = 'intereng-v9';
+const VERSION = 'halterada-v1';
 const PAGE_CACHE = `${VERSION}-pages`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const PUBLIC_DATA_CACHE = `${VERSION}-public-data`;
@@ -16,7 +16,6 @@ const PRE_CACHE = [
   app('/public/teams'),
   app('/public/tournaments'),
   app('/public/standings/general'),
-  app('/icon.svg'),
   app('/icon-192.png'),
   app('/icon-512.png'),
   app('/icon-maskable-512.png'),

@@ -143,7 +143,7 @@ test('a tela de torneios não tem texto abaixo do contraste mínimo', async ({ p
   // para texto normal; seis elementos desta tela estavam abaixo.
   await loginAs(page);
   await page.goto('/competitions');
-  await expect(page.getByRole('heading', { name: 'INTERENG' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'COPA HALTERADA' })).toBeVisible();
   const ruins = await page.evaluate(() => {
     const canal = (cor: string) => (cor.match(/[0-9.]+/g) ?? ['0', '0', '0']).slice(0, 3).map(Number).map((v) => {
       const n = v / 255;

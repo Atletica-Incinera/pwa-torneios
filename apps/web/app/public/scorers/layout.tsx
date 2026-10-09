@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Artilharia',
-  description: 'Veja os maiores pontuadores de cada modalidade no InterEng Pernambuco.',
+  description: 'Veja os maiores pontuadores de cada modalidade na Copa Halterada.',
   alternates: { canonical: '/intereng/public/scorers' },
   openGraph: {
-    title: 'Artilharia do InterEng Pernambuco',
-    description: 'Veja os maiores pontuadores de cada modalidade no InterEng Pernambuco.',
+    title: 'Artilharia da Copa Halterada',
+    description: 'Veja os maiores pontuadores de cada modalidade na Copa Halterada.',
     url: '/intereng/public/scorers',
   },
 };
