@@ -94,6 +94,11 @@ test('as rotas públicas antigas levam para modalidades', async ({ page }) => {
 test('barra de navegação permanece fixa durante a rolagem', async ({ page }) => {
   await page.goto('/public/teams');
   const nav = page.locator('.bottom-nav');
+  // Durante a montagem da página existem duas barras por um instante (a que sai
+  // e a que entra). Medir nesse intervalo dava "strict mode violation" em
+  // ~1 de cada 10 execuções. O que o usuário vê é o estado assentado, e ele
+  // tem que ser uma barra só — se o duplicado persistisse, isto falharia.
+  await expect(nav).toHaveCount(1);
   const initial = await nav.boundingBox();
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const afterScroll = await nav.boundingBox();
