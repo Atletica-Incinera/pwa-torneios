@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Eye, LockKeyhole, Mail, Trophy } from 'lucide-react';
+import { ArrowRight, Eye, LockKeyhole, Mail } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn, visibleSessionName } from '../lib/frontend-session';
@@ -54,17 +54,9 @@ export default function LoginPage() {
       <div className="ambient ambient-pink" />
 
       <section className="brand-panel" aria-label="Apresentação do produto">
-        <div className="brand-mark">
-          <Trophy size={42} strokeWidth={2.4} />
-        </div>
-        <p className="eyebrow">INTERENG - EDIÇÃO 2026</p>
-        <h1>
-          INTERENG
-          <br />
-          PERNAMBUCO
-        </h1>
+        <img className="login-mascot" src="/halterada/mascote.webp" alt="Copa Halterada" width={626} height={522} />
         <p className="brand-copy">
-          A engenharia pernambucana reunida em competição, cultura e esporte.
+          Equipes, jogos e placar ao vivo da Copa Halterada.
         </p>
         <div className="slash slash-one" />
         <div className="slash slash-two" />

@@ -1,4 +1,5 @@
 import localFont from 'next/font/local';
+import { Archivo, Outfit } from 'next/font/google';
 import type { Metadata } from 'next';
 import './globals.css';
 import './motion.css';
@@ -12,44 +13,46 @@ const SITE_URL = 'https://incinera.cin.ufpe.br';
 
 export const dynamic = 'force-dynamic';
 
-const kenyanCoffee = localFont({
-  src: [
-    { path: './fonts/kenyan-coffee-regular.otf', weight: '400', style: 'normal' },
-    { path: './fonts/kenyan-coffee-regular-italic.otf', weight: '400', style: 'italic' },
-    { path: './fonts/kenyan-coffee-bold.otf', weight: '700', style: 'normal' },
-    { path: './fonts/kenyan-coffee-bold-italic.otf', weight: '700', style: 'italic' },
-  ],
-  variable: '--font-kenyan-coffee-loaded',
+/*
+ * Variavel com o eixo de largura: o CSS dos titulos ja pede
+ * `font-stretch: condensed`, e a Archivo estatica ignora esse pedido -- era a
+ * Kenyan Coffee, condensada por natureza, que sustentava os titulos de uma
+ * linha. Sem o eixo, "MODALIDADES" parte no meio a 375px.
+ */
+const archivo = Archivo({
+  subsets: ['latin'],
+  axes: ['wdth'],
+  variable: '--font-display-loaded',
   display: 'swap',
 });
 
-const ttTravelsNext = localFont({
-  src: [
-    { path: './fonts/tt-travels-next-regular.ttf', weight: '400', style: 'normal' },
-    { path: './fonts/tt-travels-next-regular-italic.ttf', weight: '400', style: 'italic' },
-    { path: './fonts/tt-travels-next-medium.ttf', weight: '500', style: 'normal' },
-    { path: './fonts/tt-travels-next-medium-italic.ttf', weight: '500', style: 'italic' },
-    { path: './fonts/tt-travels-next-demibold.ttf', weight: '600', style: 'normal' },
-    { path: './fonts/tt-travels-next-demibold-italic.ttf', weight: '600', style: 'italic' },
-    { path: './fonts/tt-travels-next-bold.ttf', weight: '700', style: 'normal' },
-    { path: './fonts/tt-travels-next-bold-italic.ttf', weight: '700', style: 'italic' },
-    { path: './fonts/tt-travels-next-extrabold.ttf', weight: '800', style: 'normal' },
-    { path: './fonts/tt-travels-next-extrabold-italic.ttf', weight: '800', style: 'italic' },
-    { path: './fonts/tt-travels-next-black.ttf', weight: '900', style: 'normal' },
-    { path: './fonts/tt-travels-next-black-italic.ttf', weight: '900', style: 'italic' },
-  ],
-  variable: '--font-tt-travels-next-loaded',
+/*
+ * Fonte principal da marca (guia "Tipografia e cores"): Aldo the Apache. A
+ * versao publica tem so ASCII -- nenhuma letra acentuada --, entao a Archivo
+ * condensada fica logo atras dela na pilha e cobre o que faltar.
+ */
+const aldo = localFont({
+  src: './fonts/aldo-the-apache.ttf',
+  weight: '400',
+  style: 'normal',
+  variable: '--font-title-loaded',
+  display: 'swap',
+});
+
+const outfit = Outfit({
+  subsets: ['latin'],
+  variable: '--font-interface-loaded',
   display: 'swap',
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: 'InterEng Pernambuco 2026',
-    template: '%s | InterEng Pernambuco',
+    default: 'Copa Halterada',
+    template: '%s | Copa Halterada',
   },
-  description: 'Gestão e acompanhamento das edições do InterEng',
-  applicationName: 'InterEng Pernambuco',
+  description: 'Gestão e acompanhamento da Copa Halterada',
+  applicationName: 'Copa Halterada',
   manifest: appPath('/manifest.webmanifest'),
   /*
    * Os ícones passam por `appPath`. O Next aplica o `basePath` no endereço do
@@ -58,6 +61,7 @@ export const metadata: Metadata = {
    * mais visível dos três: é ele que o iPhone usa ao adicionar à tela de
    * início, e sem ele o iOS põe um retrato da página no lugar do ícone.
    */
+
   icons: {
     icon: [
       { url: appPath('/icon-192.png'), sizes: '192x192', type: 'image/png' },
@@ -65,14 +69,14 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: appPath('/apple-touch-icon.png'), sizes: '180x180', type: 'image/png' }],
   },
-  appleWebApp: { capable: true, title: 'InterEng', statusBarStyle: 'black-translucent' as const },
+  appleWebApp: { capable: true, title: 'Copa Halterada', statusBarStyle: 'black-translucent' as const },
   robots: { index: false, follow: false, nocache: true },
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const initialState = await loadPublicSnapshot();
   return (
-    <html lang="pt-BR" className={`${kenyanCoffee.variable} ${ttTravelsNext.variable}`}>
+    <html lang="pt-BR" className={`${aldo.variable} ${archivo.variable} ${outfit.variable}`}>
       <body>
         <PwaRegistration />
         <FrontendStateProvider initialState={initialState}>

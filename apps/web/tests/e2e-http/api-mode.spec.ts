@@ -28,7 +28,7 @@ test('a sessão é emitida pela API e o snapshot vem de lá', async ({ page }) =
   expect(session.token).toBe('token-ana@ufpe.br');
   expect(Date.parse(session.expiresAt)).toBeGreaterThan(Date.now());
 
-  await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A COPA CHEGOU!' })).toBeVisible();
   await page.goto('/teams');
   await expect(page.getByRole('link', { name: /alcateia/i })).toBeVisible();
   // Nada do estado da edição é gravado no navegador: a verdade é do servidor.
@@ -171,7 +171,7 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 
   await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A COPA CHEGOU!' })).toBeVisible();
   await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 });
 

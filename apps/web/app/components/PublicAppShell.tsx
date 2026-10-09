@@ -54,9 +54,10 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
     <main id="app-main" className={`app-screen management-screen ${!isMatches ? 'public-readonly-screen' : ''} ${themes[active]} motion-page`}>
       <div className="context-bar public-context-bar">
         {competition ? <Link href="/public" className="context-copy" aria-label={`${competition.name}, edição ${edition?.year ?? ''}`}>
+          <img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" />
           <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition?.year ?? ''}</strong></span>
-        </Link> : <Link href="/public" className="context-copy" aria-label="Nenhuma competição ativa"><span><small>INTERENG</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
+        </Link> : <Link href="/public" className="context-copy" aria-label="Nenhuma competição ativa"><img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" /><span><small>COPA HALTERADA</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
         <ConnectionBadge source={source} connection={connection} publicView />
       </div>
 

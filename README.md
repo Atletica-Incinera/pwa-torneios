@@ -1,6 +1,6 @@
-# PWA Torneios — InterEng
+# PWA Torneios — Copa Halterada
 
-PWA responsiva para administrar competições, edições, modalidades, equipes, atletas, torneios, partidas, placar ao vivo, ranking geral e a área pública do InterEng. As visualizações originais foram preservadas; o estado persistente vem da API `intereng-api`.
+PWA responsiva para administrar competições, edições, modalidades, equipes, atletas, torneios, partidas, placar ao vivo, ranking geral e a área pública da Copa Halterada. As visualizações originais foram preservadas; o estado persistente vem da API `intereng-api`.
 
 ## Arquitetura integrada
 

@@ -31,7 +31,7 @@ export default function StaffPage() {
     const next = { ...member, ...patch };
     if (!canEdit(member) || !canGrantRole(session, next.role)) { toast('Você não tem permissão para alterar acessos de admin da edição.', 'error'); return; }
     // O escopo do admin é a edição em que ele foi promovido, não um texto fixo:
-    // gravado à mão, ele congelava "InterEng 2026" em qualquer edição futura.
+    // gravado à mão, ele congelava o nome da competição em qualquer edição futura.
     if (next.role === 'Admin da edição') next.scope = getActiveEdition(state)?.name ?? 'Edição ativa';
     void dispatch({
       type: 'staff/upsert',

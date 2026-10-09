@@ -16,7 +16,7 @@ export default function DashboardPage() {
   const { session } = useFrontendSession();
   const activeEdition = getActiveEdition(state);
   if (state.competitions.length === 0) {
-    return <AppShell active="home" eyebrow="INTERENG" title="O INTERENG CHEGOU!" subtitle="Comece cadastrando a primeira competição">
+    return <AppShell active="home" eyebrow="COPA HALTERADA" title="A COPA CHEGOU!" subtitle="Comece cadastrando a primeira competição">
       <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
     </AppShell>;
   }
@@ -38,5 +38,5 @@ export default function DashboardPage() {
     { label: 'Categorias', value: String(categories.length), meta: `${disciplines.length} modalidades · ${drafts} em rascunho`, icon: Trophy, tone: 'orange', href: '/disciplines' },
     { label: 'Jogos ao vivo', value: String(liveMatches), meta: liveMatches ? 'Agora' : 'Nenhum agora', icon: Radio, tone: 'blue', href: `/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}` },
   ];
-  return <AppShell active="home" eyebrow={`INTERENG · EDIÇÃO ${activeEdition?.year ?? ''}`} title="O INTERENG CHEGOU!" subtitle="Visão geral da edição ativa">{canManageEdition(session) ? <EditionProgress /> : null}<section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
+  return <AppShell active="home" eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="A COPA CHEGOU!" subtitle="Visão geral da edição ativa">{canManageEdition(session) ? <EditionProgress /> : null}<section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
 }

@@ -520,7 +520,7 @@ function LiveMatchContent() {
       <div className={`diagonal-impact impact-${impact ?? 'none'}`} aria-hidden="true" />
       <PageNavigation title="PLACAR AO VIVO" />
       <header className="live-topbar motion-enter motion-delay-1">
-        <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · INTERENG 2026</p><h1>{phase}</h1></div>
+        <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · COPA HALTERADA</p><h1>{phase}</h1></div>
         <div className="live-status-actions">
           <button type="button" className="sound-toggle" onClick={() => void setPreference({ soundEffects: !soundEnabled })} aria-label={soundEnabled ? 'Desativar sons do placar' : 'Ativar sons do placar'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
           <span className={`live-status ${paused && hasClock ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : live ? (paused && hasClock ? 'PAUSADA' : 'AO VIVO') : String(status).toUpperCase()}</span>
