@@ -42,3 +42,15 @@ test('o caminho é relativo, que é o formato que o servidor aceita', () => {
     assert.match(caminhoDoEscudo(slug), /^\/teams\/[a-z0-9-]+\.webp$/);
   }
 });
+
+test('as atléticas da Copa Halterada têm escudo, com ou sem o prefixo "Atlética"', () => {
+  const nomes = [
+    'Abrasiva', 'Compressora', 'Furiosa', 'Halterada', 'Incinera', 'Inquisidores',
+    'Kinesis', 'Mafiosa', 'Manguezal', 'Tormenta', 'Tubarões',
+  ];
+  for (const nome of nomes) {
+    const esperado = `/teams/${nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()}.webp`;
+    assert.equal(acharEscudo(nome), esperado, nome);
+    assert.equal(acharEscudo(`Atlética ${nome}`), esperado, `Atlética ${nome}`);
+  }
+});
