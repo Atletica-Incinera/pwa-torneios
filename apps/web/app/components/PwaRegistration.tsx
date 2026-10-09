@@ -110,7 +110,7 @@ export function PwaRegistration() {
   return (
     <aside className={`pwa-banner ${mode === 'install' || mode === 'ios' ? 'can-install' : mode === 'offline' ? 'is-offline' : 'has-update'}`} role="status" aria-live="polite">
       {mode === 'offline' ? <WifiOff size={18} aria-hidden="true" /> : mode === 'update' ? <RefreshCw size={18} aria-hidden="true" /> : mode === 'ios' ? <Share size={18} aria-hidden="true" /> : <Download size={18} aria-hidden="true" />}
-      <span>{mode === 'offline' ? 'Você está offline. Dados já carregados continuam disponíveis.' : mode === 'update' ? 'Uma nova versão do InterEng está pronta.' : mode === 'ios' ? 'Para instalar no iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.' : 'Instale o InterEng para abrir mais rápido.'}</span>
+      <span>{mode === 'offline' ? 'Você está offline. Dados já carregados continuam disponíveis.' : mode === 'update' ? 'Uma nova versão da Copa Halterada está pronta.' : mode === 'ios' ? 'Para instalar no iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.' : 'Instale a Copa Halterada para abrir mais rápido.'}</span>
       {mode === 'update' ? <button type="button" onClick={applyUpdate}>Atualizar</button> : null}
       {mode === 'install' ? <button type="button" onClick={install}>Instalar</button> : null}
       {mode === 'install' || mode === 'ios' ? <button type="button" className="pwa-dismiss" onClick={dismissInstall} aria-label="Dispensar instalação"><X size={16} /></button> : null}

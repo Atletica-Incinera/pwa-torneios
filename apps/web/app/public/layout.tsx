@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    siteName: 'InterEng Pernambuco',
+    siteName: 'Copa Halterada',
   },
 };
 

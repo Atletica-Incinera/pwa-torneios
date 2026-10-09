@@ -75,15 +75,15 @@ jobs:
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          # O app é servido sob /intereng: a raiz devolve 404 por construção.
+          # O app é servido sob /copahalterada: a raiz devolve 404 por construção.
           for i in $(seq 1 30); do
             if docker compose -f docker-compose.prod.yml exec -T web \
-                 wget -q --spider http://127.0.0.1:3001/intereng; then
-              echo "site respondendo em /intereng"
+                 wget -q --spider http://127.0.0.1:3001/copahalterada; then
+              echo "site respondendo em /copahalterada"
               exit 0
             fi
             sleep 2
           done
-          echo "::error::O site não respondeu em /intereng em 60s. Últimas linhas do log:"
+          echo "::error::O site não respondeu em /copahalterada em 60s. Últimas linhas do log:"
           docker compose -f docker-compose.prod.yml logs --tail 50 web
           exit 1

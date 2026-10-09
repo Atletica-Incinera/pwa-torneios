@@ -1,5 +1,9 @@
 # Especificação visual implementável — InterEng Pernambuco 2026
 
+> **Marca substituída pela Copa Halterada.** Paleta, tipografia e logotipo deste documento descrevem o InterEng 2026 e **não valem mais**. A fonte de verdade agora é [`marca/tipografia-e-cores-copa-halterada.pdf`](marca/tipografia-e-cores-copa-halterada.pdf):
+> azul `#0A105A`, verde `#8CE303`, preto `#000000` e off-white `#EFEFEE`; fonte principal Aldo the Apache e secundária Eras Bold (ambas modificadas; o app usa Archivo condensada e Outfit como aproximação web).
+> As regras de layout, espaçamento e interação abaixo continuam válidas.
+
 Este documento transforma a referência visual aprovada em regras objetivas de implementação. O manual **TIPOGRAFIA E CORES — INTERENG 2026** é a fonte de verdade para marca, paleta e tipografia. As regras de layout e interação deste documento continuam válidas.
 
 ## 1. Direção visual oficial

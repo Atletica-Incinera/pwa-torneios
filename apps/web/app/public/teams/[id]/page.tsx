@@ -14,13 +14,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const team = state.teams[id];
   if (!team || team.archived) return {};
   const name = team.name ?? team.initials ?? 'Equipe';
-  const description = `Modalidades, classificação e elenco de ${name} no InterEng Pernambuco.`;
+  const description = `Modalidades, classificação e elenco de ${name} na Copa Halterada.`;
   const canonical = `/intereng/public/teams/${encodeURIComponent(id)}`;
   return {
     title: name,
     description,
     alternates: { canonical },
-    openGraph: { title: `${name} | InterEng Pernambuco`, description, url: canonical },
+    openGraph: { title: `${name} | Copa Halterada`, description, url: canonical },
   };
 }
 
@@ -37,7 +37,7 @@ export default async function PublicTeamDetailPage({ params }: PageProps) {
       name,
       url: `${BASE_URL}/${encodeURIComponent(id)}`,
       logo: team.logo,
-      memberOf: { '@type': 'SportsOrganization', name: 'InterEng Pernambuco' },
+      memberOf: { '@type': 'SportsOrganization', name: 'Copa Halterada' },
     }} />
     <PublicTeamDetailView id={id} />
   </>;
