@@ -15,7 +15,10 @@ type CatalogTeam = {
   archived: boolean;
 };
 
-type CatalogResponse = { items: CatalogTeam[] };
+// O interceptor de paginação da API expõe os itens diretamente em `data` e o
+// metadado na chave externa `meta`. Manter o formato com `items` também deixa
+// o componente compatível com o contrato antigo durante a transição.
+type CatalogResponse = CatalogTeam[] | { items?: CatalogTeam[] };
 
 /**
  * O snapshot de uma edição traz apenas suas participantes. Este seletor consulta
@@ -46,7 +49,7 @@ export function AttachCatalogTeam({ linkedIds }: { linkedIds: string[] }) {
         path: '/teams?page=1&pageSize=100',
         token: readSessionToken(),
       });
-      setTeams(response.items);
+      setTeams(Array.isArray(response) ? response : response.items ?? []);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Não foi possível carregar o catálogo.');
     } finally {
