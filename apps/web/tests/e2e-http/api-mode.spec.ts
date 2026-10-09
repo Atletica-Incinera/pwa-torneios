@@ -171,7 +171,7 @@ test('sistema recém-migrado, sem nenhuma competição: onboarding em vez de err
   await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 
   await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: 'O INTERENG CHEGOU!' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A COPA CHEGOU!' })).toBeVisible();
   await expect(page.getByText('Nenhum torneio cadastrado')).toHaveCount(0);
 });
 
