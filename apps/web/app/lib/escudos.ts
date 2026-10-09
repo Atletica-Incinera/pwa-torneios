@@ -13,14 +13,22 @@
  * o nome aqui.
  */
 export const escudosPublicados = [
+  'abrasiva',
   'alcateia',
   'cangaceiros',
   'caotica',
+  'compressora',
   'engenhosa',
   'engrenada',
+  'furiosa',
   'graxeiros',
+  'halterada',
   'incinera',
+  'inquisidores',
   'invasora',
+  'kinesis',
+  'mafiosa',
+  'manguezal',
   'tormenta',
   'triade',
   'tubaroes',
