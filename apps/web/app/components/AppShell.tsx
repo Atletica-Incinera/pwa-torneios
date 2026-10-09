@@ -46,11 +46,11 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
     <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">
         {competition ? <Link href={canManageEdition(session) ? '/competitions' : `/matches?modalidade=${encodeURIComponent(session?.scope ?? state.preferences.selectedDiscipline)}`} className="context-copy" aria-label={`${competition.name}, edição ${edition?.year ?? ''}, contexto ativo`}>
-          <img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" />
+          <img className="brand-emblem" src={appPath('/halterada/emblema-verde.png')} alt="" />
           <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition?.year ?? ''}</strong></span>
           <ChevronDown size={16} />
-        </Link> : <Link href="/dashboard" className="context-copy" aria-label="Nenhuma competição ativa"><img className="brand-emblem" src="/halterada/emblema-verde.png" alt="" /><span><small>COPA HALTERADA</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
+        </Link> : <Link href="/dashboard" className="context-copy" aria-label="Nenhuma competição ativa"><img className="brand-emblem" src={appPath('/halterada/emblema-verde.png')} alt="" /><span><small>COPA HALTERADA</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
         <ConnectionBadge source={source} connection={connection} />
       </div>
 

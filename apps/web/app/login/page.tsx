@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { signIn, visibleSessionName } from '../lib/frontend-session';
 import { resolveDataSource } from '../lib/repositories/state-adapter';
 import { useUi } from '../components/UiProvider';
+import { appPath } from '../lib/base-path';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function LoginPage() {
       <div className="ambient ambient-pink" />
 
       <section className="brand-panel" aria-label="Apresentação do produto">
-        <img className="login-mascot" src="/halterada/mascote.webp" alt="Copa Halterada" width={626} height={522} />
+        <img className="login-mascot" src={appPath('/halterada/mascote.webp')} alt="Copa Halterada" width={626} height={522} />
         <p className="brand-copy">
           Equipes, jogos e placar ao vivo da Copa Halterada.
         </p>
