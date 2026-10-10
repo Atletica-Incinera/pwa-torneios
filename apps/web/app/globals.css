@@ -1687,8 +1687,8 @@ small,
 }
 
 .theme-matches .match-score-card {
-  border-color: var(--orange);
-  background: var(--orange);
+  border-color: var(--blue);
+  background: var(--blue);
   color: var(--white);
 }
 
