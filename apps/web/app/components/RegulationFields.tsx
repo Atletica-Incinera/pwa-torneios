@@ -141,16 +141,17 @@ export function RegulationFields({ discipline, rule, onChange }: { discipline: s
 
     <fieldset className="regulation-group">
       <legend>Elenco exigido</legend>
-      <label className="checkbox-field"><input type="checkbox" checked={roster.required} onChange={(event) => patch({ roster: { ...roster, required: event.target.checked } })} /><span>A modalidade exige elenco inscrito</span></label>
+      <label className="checkbox-field"><input type="checkbox" checked={roster.required} onChange={(event) => patch({ roster: { ...roster, required: event.target.checked } })} disabled={discipline === 'Futevôlei'} /><span>A modalidade exige elenco inscrito</span></label>
       <div className="rule-fields">
-        <label><span>Mínimo de atletas</span><input type="number" min="0" max="50" value={roster.min} onChange={(event) => patch({ roster: { ...roster, min: Math.max(0, Number(event.target.value)) } })} disabled={!roster.required} /></label>
-        <label><span>Máximo de atletas</span><input type="number" min="1" max="99" value={roster.max} onChange={(event) => patch({ roster: { ...roster, max: Math.max(1, Number(event.target.value)) } })} disabled={!roster.required} /></label>
+        <label><span>Mínimo de atletas</span><input type="number" min="0" max="50" value={discipline === 'Futevôlei' ? 2 : roster.min} onChange={(event) => patch({ roster: { ...roster, min: Math.max(0, Number(event.target.value)) } })} disabled={!roster.required || discipline === 'Futevôlei'} /></label>
+        <label><span>Máximo de atletas</span><input type="number" min="1" max="99" value={discipline === 'Futevôlei' ? 4 : roster.max} onChange={(event) => patch({ roster: { ...roster, max: Math.max(1, Number(event.target.value)) } })} disabled={!roster.required || discipline === 'Futevôlei'} /></label>
         <label><span>Bloquear alteração de elenco a partir de</span><select value={roster.lock} onChange={(event) => patch({ roster: { ...roster, lock: event.target.value as typeof roster.lock } })}>
           <option value="never">Nunca trava</option>
           <option value="discipline-start">Início da modalidade</option>
           <option value="knockout">Início do mata-mata</option>
         </select></label>
       </div>
+      {discipline === 'Futevôlei' ? <p className="form-hint">Cada atlética pode associar 2 ou 4 atletas para formar até duas duplas. Esse limite é fixo nesta modalidade.</p> : null}
       <p className="form-hint">Elenco fora da faixa é <strong>aviso</strong> ao agendar, não impedimento — o jogo acontece. Já o bloqueio é impedimento: a partir do momento escolhido, ninguém entra nem sai do elenco desta modalidade.</p>
     </fieldset>
 

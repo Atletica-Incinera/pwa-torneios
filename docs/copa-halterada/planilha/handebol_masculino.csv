@@ -1,0 +1,20 @@
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
+,,,,,,
+Data,Horário,Jogo,Grupo,Equipe 1,x,Equipe 2
+10/10,10:00,1,A,Halterada 1,x,Mafiosa
+10/10,10:30,2,B,Halterada 2,x,Abrasiva
+10/10,11:00,3,C,Compressora,x,Aguerrida
+11/10,09:00,4,A,Halterada 1,x,Furiosa
+11/10,09:30,5,B,Halterada 2,x,Tormenta
+11/10,10:00,6,C,Compressora,x,Incinera
+11/10,10:30,7,A,Furiosa,x,Mafiosa
+11/10,11:00,8,B,Abrasiva,x,Tormenta
+11/10,11:30,9,C,Aguerrida,x,Incinera
+,,,,,,
+11/10,13:30,10,SEMI-FINAL 1,1 GRUPO A,x,MELHOR 2 COLOCADO
+11/10,14:00,11,SEMI-FINAL 2,1 GRUPO B,x,1 GRUPO C
+11/10,14:30,12,DISPUTA 3,PERDEDOR J10,x,PERDEDOR J11
+11/10,15:00,13,FINAL ,VENCEDOR J10,x,VENCEDOR J11

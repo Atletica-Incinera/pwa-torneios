@@ -4,7 +4,9 @@ import { defaultRegulationRule, describeCompletion, regulationFromRule } from '.
 export const defaultDisciplineRules: Record<string, DisciplineRule> = {
   Futsal: defaultRegulationRule('Futsal'),
   'Vôlei': defaultRegulationRule('Vôlei'),
+  'Futevôlei': defaultRegulationRule('Futevôlei'),
   Handebol: defaultRegulationRule('Handebol'),
+  Queimado: defaultRegulationRule('Queimado'),
   Xadrez: defaultRegulationRule('Xadrez'),
   'Natação': defaultRegulationRule('Natação'),
   Basquete: defaultRegulationRule('Basquete'),
