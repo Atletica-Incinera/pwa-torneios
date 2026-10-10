@@ -19,6 +19,8 @@ export function checkRoster(regulation: Regulation, count: number): RosterCheck 
   if (count === 0) return { ok: false, count, severity: 'erro', message: `${regulation.discipline} exige elenco: associe ao menos ${min} atletas à equipe.` };
   if (count < min) return { ok: false, count, severity: 'erro', message: `Elenco incompleto: ${count} de ${min} atletas mínimos.` };
   if (count > max) return { ok: false, count, severity: 'erro', message: `Elenco acima do limite: ${count} atletas para o máximo de ${max}.` };
+  if (regulation.discipline === 'Futevôlei' && count % 2 !== 0) return { ok: false, count, severity: 'erro', message: `Futevôlei exige duplas completas: ${count} atletas inscritos. Associe mais um atleta ou retire um.` };
+  if (regulation.discipline === 'Futevôlei') return { ok: true, count, severity: 'ok', message: `${count} atletas aptos para formar ${count === 2 ? '1 dupla' : 'até 2 duplas'}.` };
   return { ok: true, count, severity: 'ok', message: `${count} atletas aptos (mínimo ${min}, máximo ${max}).` };
 }
 

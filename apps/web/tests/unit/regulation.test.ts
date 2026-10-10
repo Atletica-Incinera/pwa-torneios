@@ -21,6 +21,23 @@ test('vôlei encerra por sets, com set decisivo mais curto', () => {
   assert.match(describeCompletion(regulation), /Melhor de 5 sets/);
 });
 
+test('futevôlei usa sets e admite até duas duplas por atlética', () => {
+  const regulation = resolveRegulation('Futevôlei');
+  assert.equal(regulation.completion.mode, 'sets');
+  assert.equal(setTarget(regulation, 1), 18);
+  assert.equal(setTarget(regulation, 3), 15);
+  assert.deepEqual([regulation.roster.min, regulation.roster.max], [2, 4]);
+  const custom = regulationFromRule('Futevôlei', { ...defaultRegulationRule('Futevôlei'), roster: { required: false, min: 0, max: 10, lock: 'never' } });
+  assert.deepEqual([custom.roster.required, custom.roster.min, custom.roster.max], [true, 2, 4]);
+});
+
+test('queimado pontua por queima e permite configurar o tempo da partida', () => {
+  const regulation = resolveRegulation('Queimado');
+  assert.equal(regulation.scoring[0].label, 'Queima');
+  assert.equal(regulation.completion.mode, 'periods');
+  assert.equal(regulation.base.periodCount, 2);
+});
+
 test('xadrez registra resultado da rodada e vale meio ponto no empate', () => {
   const regulation = resolveRegulation('Xadrez');
 
