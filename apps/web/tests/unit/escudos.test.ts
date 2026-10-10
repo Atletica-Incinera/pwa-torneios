@@ -17,8 +17,9 @@ test('reconhece o escudo Predadora no catálogo publicado', () => {
   assert.equal(acharEscudo('Atlética Predadora'), '/teams/predadora.webp');
 });
 
-test('reconhece o escudo Devoradora no catálogo publicado', () => {
-  assert.equal(acharEscudo('Atlética Devoradora'), '/teams/devoradora.webp');
+test('reconhece os escudos novos, inclusive atlética com nome composto', () => {
+  assert.equal(acharEscudo('Aguerrida'), '/teams/aguerrida.webp');
+  assert.equal(acharEscudo('Atlética Leões do Norte'), '/teams/leoes-do-norte.webp');
 });
 
 test('ignora acento e caixa', () => {
