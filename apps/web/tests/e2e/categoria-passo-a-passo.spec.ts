@@ -39,6 +39,22 @@ test('as quatro etapas explicam o que fazer antes dos controles', async ({ page 
   }
 });
 
+test('permite digitar espaços e vírgulas nos nomes dos grupos', async ({ page }) => {
+  await loginAs(page);
+  await page.goto('/tournaments/new?modalidade=Futsal');
+  await page.getByLabel('Nome da categoria').fill('Futsal Grupos E2E');
+  await page.getByRole('button', { name: 'Criar categoria' }).click();
+  await page.waitForURL(/\/tournaments\/category-.*\?aba=regras/);
+  const grupos = page.getByLabel('Grupos separados por vírgula').first();
+
+  await grupos.fill('');
+  await grupos.pressSequentially('Grupo A, Grupo B');
+
+  await expect(grupos).toHaveValue('Grupo A, Grupo B');
+  await grupos.press('Tab');
+  await expect(grupos).toHaveValue('Grupo A, Grupo B');
+});
+
 test('a criação da categoria manda para a aba com o nome que aparece na tela', async ({ page }) => {
   await loginAs(page);
   await page.goto('/tournaments/new');
