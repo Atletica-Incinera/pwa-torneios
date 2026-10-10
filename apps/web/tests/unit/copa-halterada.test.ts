@@ -171,3 +171,62 @@ test('equipe que já está no catálogo é VINCULADA, não criada de novo; só a
   assert.ok(ultimaEquipe < tipos.indexOf('category/create'));
   assert.ok(tipos.indexOf('category/create') < tipos.indexOf('match/schedule'));
 });
+
+test('categorias que a gestão já criou na tela são alinhadas com a planilha, e não duplicadas', () => {
+  // Estado real de produção em 10/10: duas categorias de basquete criadas à mão.
+  // No masculino, o grupo C ficou com a Tormenta; a planilha manda a Manguezal.
+  const daGestao = [
+    'Tormenta', 'Halterada', 'Inquisidores', 'Abrasiva', 'Compressora', 'Incinera', 'Engenhosa', 'Mafiosa', 'Furiosa',
+  ];
+  const estado = {
+    ...estadoCom([...daGestao, 'Manguezal', 'Tubarões', 'Kinesis', 'Predadora']),
+    disciplines: Object.fromEntries(['Basquete', 'Futsal', 'Handebol', 'Vôlei'].map((n) => [n, { name: n, enabled: true }])),
+    tournaments: {
+      'category-5423d6f2cb7e': {
+        name: 'Basquete Masculino', discipline: 'Basquete', status: 'Rascunho',
+        participants: daGestao,
+        phases: [{ id: 'groups', groups: ['Grupo A', 'Grupo B', 'Grupo C'] }, { id: 'knockout', groups: [] }],
+        assignments: { Halterada: 'Grupo A', Inquisidores: 'Grupo A', Engenhosa: 'Grupo A', Abrasiva: 'Grupo B', Compressora: 'Grupo B', Incinera: 'Grupo B', Mafiosa: 'Grupo C', Furiosa: 'Grupo C', Tormenta: 'Grupo C' },
+      },
+      'category-9ca6e7c7151c': {
+        name: 'Basquete Feminino', discipline: 'Basquete', status: 'Rascunho',
+        participants: ['Halterada', 'Compressora', 'Furiosa'],
+        phases: [{ id: 'groups', groups: ['Grupo A'] }, { id: 'knockout', groups: [] }],
+        assignments: {},
+      },
+    } as Record<string, unknown>,
+  };
+  type Acao = { type: string; payload: { id: string; setup?: { participants: string[]; assignments: Record<string, string>; status?: string; phases: { groups: string[] }[] }; match?: { phase?: string; tournamentId: string; entryA?: string } } };
+  const plano = planejarCopa(categorias as never, estado as never);
+  const acoes = plano.acoes as unknown as Acao[];
+
+  // Modalidades já habilitadas pela gestão: nada a fazer.
+  assert.equal(acoes.filter((a) => a.type === 'discipline/update').length, 0);
+  // Nenhuma categoria duplicada: as duas existentes são ALINHADAS (update), as outras 6 criadas.
+  assert.equal(acoes.filter((a) => a.type === 'category/create').length, 6);
+  const alinhadas = acoes.filter((a) => a.type === 'category/update');
+  assert.deepEqual(alinhadas.map((a) => a.payload.id).sort(), ['category-5423d6f2cb7e', 'category-9ca6e7c7151c']);
+
+  const masculino = alinhadas.find((a) => a.payload.id === 'category-5423d6f2cb7e')!.payload.setup!;
+  assert.ok(!masculino.participants.includes('Tormenta'));
+  assert.equal(masculino.assignments.Manguezal, 'Grupo C');
+  assert.equal(masculino.status, 'Rascunho', 'situação continua a da gestão');
+  assert.deepEqual(masculino.phases[0].groups, ['Grupo A', 'Grupo B', 'Grupo C']);
+  assert.ok((plano.avisos as string[]).some((a) => a.includes('Basquete Masculino') && a.includes('Tormenta') && a.includes('Manguezal')));
+
+  // O grupo único da planilha usa o nome que a gestão deu ("Grupo A").
+  const feminino = alinhadas.find((a) => a.payload.id === 'category-9ca6e7c7151c')!.payload.setup!;
+  assert.deepEqual(feminino.phases[0].groups, ['Grupo A']);
+  assert.equal(feminino.assignments.Halterada, 'Grupo A');
+
+  // Os jogos de grupo carregam o nome do grupo do app, não a letra da planilha.
+  const jogosMasc = acoes.filter((a) => a.type === 'match/schedule' && a.payload.match?.tournamentId === 'category-5423d6f2cb7e');
+  assert.equal(jogosMasc.length, 13);
+  assert.ok(jogosMasc.filter((a) => a.payload.match?.phase !== 'Mata-mata').every((a) => /^Grupo [ABC]$/.test(a.payload.match!.phase!)));
+
+  // Categoria que JÁ TEM jogos não é tocada.
+  const comJogo = { ...estado, matches: { m1: { tournamentId: 'category-5423d6f2cb7e' } } };
+  const sem = planejarCopa(categorias as never, comJogo as never);
+  assert.ok(!(sem.acoes as unknown as Acao[]).some((a) => a.type === 'category/update' && a.payload.id === 'category-5423d6f2cb7e'));
+  assert.ok((sem.avisos as string[]).some((a) => a.includes('Basquete Masculino') && a.includes('NÃO foi alterada')));
+});

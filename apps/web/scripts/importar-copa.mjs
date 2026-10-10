@@ -214,13 +214,30 @@ export function planejarCopa(categorias, estado, { publicar = false, catalogo = 
     })));
     for (const jogo of sobraram) avisos.push(`${cat.categoria}: jogo ${jogo.numero} (${jogo.casa} x ${jogo.fora}) não coube na chave e não será agendado.`);
 
+    const atual = estado.tournaments?.[categoriaId];
+    const temJogos = jaExiste && Object.values(partidas).some((m) => m.tournamentId === categoriaId);
+
+    /*
+     * Nome do grupo, na convenção do app ("Grupo A") e, se a categoria já existe,
+     * no nome que a gestão usou lá. A planilha escreve "A" e "Único"; a tela do
+     * app cria "Grupo A". Um jogo com `phase: 'A'` numa categoria cujo grupo se
+     * chama "Grupo A" ficaria fora da tabela de classificação.
+     */
+    const existentes_ = atual?.phases?.find((f) => f.id === 'groups')?.groups ?? [];
+    const nomeDoGrupo = (nomeNaPlanilha) => {
+      const candidato = nomeNaPlanilha === 'Único' ? 'Grupo A' : `Grupo ${nomeNaPlanilha}`;
+      const igual = existentes_.find((g) => chave(g) === chave(candidato) || chave(g) === chave(nomeNaPlanilha));
+      if (igual) return igual;
+      if (nomeNaPlanilha === 'Único' && existentes_.length === 1) return existentes_[0];
+      return candidato;
+    };
+
     const participantes = cat.equipes.map(nomeNoApp);
-    const grupos = cat.grupos.map((g) => g.nome);
+    const grupos = cat.grupos.map((g) => nomeDoGrupo(g.nome));
     const assignments = {};
-    for (const g of cat.grupos) for (const e of g.equipes) assignments[nomeNoApp(e)] = g.nome;
+    for (const g of cat.grupos) for (const e of g.equipes) assignments[nomeNoApp(e)] = nomeDoGrupo(g.nome);
     const avanco = avancoDaChave(vagas, grupos.length);
 
-    const atual = estado.tournaments?.[categoriaId];
     const configuracao = {
       participants: participantes,
       seeds: Object.fromEntries(participantes.map((e, i) => [e, i + 1])),
@@ -232,20 +249,32 @@ export function planejarCopa(categorias, estado, { publicar = false, catalogo = 
       ],
       advancement: avanco,
     };
-    if (jaExiste && !(atual.participants?.length)) {
+
+    if (jaExiste && !temJogos) {
       /*
-       * A gestão pode ter criado a categoria vazia pela tela. Criar outra
-       * deixaria duas com o mesmo nome (e o app não exclui categoria); então
-       * preenche a que existe, mantendo nome, modalidade e situação.
+       * A gestão criou a categoria pela tela (e já a povoou). Criar outra
+       * deixaria duas com o mesmo nome — o app não exclui categoria — então
+       * ALINHA a que existe com a planilha, mantendo nome, modalidade e
+       * situação. Só faz isso enquanto ela não tem jogo: com jogo agendado,
+       * trocar participantes ou grupos desfaria o que já foi marcado.
        */
+      const antes = new Set(atual.participants ?? []);
+      const depois = new Set(participantes);
+      const saem = [...antes].filter((e) => !depois.has(e));
+      const entram = [...depois].filter((e) => !antes.has(e));
+      const mudancas = [
+        saem.length && `saem ${saem.join(', ')}`,
+        entram.length && `entram ${entram.join(', ')}`,
+      ].filter(Boolean).join('; ');
       acoes.push({
-        rotulo: `preencher categoria ${cat.categoria}, que já existe vazia (${grupos.length} grupo(s), ${participantes.length} equipes)`,
+        rotulo: `alinhar categoria ${cat.categoria} com a planilha${mudancas ? ` (${mudancas})` : ''}`,
         type: 'category/update',
-        payload: { id: categoriaId, setup: { ...atual, ...configuracao } },
-        audit: { action: 'Categoria configurada pela planilha', entity: cat.categoria, after: `${grupos.length} grupos` },
+        payload: { id: categoriaId, setup: { ...atual, ...configuracao, ...(publicar ? { status: 'Publicado' } : {}) } },
+        audit: { action: 'Categoria alinhada com a planilha', entity: cat.categoria, after: `${grupos.length} grupos` },
       });
+      if (mudancas) avisos.push(`${cat.categoria}: a categoria criada na tela difere da planilha — ${mudancas}.`);
     } else if (jaExiste) {
-      avisos.push(`${cat.categoria}: a categoria já tem ${atual.participants.length} equipe(s); só os jogos que faltam serão agendados. Confira grupos e participantes na tela.`);
+      avisos.push(`${cat.categoria}: a categoria já tem jogos agendados e NÃO foi alterada; só os jogos que faltam entram. Confira grupos e participantes na tela.`);
     }
     if (!jaExiste) {
       acoes.push({
@@ -302,12 +331,12 @@ export function planejarCopa(categorias, estado, { publicar = false, catalogo = 
     };
 
     for (const jogo of cat.jogos.filter((j) => j.tipo === 'grupo')) {
-      agendar({ id: `${categoriaId}-j${jogo.numero}`, jogo, casa: jogo.casa, fora: jogo.fora, fase: jogo.grupo, numero: jogo.numero });
+      agendar({ id: `${categoriaId}-j${jogo.numero}`, jogo, casa: jogo.casa, fora: jogo.fora, fase: nomeDoGrupo(jogo.grupo), numero: jogo.numero });
     }
     // Um lado é equipe e o outro é "Perdedor do Jogo 1": a mini-chave do grupo
     // único de 3 equipes. Não é rodada da chave, é partida avulsa.
     for (const jogo of cat.jogos.filter((j) => j.tipo === 'avulso')) {
-      const fase = cat.grupos[0]?.nome ?? 'Fase de grupos';
+      const fase = grupos[0] ?? 'Fase de grupos';
       agendar({ id: `${categoriaId}-j${jogo.numero}`, jogo, casa: jogo.casa, fora: jogo.fora, fase, numero: jogo.numero });
     }
     for (const vaga of vagas) {
