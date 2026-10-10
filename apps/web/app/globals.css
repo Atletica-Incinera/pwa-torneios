@@ -4010,7 +4010,12 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
     min-height: 116px;
   }
 
-  .theme-teams .team-card .team-copy h2 { font-size: 28px; }
+  /* O nome acompanha a largura da tela, e nao so degraus: a 360px o nome tem
+     138px e "COMPRESSORA" (o mais largo, 5,3 em na Aldo) pede ~151px a 28px,
+     entao quebrava. 224px e o que o cartao gasta com escudo, gaps e margens;
+     6,2 deixa ~10% de folga sobre o nome mais comprido. O teto e o tamanho
+     anterior: nunca fica maior que antes. */
+  .theme-teams .team-card .team-copy h2 { font-size: clamp(18px, calc((100vw - 224px) / 6.2), 28px); }
 }
 
 @media (max-width: 350px) {
@@ -4026,7 +4031,8 @@ textarea:focus-visible, summary:focus-visible { outline: 3px solid rgba(78,191,2
     min-height: 98px;
   }
 
-  .theme-teams .team-card .team-copy h2 { font-size: 24px; }
+  /* Abaixo de 350px o escudo encolhe para 98px e o cartao gasta 188px. */
+  .theme-teams .team-card .team-copy h2 { font-size: clamp(18px, calc((100vw - 188px) / 6.2), 24px); }
 }
 
 /* Filtro sem nada para filtrar fica visivelmente inerte, em vez de aceitar o
