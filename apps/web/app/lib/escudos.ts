@@ -18,6 +18,7 @@ export const escudosPublicados = [
   'cangaceiros',
   'caotica',
   'compressora',
+  'devoradora',
   'engenhosa',
   'engrenada',
   'furiosa',
