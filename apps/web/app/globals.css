@@ -1759,7 +1759,7 @@ small,
 
 .theme-matches .match-score-card .match-date,
 .theme-matches .match-score-card .versus-mark small {
-  color: var(--ink);
+  color: var(--white);
 }
 
 .theme-matches .match-score-card .mark-blue:not(.team-mark-logo) { background: var(--blue); }
