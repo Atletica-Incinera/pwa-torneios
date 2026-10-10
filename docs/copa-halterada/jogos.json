@@ -1,0 +1,2178 @@
+[
+ {
+  "categoria": "Handebol Masculino",
+  "modalidade": "Handebol",
+  "naipe": "Masculino",
+  "grupos": [
+   {
+    "nome": "A",
+    "equipes": [
+     "Halterada 1",
+     "Mafiosa",
+     "Furiosa"
+    ]
+   },
+   {
+    "nome": "B",
+    "equipes": [
+     "Halterada 2",
+     "Abrasiva",
+     "Tormenta"
+    ]
+   },
+   {
+    "nome": "C",
+    "equipes": [
+     "Compressora",
+     "Aguerrida",
+     "Incinera"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada 1",
+   "Mafiosa",
+   "Halterada 2",
+   "Abrasiva",
+   "Compressora",
+   "Aguerrida",
+   "Furiosa",
+   "Tormenta",
+   "Incinera"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "10:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 1"
+    },
+    "fora": {
+     "equipe": "Mafiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "10:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 2"
+    },
+    "fora": {
+     "equipe": "Abrasiva"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "11:00",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Aguerrida"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 1"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 2"
+    },
+    "fora": {
+     "equipe": "Tormenta"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "10:00",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "10:30",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Mafiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "11:00",
+    "local": null,
+    "casa": {
+     "equipe": "Abrasiva"
+    },
+    "fora": {
+     "equipe": "Tormenta"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "11:30",
+    "local": null,
+    "casa": {
+     "equipe": "Aguerrida"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "SEMI-FINAL 1",
+    "data": "2026-10-11",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO A"
+    },
+    "fora": {
+     "rotulo": "Melhor 2º colocado"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 11,
+    "numero": 11,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "SEMI-FINAL 2",
+    "data": "2026-10-11",
+    "horario": "14:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO B"
+    },
+    "fora": {
+     "rotulo": "1 GRUPO C"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 12,
+    "numero": 12,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "DISPUTA 3",
+    "data": "2026-10-11",
+    "horario": "14:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor do Jogo 10"
+    },
+    "fora": {
+     "rotulo": "Perdedor do Jogo 11"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 13,
+    "numero": 13,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "FINAL",
+    "data": "2026-10-11",
+    "horario": "15:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor do Jogo 10"
+    },
+    "fora": {
+     "rotulo": "Vencedor do Jogo 11"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Handebol Feminino",
+  "modalidade": "Handebol",
+  "naipe": "Feminino",
+  "grupos": [
+   {
+    "nome": "Único",
+    "equipes": [
+     "Halterada",
+     "Furiosa",
+     "Compressora",
+     "Leões do Norte",
+     "Engenhosa"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada",
+   "Furiosa",
+   "Compressora",
+   "Leões do Norte",
+   "Engenhosa"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "13:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Leões do Norte"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "14:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "14:30",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "15:00",
+    "local": null,
+    "casa": {
+     "equipe": "Leões do Norte"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "15:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "16:00",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Leões do Norte"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "16:30",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "17:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Leões do Norte"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase de grupos",
+    "data": "2026-10-10",
+    "horario": "17:30",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 11,
+    "numero": 11,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Único",
+    "data": "2026-10-10",
+    "horario": "18:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1º lugar geral"
+    },
+    "fora": {
+     "rotulo": "2º lugar geral"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Basquete Masculino",
+  "modalidade": "Basquete",
+  "naipe": "Masculino",
+  "grupos": [
+   {
+    "nome": "A",
+    "equipes": [
+     "Inquisidores",
+     "Engenhosa",
+     "Halterada"
+    ]
+   },
+   {
+    "nome": "B",
+    "equipes": [
+     "Abrasiva",
+     "Compressora",
+     "Incinera"
+    ]
+   },
+   {
+    "nome": "C",
+    "equipes": [
+     "Mafiosa",
+     "Furiosa",
+     "Manguezal"
+    ]
+   }
+  ],
+  "equipes": [
+   "Inquisidores",
+   "Engenhosa",
+   "Abrasiva",
+   "Compressora",
+   "Mafiosa",
+   "Furiosa",
+   "Halterada",
+   "Incinera",
+   "Manguezal"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "08:00",
+    "local": null,
+    "casa": {
+     "equipe": "Inquisidores"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "08:40",
+    "local": null,
+    "casa": {
+     "equipe": "Abrasiva"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "09:20",
+    "local": null,
+    "casa": {
+     "equipe": "Mafiosa"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "10:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Inquisidores"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "10:40",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "11:20",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Manguezal"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "12:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "12:40",
+    "local": null,
+    "casa": {
+     "equipe": "Abrasiva"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "13:20",
+    "local": null,
+    "casa": {
+     "equipe": "Mafiosa"
+    },
+    "fora": {
+     "equipe": "Manguezal"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Semifinal 1",
+    "data": "2026-10-12",
+    "horario": "14:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO A"
+    },
+    "fora": {
+     "rotulo": "2º geral"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 11,
+    "numero": 11,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Semifinal 2",
+    "data": "2026-10-12",
+    "horario": "14:40",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO B"
+    },
+    "fora": {
+     "rotulo": "1 GRUPO C"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 12,
+    "numero": 12,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Disputa de 3º lugar",
+    "data": "2026-10-12",
+    "horario": "15:20",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor SF1"
+    },
+    "fora": {
+     "rotulo": "Perdedor SF2"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 13,
+    "numero": 13,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Final",
+    "data": "2026-10-12",
+    "horario": "16:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor SF1"
+    },
+    "fora": {
+     "rotulo": "Vencedor SF2"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Basquete Feminino",
+  "modalidade": "Basquete",
+  "naipe": "Feminino",
+  "grupos": [
+   {
+    "nome": "Único",
+    "equipes": [
+     "Halterada",
+     "Furiosa",
+     "Compressora"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada",
+   "Furiosa",
+   "Compressora"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-09",
+    "horario": "19:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "avulso",
+    "grupo": null,
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "18:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor do Jogo 1"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "avulso",
+    "grupo": null,
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "18:40",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor do Jogo 1"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "19:20",
+    "local": null,
+    "casa": {
+     "rotulo": "Melhor classificada"
+    },
+    "fora": {
+     "rotulo": "2º melhor classificada"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Futsal Masculino",
+  "modalidade": "Futsal",
+  "naipe": "Masculino",
+  "grupos": [
+   {
+    "nome": "A",
+    "equipes": [
+     "Tormenta",
+     "Abrasiva",
+     "Halterada 1",
+     "Aguerrida"
+    ]
+   },
+   {
+    "nome": "B",
+    "equipes": [
+     "Halterada 2",
+     "Devoradora",
+     "Incinera"
+    ]
+   },
+   {
+    "nome": "C",
+    "equipes": [
+     "Engenhosa",
+     "Predadora",
+     "Mafiosa"
+    ]
+   },
+   {
+    "nome": "D",
+    "equipes": [
+     "Tubarões",
+     "Furiosa",
+     "Compressora"
+    ]
+   }
+  ],
+  "equipes": [
+   "Tormenta",
+   "Abrasiva",
+   "Halterada 2",
+   "Devoradora",
+   "Engenhosa",
+   "Predadora",
+   "Tubarões",
+   "Furiosa",
+   "Halterada 1",
+   "Incinera",
+   "Mafiosa",
+   "Compressora",
+   "Aguerrida"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "08:00",
+    "local": null,
+    "casa": {
+     "equipe": "Tormenta"
+    },
+    "fora": {
+     "equipe": "Abrasiva"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "08:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 2"
+    },
+    "fora": {
+     "equipe": "Devoradora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "09:00",
+    "local": null,
+    "casa": {
+     "equipe": "Engenhosa"
+    },
+    "fora": {
+     "equipe": "Predadora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "D",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "09:30",
+    "local": null,
+    "casa": {
+     "equipe": "Tubarões"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "10:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 1"
+    },
+    "fora": {
+     "equipe": "Abrasiva"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "10:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 2"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "11:00",
+    "local": null,
+    "casa": {
+     "equipe": "Engenhosa"
+    },
+    "fora": {
+     "equipe": "Mafiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "grupo",
+    "grupo": "D",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "11:30",
+    "local": null,
+    "casa": {
+     "equipe": "Tubarões"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "12:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 1"
+    },
+    "fora": {
+     "equipe": "Aguerrida"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "12:30",
+    "local": null,
+    "casa": {
+     "equipe": "Devoradora"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 11,
+    "numero": 11,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "13:00",
+    "local": null,
+    "casa": {
+     "equipe": "Tormenta"
+    },
+    "fora": {
+     "equipe": "Aguerrida"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 12,
+    "numero": 12,
+    "tipo": "grupo",
+    "grupo": "C",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "equipe": "Predadora"
+    },
+    "fora": {
+     "equipe": "Mafiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 13,
+    "numero": 13,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "14:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada 1"
+    },
+    "fora": {
+     "equipe": "Tormenta"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 14,
+    "numero": 14,
+    "tipo": "grupo",
+    "grupo": "D",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "14:30",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 15,
+    "numero": 15,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-12",
+    "horario": "15:00",
+    "local": null,
+    "casa": {
+     "equipe": "Abrasiva"
+    },
+    "fora": {
+     "equipe": "Aguerrida"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 16,
+    "numero": 16,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Quartas de Final",
+    "data": "2026-10-12",
+    "horario": "15:30",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO A"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO B"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 17,
+    "numero": 17,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Quartas de Final",
+    "data": "2026-10-12",
+    "horario": "16:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO B"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO A"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 18,
+    "numero": 18,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Quartas de Final",
+    "data": "2026-10-12",
+    "horario": "16:30",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO C"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO D"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 19,
+    "numero": 19,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Quartas de Final",
+    "data": "2026-10-12",
+    "horario": "17:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO D"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO C"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 20,
+    "numero": 20,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Semifinal",
+    "data": "2026-10-12",
+    "horario": "17:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor QF1"
+    },
+    "fora": {
+     "rotulo": "Vencedor QF3"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 21,
+    "numero": 21,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Semifinal",
+    "data": "2026-10-12",
+    "horario": "18:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor QF2"
+    },
+    "fora": {
+     "rotulo": "Vencedor QF4"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 22,
+    "numero": 22,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Disputa de 3º lugar",
+    "data": "2026-10-12",
+    "horario": "18:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor SF1"
+    },
+    "fora": {
+     "rotulo": "Perdedor SF2"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 23,
+    "numero": 23,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "Final",
+    "data": "2026-10-12",
+    "horario": "19:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor SF1"
+    },
+    "fora": {
+     "rotulo": "Vencedor SF2"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Futsal Feminino",
+  "modalidade": "Futsal",
+  "naipe": "Feminino",
+  "grupos": [
+   {
+    "nome": "Único",
+    "equipes": [
+     "Halterada",
+     "Furiosa",
+     "Compressora"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada",
+   "Furiosa",
+   "Compressora"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "Único",
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "13:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "avulso",
+    "grupo": null,
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor do Jogo 1"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "avulso",
+    "grupo": null,
+    "fase": "Fase Classificatória",
+    "data": "2026-10-11",
+    "horario": "14:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor do Jogo 1"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "FINAL",
+    "data": "2026-10-11",
+    "horario": "14:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Melhor classificado"
+    },
+    "fora": {
+     "rotulo": "2º melhor classificado"
+    },
+    "provisorio": {
+     "data": false,
+     "horario": true
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Vôlei Masculino",
+  "modalidade": "Vôlei",
+  "naipe": "Masculino",
+  "grupos": [
+   {
+    "nome": "A",
+    "equipes": [
+     "Halterada A",
+     "Devoradora",
+     "Kinesis",
+     "Compressora"
+    ]
+   },
+   {
+    "nome": "B",
+    "equipes": [
+     "Halterada B",
+     "Incinera",
+     "Inquisidores",
+     "Furiosa"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada A",
+   "Devoradora",
+   "Kinesis",
+   "Compressora",
+   "Halterada B",
+   "Incinera",
+   "Inquisidores",
+   "Furiosa"
+  ],
+  "avisos": [
+   "Jogo 6 (Furiosa x Halterada B): a planilha diz grupo A, mas as duas equipes jogam no grupo B. Usado B.",
+   "Jogo 8 (Compressora x Halterada A): a planilha diz grupo B, mas as duas equipes jogam no grupo A. Usado A."
+  ],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada A"
+    },
+    "fora": {
+     "equipe": "Devoradora"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:45",
+    "local": null,
+    "casa": {
+     "equipe": "Kinesis"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "10:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada B"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "11:15",
+    "local": null,
+    "casa": {
+     "equipe": "Inquisidores"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "12:00",
+    "local": null,
+    "casa": {
+     "equipe": "Devoradora"
+    },
+    "fora": {
+     "equipe": "Kinesis"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "12:45",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Halterada B"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "equipe": "Incinera"
+    },
+    "fora": {
+     "equipe": "Inquisidores"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "14:15",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Halterada A"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "15:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada A"
+    },
+    "fora": {
+     "equipe": "Kinesis"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "15:45",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Devoradora"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 11,
+    "numero": 11,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "16:30",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada B"
+    },
+    "fora": {
+     "equipe": "Inquisidores"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 12,
+    "numero": 12,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "17:15",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Incinera"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 13,
+    "numero": 13,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "SEMI-FINAL",
+    "data": "2026-10-11",
+    "horario": "18:00",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO A"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO B"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 14,
+    "numero": 14,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "SEMI-FINAL",
+    "data": "2026-10-11",
+    "horario": "18:45",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO B"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO A"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 15,
+    "numero": 15,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "DISPUTA DE 3",
+    "data": "2026-10-11",
+    "horario": "19:30",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor do Jogo 13"
+    },
+    "fora": {
+     "rotulo": "Perdedor do Jogo 14"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 16,
+    "numero": 16,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "FINAL",
+    "data": "2026-10-11",
+    "horario": "20:15",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor do Jogo 13"
+    },
+    "fora": {
+     "rotulo": "Vencedor do Jogo 14"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   }
+  ]
+ },
+ {
+  "categoria": "Vôlei Feminino",
+  "modalidade": "Vôlei",
+  "naipe": "Feminino",
+  "grupos": [
+   {
+    "nome": "A",
+    "equipes": [
+     "Halterada",
+     "Mafiosa",
+     "Inquisidores"
+    ]
+   },
+   {
+    "nome": "B",
+    "equipes": [
+     "Furiosa",
+     "Engenhosa",
+     "Compressora"
+    ]
+   }
+  ],
+  "equipes": [
+   "Halterada",
+   "Mafiosa",
+   "Furiosa",
+   "Engenhosa",
+   "Inquisidores",
+   "Compressora"
+  ],
+  "avisos": [],
+  "jogos": [
+   {
+    "ordem": 1,
+    "numero": 1,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:00",
+    "local": null,
+    "casa": {
+     "equipe": "Halterada"
+    },
+    "fora": {
+     "equipe": "Mafiosa"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": false
+    }
+   },
+   {
+    "ordem": 2,
+    "numero": 2,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "09:45",
+    "local": null,
+    "casa": {
+     "equipe": "Furiosa"
+    },
+    "fora": {
+     "equipe": "Engenhosa"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 3,
+    "numero": 3,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "10:30",
+    "local": null,
+    "casa": {
+     "equipe": "Inquisidores"
+    },
+    "fora": {
+     "equipe": "Halterada"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 4,
+    "numero": 4,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "11:15",
+    "local": null,
+    "casa": {
+     "equipe": "Compressora"
+    },
+    "fora": {
+     "equipe": "Furiosa"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 5,
+    "numero": 5,
+    "tipo": "grupo",
+    "grupo": "A",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "12:00",
+    "local": null,
+    "casa": {
+     "equipe": "Mafiosa"
+    },
+    "fora": {
+     "equipe": "Inquisidores"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 6,
+    "numero": 6,
+    "tipo": "grupo",
+    "grupo": "B",
+    "fase": "Fase de grupos",
+    "data": "2026-10-11",
+    "horario": "12:45",
+    "local": null,
+    "casa": {
+     "equipe": "Engenhosa"
+    },
+    "fora": {
+     "equipe": "Compressora"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 7,
+    "numero": 7,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "A",
+    "data": "2026-10-11",
+    "horario": "13:30",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO A"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO B"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 8,
+    "numero": 8,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "B",
+    "data": "2026-10-11",
+    "horario": "14:15",
+    "local": null,
+    "casa": {
+     "rotulo": "1 GRUPO B"
+    },
+    "fora": {
+     "rotulo": "2 GRUPO A"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 9,
+    "numero": 9,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "A",
+    "data": "2026-10-11",
+    "horario": "15:00",
+    "local": null,
+    "casa": {
+     "rotulo": "Perdedor do Jogo 7"
+    },
+    "fora": {
+     "rotulo": "Perdedor do Jogo 8"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   },
+   {
+    "ordem": 10,
+    "numero": 10,
+    "tipo": "chave",
+    "grupo": null,
+    "fase": "A",
+    "data": "2026-10-11",
+    "horario": "15:45",
+    "local": null,
+    "casa": {
+     "rotulo": "Vencedor do Jogo 7"
+    },
+    "fora": {
+     "rotulo": "Vencedor do Jogo 8"
+    },
+    "provisorio": {
+     "data": true,
+     "horario": true
+    }
+   }
+  ]
+ }
+]
