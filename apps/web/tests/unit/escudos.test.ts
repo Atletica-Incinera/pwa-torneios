@@ -13,6 +13,15 @@ test('acha pelo nome completo da atlética', () => {
   assert.equal(acharEscudo('Atlética Tríade'), '/teams/triade.webp');
 });
 
+test('reconhece o escudo Predadora no catálogo publicado', () => {
+  assert.equal(acharEscudo('Atlética Predadora'), '/teams/predadora.webp');
+});
+
+test('reconhece os escudos novos, inclusive atlética com nome composto', () => {
+  assert.equal(acharEscudo('Aguerrida'), '/teams/aguerrida.webp');
+  assert.equal(acharEscudo('Atlética Leões do Norte'), '/teams/leoes-do-norte.webp');
+});
+
 test('ignora acento e caixa', () => {
   assert.equal(acharEscudo('CAÓTICA'), '/teams/caotica.webp');
   assert.equal(acharEscudo('tubarões'), '/teams/tubaroes.webp');
@@ -40,5 +49,17 @@ test('não inventa escudo a partir de pedaço de palavra', () => {
 test('o caminho é relativo, que é o formato que o servidor aceita', () => {
   for (const slug of escudosPublicados) {
     assert.match(caminhoDoEscudo(slug), /^\/teams\/[a-z0-9-]+\.webp$/);
+  }
+});
+
+test('as atléticas da Copa Halterada têm escudo, com ou sem o prefixo "Atlética"', () => {
+  const nomes = [
+    'Abrasiva', 'Compressora', 'Furiosa', 'Halterada', 'Incinera', 'Inquisidores',
+    'Kinesis', 'Mafiosa', 'Manguezal', 'Tormenta', 'Tubarões',
+  ];
+  for (const nome of nomes) {
+    const esperado = `/teams/${nome.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()}.webp`;
+    assert.equal(acharEscudo(nome), esperado, nome);
+    assert.equal(acharEscudo(`Atlética ${nome}`), esperado, `Atlética ${nome}`);
   }
 });

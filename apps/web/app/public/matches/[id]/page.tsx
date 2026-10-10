@@ -20,13 +20,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!match || !isPublicMatch(state, match)) return {};
   const name = matchName(match);
   const score = match.scoreA != null && match.scoreB != null ? ` Placar: ${match.scoreA} a ${match.scoreB}.` : '';
-  const description = `${name} pelo ${match.discipline ?? 'InterEng Pernambuco'}.${score}`;
+  const description = `${name} ${match.discipline ? `pelo ${match.discipline}` : 'pela Copa Halterada'}.${score}`;
   const canonical = `/intereng/public/matches/${encodeURIComponent(id)}`;
   return {
     title: name,
     description,
     alternates: { canonical },
-    openGraph: { title: `${name} | InterEng Pernambuco`, description, url: canonical },
+    openGraph: { title: `${name} | Copa Halterada`, description, url: canonical },
   };
 }
 
@@ -51,7 +51,7 @@ export default async function PublicMatchDetailPage({ params }: PageProps) {
       homeTeam: { '@type': 'SportsTeam', name: match.entryA },
       awayTeam: { '@type': 'SportsTeam', name: match.entryB },
       url: `${BASE_URL}/${encodeURIComponent(id)}`,
-      organizer: { '@type': 'SportsOrganization', name: 'InterEng Pernambuco' },
+      organizer: { '@type': 'SportsOrganization', name: 'Copa Halterada' },
     }} />
     <MatchRouteView id={id} mode="public" />
   </>;

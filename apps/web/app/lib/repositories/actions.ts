@@ -71,6 +71,8 @@ export type DisciplineAction =
  */
 export type TeamAction =
   | (WithAudit & { type: 'team/create'; payload: { id: string; team: TeamState } })
+  /** Vincula uma equipe já cadastrada no catálogo à edição ativa. */
+  | (WithAudit & { type: 'team/attach'; payload: { id: string } })
   | (WithAudit & {
       type: 'team/update';
       // `logo: null` remove o escudo. Precisa ser distinto de omitir o campo:

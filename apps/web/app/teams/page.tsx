@@ -5,6 +5,7 @@ import { Filter, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppShell, EmptyState } from '../components/AppShell';
 import { TeamCard } from '../components/TeamCard';
+import { AttachCatalogTeam } from '../components/AttachCatalogTeam';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { listAllTeams } from '../lib/edition-catalog';
 import { casaComBusca } from '../lib/busca';
@@ -31,7 +32,7 @@ export default function TeamsPage() {
   const arquivadas = useMemo(() => allTeams.filter((team) => team.archived).length, [allTeams]);
 
   return (
-    <AppShell active="teams" eyebrow={`${(competition?.name ?? 'INTERENG').toLocaleUpperCase('pt-BR')} · EDIÇÃO ${activeEdition?.year ?? ''}`} title="EQUIPES" subtitle={`${allTeams.length} equipes cadastradas`} actionHref={canManageEdition(session) ? '/teams/new' : undefined} actionLabel="Cadastrar nova equipe" actionShortLabel="Equipe">
+    <AppShell active="teams" eyebrow={`${(competition?.name ?? 'COPA HALTERADA').toLocaleUpperCase('pt-BR')} · EDIÇÃO ${activeEdition?.year ?? ''}`} title="EQUIPES" subtitle={`${allTeams.length} equipes nesta edição`} actionHref={canManageEdition(session) ? '/teams/new' : undefined} actionLabel="Nova equipe no catálogo" actionShortLabel="Equipe">
       <div className="toolbar-row">
         <label className="search-field cut-field"><Search size={20} /><input value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="Buscar equipe" aria-label="Buscar equipe" /></label>
         <button type="button" className={`square-filter${showArchived ? ' active' : ''}`} onClick={() => setShowArchived((value) => !value)} disabled={!arquivadas} aria-pressed={showArchived} aria-label={arquivadas ? `Mostrar as ${arquivadas} equipes arquivadas` : 'Mostrar equipes arquivadas'} title={arquivadas ? `Mostrar as ${arquivadas} ${arquivadas === 1 ? 'equipe arquivada' : 'equipes arquivadas'}` : 'Nenhuma equipe arquivada nesta edição'}><Filter size={21} /></button>
@@ -45,10 +46,11 @@ export default function TeamsPage() {
         {!filteredTeams.length && allTeams.length ? <EmptyState title="NENHUMA EQUIPE ENCONTRADA" copy="Ajuste a busca ou remova o filtro aplicado." /> : null}
         {!allTeams.length ? <div className="empty-state">
           <strong>NENHUMA EQUIPE CADASTRADA</strong>
-          <p>As equipes são cadastradas uma vez por edição e depois inscritas em cada categoria.</p>
+          <p>Adicione uma equipe do catálogo global ou cadastre uma nova para usar nesta edição.</p>
           {canManageEdition(session) ? <Link href="/teams/new" className="secondary-button"><Plus size={16} aria-hidden="true" /> Cadastrar primeira equipe</Link> : null}
         </div> : null}
       </section>
+      {canManageEdition(session) ? <AttachCatalogTeam linkedIds={allTeams.map((team) => team.id)} /> : null}
     </AppShell>
   );
 }

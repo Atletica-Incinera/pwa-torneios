@@ -3,11 +3,11 @@ import { PublicLiveView } from '../components/PublicLiveView';
 
 export const metadata: Metadata = {
   title: 'Jogos ao vivo',
-  description: 'Acompanhe jogos ao vivo, placares e destaques do InterEng Pernambuco.',
+  description: 'Acompanhe jogos ao vivo, placares e destaques da Copa Halterada.',
   alternates: { canonical: '/intereng/public' },
   openGraph: {
-    title: 'InterEng Pernambuco — Jogos ao vivo',
-    description: 'Acompanhe jogos ao vivo, placares e destaques do InterEng Pernambuco.',
+    title: 'Copa Halterada — Jogos ao vivo',
+    description: 'Acompanhe jogos ao vivo, placares e destaques da Copa Halterada.',
     url: '/intereng/public',
   },
 };

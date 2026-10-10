@@ -18,13 +18,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const tournament = state.tournaments[id];
   if (!tournament || !isPublicTournamentStatus(tournament.status)) return {};
   const name = tournament.name ?? tournament.discipline ?? 'Modalidade';
-  const description = `Tabela, fases, jogos e resultados de ${name} no InterEng Pernambuco.`;
+  const description = `Tabela, fases, jogos e resultados de ${name} na Copa Halterada.`;
   const canonical = `/intereng/public/tournaments/${encodeURIComponent(id)}`;
   return {
     title: name,
     description,
     alternates: { canonical },
-    openGraph: { title: `${name} | InterEng Pernambuco`, description, url: canonical },
+    openGraph: { title: `${name} | Copa Halterada`, description, url: canonical },
   };
 }
 
@@ -39,14 +39,14 @@ export default async function PublicCategoryPage({ params }: PageProps) {
     <StructuredData value={{
       '@context': 'https://schema.org',
       '@type': 'SportsEvent',
-      name: `${name} — InterEng Pernambuco`,
+      name: `${name} — Copa Halterada`,
       startDate: edition?.start,
       endDate: edition?.end,
       eventStatus: tournament.status === 'Encerrado'
         ? 'https://schema.org/EventCompleted'
         : 'https://schema.org/EventScheduled',
       url: `${BASE_URL}/${encodeURIComponent(id)}`,
-      organizer: { '@type': 'SportsOrganization', name: 'InterEng Pernambuco' },
+      organizer: { '@type': 'SportsOrganization', name: 'Copa Halterada' },
     }} />
     <Suspense fallback={<LoadingScreen message="Carregando categoria..." />}><PublicTournamentDetailView id={id} /></Suspense>
   </>;

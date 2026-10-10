@@ -126,6 +126,25 @@ export const defaultRegulations: Record<string, RegulationExtension> = {
     knockout: { method: 'set-extra', label: knockoutMethodLabels['set-extra'], requiresScore: true, thirdPlaceMatch: true },
     walkover: { winnerScore: 3, loserScore: 0 },
   },
+  'Futevôlei': {
+    scoring: [action('Ponto', 1)],
+    secondary: [secondary('Falta'), secondary('Tempo técnico', { requiresSide: false })],
+    completion: { mode: 'sets', setsToWin: 2, pointsToWinSet: 18, pointsToWinDecidingSet: 15, minAdvantage: 2 },
+    // Duas duplas por atlética, com dois atletas em cada uma.
+    roster: { required: true, min: 2, max: 4, lock: 'knockout' },
+    standings: { win: 3, draw: 0, loss: 0, tiebreakers: ['confronto-direto', 'vitorias', 'saldo', 'marcados', 'sorteio'] },
+    knockout: { method: 'set-extra', label: knockoutMethodLabels['set-extra'], requiresScore: true, thirdPlaceMatch: true },
+    walkover: { winnerScore: 2, loserScore: 0 },
+  },
+  Queimado: {
+    scoring: [action('Queima', 1)],
+    secondary: [secondary('Falta'), secondary('Advertência', { fairPlayPoints: 1 })],
+    completion: { mode: 'periods', allowDraw: false, overtimePeriods: 0, overtimeDurationMinutes: 0 },
+    roster: { required: true, min: 6, max: 14, lock: 'knockout' },
+    standings: collectiveStandings,
+    knockout: { method: 'criterio-tecnico', label: knockoutMethodLabels['criterio-tecnico'], requiresScore: false, thirdPlaceMatch: true },
+    walkover: { winnerScore: 1, loserScore: 0 },
+  },
   Xadrez: {
     scoring: [action('Ponto', 1)],
     secondary: [secondary('Advertência', { fairPlayPoints: 1 })],
@@ -167,13 +186,14 @@ export function regulationFromRule(discipline: string, rule: DisciplineRule): Re
     return known ?? secondary(label);
   });
   const scoring = rule.scoring?.length ? rule.scoring : preset.scoring?.length && preset.scoring[0].label === rule.scoringEvent ? preset.scoring : legacyScoring.length ? legacyScoring : preset.scoring ?? [action('Ponto', 1)];
+  const roster = rule.roster ?? preset.roster ?? genericExtension.roster!;
   return {
     discipline,
     base: rule,
     scoring,
     secondary: rule.secondary?.length ? rule.secondary : legacySecondary.length ? legacySecondary : preset.secondary ?? [],
     completion: rule.completion ?? preset.completion ?? genericExtension.completion!,
-    roster: rule.roster ?? preset.roster ?? genericExtension.roster!,
+    roster: discipline === 'Futevôlei' ? { ...roster, required: true, min: 2, max: 4 } : roster,
     standings: rule.standings ?? preset.standings ?? genericExtension.standings!,
     knockout: rule.knockout ?? preset.knockout ?? genericExtension.knockout!,
     walkover: rule.walkover ?? preset.walkover ?? genericExtension.walkover!,
@@ -191,7 +211,9 @@ export function resolveRegulation(discipline: string, state?: Pick<DisciplineSta
 const baseTimings: Record<string, Pick<DisciplineRule, 'periodLabel' | 'periodCount' | 'periodDurationMinutes' | 'clockMode' | 'scoringEvent' | 'secondaryEvents'>> = {
   Futsal: { periodLabel: 'Tempo', periodCount: 2, periodDurationMinutes: 20, clockMode: 'countdown', scoringEvent: 'Gol', secondaryEvents: ['Falta', 'Cartão'] },
   'Vôlei': { periodLabel: 'Set', periodCount: 5, periodDurationMinutes: 0, clockMode: 'none', scoringEvent: 'Ponto', secondaryEvents: ['Falta', 'Tempo técnico'] },
+  'Futevôlei': { periodLabel: 'Set', periodCount: 3, periodDurationMinutes: 0, clockMode: 'none', scoringEvent: 'Ponto', secondaryEvents: ['Falta', 'Tempo técnico'] },
   Handebol: { periodLabel: 'Tempo', periodCount: 2, periodDurationMinutes: 30, clockMode: 'countdown', scoringEvent: 'Gol', secondaryEvents: ['Falta', '2 minutos'] },
+  Queimado: { periodLabel: 'Tempo', periodCount: 2, periodDurationMinutes: 10, clockMode: 'countdown', scoringEvent: 'Queima', secondaryEvents: ['Falta', 'Advertência'] },
   Xadrez: { periodLabel: 'Rodada', periodCount: 7, periodDurationMinutes: 0, clockMode: 'none', scoringEvent: 'Ponto', secondaryEvents: ['Advertência', 'Encerrar tabuleiro'] },
   'Natação': { periodLabel: 'Prova', periodCount: 1, periodDurationMinutes: 0, clockMode: 'none', scoringEvent: 'Resultado', secondaryEvents: ['Largada', 'Ocorrência'] },
   Basquete: { periodLabel: 'Tempo', periodCount: 2, periodDurationMinutes: 10, clockMode: 'countdown', scoringEvent: 'Ponto', secondaryEvents: ['Falta', 'Tempo técnico'] },

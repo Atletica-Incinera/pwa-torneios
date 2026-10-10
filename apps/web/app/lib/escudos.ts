@@ -13,14 +13,26 @@
  * o nome aqui.
  */
 export const escudosPublicados = [
+  'abrasiva',
+  'aguerrida',
   'alcateia',
   'cangaceiros',
   'caotica',
+  'compressora',
+  'devoradora',
   'engenhosa',
   'engrenada',
+  'furiosa',
   'graxeiros',
+  'halterada',
   'incinera',
+  'inquisidores',
   'invasora',
+  'predadora',
+  'kinesis',
+  'leoes-do-norte',
+  'mafiosa',
+  'manguezal',
   'tormenta',
   'triade',
   'tubaroes',
@@ -50,7 +62,15 @@ function chave(texto: string) {
  */
 export function acharEscudo(nome: string): string | undefined {
   const limpo = chave(nome);
-  const candidatos = [limpo.replace(/[^a-z0-9]+/g, ''), ...limpo.split(/[^a-z0-9]+/).filter(Boolean)];
+  const palavras = limpo.split(/[^a-z0-9]+/).filter(Boolean);
+  const semPrefixo = palavras[0] === 'atletica' ? palavras.slice(1) : palavras;
+  const candidatos = [
+    palavras.join(''),
+    palavras.join('-'),
+    semPrefixo.join(''),
+    semPrefixo.join('-'),
+    ...palavras,
+  ];
   const achado = candidatos.find((item) => (escudosPublicados as readonly string[]).includes(item));
   return achado ? caminhoDoEscudo(achado) : undefined;
 }

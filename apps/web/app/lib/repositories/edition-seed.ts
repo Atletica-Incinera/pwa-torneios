@@ -109,7 +109,7 @@ export const seedMatches: Record<string, MatchState> = {
 };
 
 export const seedStaff: Record<string, StaffState> = {
-  'ana@ufpe.br': { name: 'Ana Coordenadora', email: 'ana@ufpe.br', initials: 'AC', role: 'Admin da edição', scope: 'InterEng 2026' },
+  'ana@ufpe.br': { name: 'Ana Coordenadora', email: 'ana@ufpe.br', initials: 'AC', role: 'Admin da edição', scope: 'Copa Halterada' },
   'bruno@ufpe.br': { name: 'Bruno Martins', email: 'bruno@ufpe.br', initials: 'BM', role: 'Gestor de modalidade', scope: 'Futsal' },
   'camila@ufpe.br': { name: 'Camila Rocha', email: 'camila@ufpe.br', initials: 'CR', role: 'Gestor de modalidade', scope: 'Vôlei' },
 };

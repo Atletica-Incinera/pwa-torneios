@@ -66,6 +66,12 @@ function reduce(current: FrontendState, action: Action): FrontendState {
     case 'team/create':
       return { ...current, teams: { ...current.teams, [action.payload.id]: action.payload.team } };
 
+    // No modo HTTP, a API devolve o snapshot com o novo vínculo. O modo local
+    // já mantém todas as equipes no estado, portanto vincular não altera o
+    // catálogo em si.
+    case 'team/attach':
+      return current;
+
     case 'team/update': {
       // `logo: null` chega do formulario como remocao; no estado local isso e
       // simplesmente ausencia de escudo, que e o que os componentes esperam.

@@ -111,6 +111,14 @@ const sessions = new Map<string, { email: string; name: string }>();
 
 /** Cenário de teste: sistema recém-migrado, nenhuma competição criada ainda. */
 let noActiveEdition = false;
+
+/*
+ * Catálogo global de equipes. O snapshot da edição só traz as VINCULADAS; as
+ * demais ficam aqui até um `team/attach`. Começa com uma equipe que não está
+ * na edição, para exercitar o caminho de vincular em vez de criar.
+ */
+const catalogoInicial = [{ id: 'cat-abrasiva', name: 'Abrasiva', initials: 'ABR', archived: false }];
+let soNoCatalogo = [...catalogoInicial];
 const emptySnapshot: FrontendState = { ...seededFrontendState, superAdmins: seededSuperAdmins, competitions: [], editions: [] };
 
 /** O payload do espectador: sem staff, sem auditoria, sem rascunho. */
@@ -187,6 +195,7 @@ createServer(async (request, response) => {
   // credenciais, já que a troca de senha altera o usuário em memória.
   if (url.pathname === '/test/reset') {
     snapshot = seededFrontendState;
+    soNoCatalogo = [...catalogoInicial];
     sessions.clear();
     restoreUsers();
     noActiveEdition = false;
@@ -312,9 +321,29 @@ createServer(async (request, response) => {
     return reply(201, snapshot.editions[0]);
   }
 
+  // Catálogo global: as equipes da edição mais as que só existem nele.
+  if (url.pathname === '/teams' && request.method === 'GET') {
+    if (!session) return reply(401, { message: 'Sessão inválida.' });
+    const daEdicao = Object.entries(snapshot.teams).map(([id, team]) => ({
+      id, name: team.name, initials: team.initials ?? null, archived: Boolean(team.archived),
+    }));
+    return reply(200, [...daEdicao, ...soNoCatalogo]);
+  }
+
   if (url.pathname.endsWith('/actions') && request.method === 'POST') {
     if (!session) return reply(401, { message: 'Sessão inválida.' });
     const action = await readBody(request) as Action;
+    // Vincular: a equipe passa do catálogo para a edição, com o mesmo id.
+    if (action.type === 'team/attach') {
+      const alvo = soNoCatalogo.find((item) => item.id === action.payload.id);
+      if (!alvo) return reply(404, { message: 'Equipe não encontrada no catálogo.' });
+      soNoCatalogo = soNoCatalogo.filter((item) => item.id !== alvo.id);
+      snapshot = {
+        ...snapshot,
+        teams: { ...snapshot.teams, [alvo.id]: { name: alvo.name, initials: alvo.initials ?? '', responsible: 'A definir', tone: 'blue', created: true } as never },
+      };
+      return reply(200, snapshot);
+    }
     // Autor e horário são do servidor, nunca do cliente.
     snapshot = applyAction(snapshot, action, { actor: session.name });
     // O reducer do front é no-op para esta ação de propósito: quem grava a flag
