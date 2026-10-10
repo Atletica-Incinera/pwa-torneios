@@ -1737,9 +1737,9 @@ small,
 }
 
 .theme-matches .match-score-card {
-  border-color: var(--orange);
-  background: var(--orange);
-  color: var(--ink);
+  border-color: var(--blue);
+  background: var(--blue);
+  color: var(--white);
 }
 
 .theme-matches .match-list > .match-score-card:nth-child(3n + 1) {
