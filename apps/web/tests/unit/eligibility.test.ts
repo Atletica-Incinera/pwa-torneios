@@ -55,6 +55,15 @@ test('aplica mínimo e máximo de atletas da modalidade', () => {
   assert.equal(checkRoster(futsal, 13).ok, false);
 });
 
+test('futevôlei exige uma ou duas duplas completas', () => {
+  const regulation = resolveRegulation('Futevôlei');
+  assert.equal(checkRoster(regulation, 1).ok, false);
+  assert.equal(checkRoster(regulation, 2).ok, true);
+  assert.equal(checkRoster(regulation, 3).ok, false);
+  assert.equal(checkRoster(regulation, 4).ok, true);
+  assert.equal(checkRoster(regulation, 5).ok, false);
+});
+
 test('modalidade sem exigência de elenco não bloqueia a operação', () => {
   assert.equal(checkRoster(xadrez, 0).ok, true);
 });

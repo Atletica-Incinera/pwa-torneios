@@ -9,7 +9,7 @@ import { defaultDisciplineRules, formatDisciplineRegulation, formatDisciplineRul
 import { RegulationFields } from './RegulationFields';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
 
-const catalog = ['Futsal', 'Vôlei', 'Handebol', 'Xadrez', 'Natação', 'Basquete'];
+const catalog = ['Futsal', 'Vôlei', 'Futevôlei', 'Handebol', 'Queimado', 'Xadrez', 'Natação', 'Basquete'];
 
 export function DisciplineCreationForm() {
   const router = useRouter();
@@ -77,7 +77,9 @@ export function DisciplineCreationForm() {
     else setSubmitting(false);
   }
 
-  const defaultHint = name && defaultDisciplineRules[name] ? 'Sugestão inicial aplicada; ajuste conforme o regulamento da Copa Halterada.' : 'Defina a regra oficial antes de criar partidas.';
+  const defaultHint = name === 'Queimado'
+    ? 'Sugestão inicial aplicada. Confira tempo, tamanho do elenco e critério de desempate com o regulamento da edição.'
+    : name && defaultDisciplineRules[name] ? 'Sugestão inicial aplicada; ajuste conforme o regulamento da Copa Halterada.' : 'Defina a regra oficial antes de criar partidas.';
 
   return (
     <AppShell active="profile" eyebrow="COPA HALTERADA" title="ADICIONAR MODALIDADE" subtitle="Defina as regras que serão aplicadas automaticamente aos jogos">
