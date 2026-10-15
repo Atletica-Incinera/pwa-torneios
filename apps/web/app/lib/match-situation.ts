@@ -7,6 +7,11 @@ export type MatchSituation = {
   tone: SituationTone;
   /** O placar só existe depois que o jogo começou. */
   showScore: boolean;
+  /**
+   * Está "Ao vivo" no sistema, mas o horário já passou muito do fim previsto:
+   * a mesa não encerrou. Não é jogo em quadra e não pode ser anunciado assim.
+   */
+  stale?: boolean;
 };
 
 type SituationInput = {
@@ -19,6 +24,12 @@ type SituationInput = {
 
 /** Tolerância depois do fim previsto antes de um jogo virar "Sem resultado". */
 const graceMinutes = 30;
+/**
+ * Depois do fim previsto, quanto tempo um jogo "Ao vivo" ainda é tratado como
+ * em quadra. Folga larga de propósito: atraso, prorrogação e intervalo longo
+ * não podem tirar do ar um jogo que de fato está acontecendo.
+ */
+const staleLiveMinutes = 180;
 
 function startOf(date?: string, time?: string): Date | null {
   if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
@@ -38,7 +49,15 @@ function startOf(date?: string, time?: string): Date | null {
  */
 export function matchSituation(match: SituationInput, now: Date = new Date()): MatchSituation {
   const status = match.status ?? matchStatus.scheduled;
-  if (status === matchStatus.live) return { label: 'Ao vivo', tone: 'orange', showScore: true };
+  if (status === matchStatus.live) {
+    // Em 2026 um jogo ficou "Ao vivo" por dias, porque ninguém encerrou na mesa,
+    // e a home pública o anunciava como acontecendo agora.
+    const liveStart = startOf(match.date, match.time);
+    const overdue = liveStart && (now.getTime() - liveStart.getTime()) / 60_000 > (match.durationMinutes ?? 60) + staleLiveMinutes;
+    return overdue
+      ? { label: 'Sem atualização', tone: 'pink', showScore: true, stale: true }
+      : { label: 'Ao vivo', tone: 'orange', showScore: true };
+  }
   if (status === matchStatus.finished) return { label: 'Encerrado', tone: 'neutral', showScore: true };
   if (status === matchStatus.walkover) return { label: 'W.O.', tone: 'neutral', showScore: true };
   if (status === matchStatus.cancelled) return { label: 'Cancelado', tone: 'pink', showScore: false };

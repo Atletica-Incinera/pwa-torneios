@@ -12,6 +12,7 @@ import { describeTiebreakers, resolveRegulation } from '../lib/regulation';
 import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
 import { listMatches } from '../lib/edition-catalog';
 import { isOfficialResult } from '../lib/status';
+import { officialWinner } from '../lib/match-lifecycle';
 import { useTablistKeys } from '../lib/use-tablist-keys';
 
 type ClassificationHeading = { eyebrow?: string; title?: string; phase?: string };
@@ -125,11 +126,15 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Vitória {regulation.standings.win} · empate {regulation.standings.draw} · derrota {regulation.standings.loss}. Desempate: {describeTiebreakers(regulation.standings)}.</p>{setup ? <p>{describeAdvancement(setup.advancement ?? { ...defaultAdvancement, perGroup: qualifierCount ?? defaultAdvancement.perGroup }, availableGroups.length)}</p> : null}</div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>
       </> : <div className="bracket-view" aria-label="Chaveamento">{rounds.length ? rounds.map((round) => <section className="bracket-round" key={round.key} aria-label={round.name}><h3>{round.name}</h3>{round.matches.map((match) => {
           const official = isOfficialResult(match.status);
-          const winner = official ? (match as { winner?: string }).winner ?? ((match.scoreA ?? 0) > (match.scoreB ?? 0) ? match.entryA : (match.scoreB ?? 0) > (match.scoreA ?? 0) ? match.entryB : undefined) : undefined;
+          // Quem passou sai do resultado oficial, com desempate e W.O.: num 3 × 3
+          // decidido nos pênaltis a chave não destacava ninguém.
+          const stored = state.matches[match.id];
+          const winner = official && stored ? officialWinner(stored) ?? undefined : undefined;
+          const tiebreak = official ? stored?.tiebreak : undefined;
           return <Link className="bracket-match" href={`${matchHrefBase}/${match.id}`} key={match.id}>
             <span className={winner === match.entryA ? 'bracket-side winner' : 'bracket-side'}><strong>{match.entryA}</strong>{official ? <b>{match.scoreA}</b> : null}</span>
             <span className={winner === match.entryB ? 'bracket-side winner' : 'bracket-side'}><strong>{match.entryB}</strong>{official ? <b>{match.scoreB}</b> : null}</span>
-            <small>{official ? (match.status === 'W.O.' ? 'W.O.' : 'Encerrado') : match.date && match.date.length === 10 ? `${formatMatchDateLabel(match.date)} · ${match.time}` : match.status}</small>
+            <small>{official ? (match.status === 'W.O.' ? 'W.O.' : tiebreak ? (tiebreak.method === 'penaltis' ? `Pênaltis ${tiebreak.winner === match.entryA ? `${tiebreak.scoreA} × ${tiebreak.scoreB}` : `${tiebreak.scoreB} × ${tiebreak.scoreA}`} para ${tiebreak.winner}` : `Desempate: ${tiebreak.winner}`) : 'Encerrado') : match.date && match.date.length === 10 ? `${formatMatchDateLabel(match.date)} · ${match.time}` : match.status}</small>
           </Link>;
         })}</section>) : <p className="match-filter-empty">A chave aparece quando a fase anterior terminar e os confrontos forem definidos.</p>}</div>}
     </div>

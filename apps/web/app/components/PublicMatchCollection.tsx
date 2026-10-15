@@ -14,7 +14,7 @@ export function PublicMatchCollection({ discipline, mode }: { discipline?: strin
   const visible = listMatches(state, activeEdition?.id, { discipline })
     // A área pública só mostra jogos de disputas publicadas.
     .filter((match) => isPublicMatch(state, match))
-    .filter((match) => (mode === 'live' ? isLive(match.status) : isPendingMatch(match.status)));
+    .filter((match) => (mode === 'live' ? isLive(match.status) && !match.situation.stale : isPendingMatch(match.status)));
 
   return <>
     {mode === 'live' ? <div className="public-readonly-summary"><Radio size={18} /><strong>{visible.length} {visible.length === 1 ? 'partida' : 'partidas'} ao vivo</strong><StatusBadge tone="orange">AGORA</StatusBadge></div> : null}

@@ -65,7 +65,7 @@ export function MatchScoreCard({
         <div className="versus-mark">
           {scoreA === null || scoreB === null ? <span className="versus-time">×</span> : <span>{scoreA} — {scoreB}</span>}
           {currentSet ? <b className="current-set-score">Set {currentSet.number}: {currentSet.scoreA} — {currentSet.scoreB}</b> : null}
-          <small>{venue}</small>
+          {venue === 'A definir' && /Encerrad|W\.O\.|Cancelad/.test(status) ? null : <small>{venue}</small>}
         </div>
         <div className={`team-side align-right${aDefinirB ? ' team-side-a-definir' : ''}`}>
           <TeamMark initial={aDefinirB ? '?' : teamB[0]} tone={aDefinirB ? 'neutral' : 'pink'} logo={aDefinirB ? undefined : teamBLogo} />

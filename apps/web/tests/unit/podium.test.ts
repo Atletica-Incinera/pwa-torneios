@@ -28,3 +28,11 @@ test('mata-mata: campeã e vice da final, 3º da disputa de 3º lugar', () => {
   } as never;
   assert.deepEqual(categoryPodium(state, 't'), { champion: 'B', vice: 'A', third: 'D', source: 'final' });
 });
+
+test('vários grupos ou mata-mata não lançado: sem pódio inventado', () => {
+  const base = { participants: [], seeds: {}, assignments: {}, generated: true, status: 'Encerrado' };
+  const grupos = { tournaments: { t: { ...base, phases: [{ id: 'g', name: 'Grupos', format: 'Grupos', groups: ['A', 'B'], qualifiers: 1, standings: [row('X', 1), row('Y', 1)] }] } }, matches: {} } as never;
+  assert.equal(categoryPodium(grupos, 't'), null);
+  const semChave = { tournaments: { t: { ...base, phases: [{ id: 'g', name: 'Grupo', format: 'Grupos', groups: ['A'], qualifiers: 2, standings: [row('X', 1), row('Y', 2)] }, { id: 'k', name: 'Mata-mata', format: 'Mata-mata', groups: [], qualifiers: 1 }] } }, matches: {} } as never;
+  assert.equal(categoryPodium(semChave, 't'), null);
+});
