@@ -59,7 +59,7 @@ export function PublicAppShell({ active, eyebrow, title, subtitle, children }: P
           <span className="context-mark">{String(edition?.year ?? '').slice(-2)}</span>
           <span><small>TORNEIO · {competition.name}</small><strong>EDIÇÃO {edition?.year ?? ''}</strong></span>
         </Link> : <Link href="/public" className="context-copy" aria-label="Nenhuma competição ativa"><img className="brand-emblem" src={appPath('/halterada/emblema-verde.png')} alt="" /><span><small>COPA HALTERADA</small><strong>SEM COMPETIÇÃO</strong></span></Link>}
-        <ConnectionBadge source={source} connection={connection} publicView />
+        <ConnectionBadge source={source} connection={connection} publicView finished={(edition?.status === 'Finalizada' || edition?.status === 'Arquivada') && !Object.values(state.matches).some((match) => match.status === 'Ao vivo')} />
       </div>
 
       <PageNavigation title={title} publicMode />

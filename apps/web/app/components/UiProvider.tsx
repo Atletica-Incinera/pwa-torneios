@@ -28,7 +28,9 @@ export function UiProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string, tone: ToastTone = 'success') => {
     const id = Date.now() + Math.random();
     setToasts((current) => [...current.slice(-2), { id, message, tone }]);
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), 3200);
+    // Erro fica mais tempo: é o aviso que a pessoa precisa ler para agir, e em
+    // 3 s um motivo de recusa da API sumia antes de ser lido.
+    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), tone === 'error' ? 8000 : 3200);
   }, []);
   const confirm = useCallback((options: ConfirmOptions) => new Promise<boolean>((resolve) => {
     openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;

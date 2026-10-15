@@ -3,7 +3,7 @@
 import { PublicAppShell } from './PublicAppShell';
 import { TournamentCard } from './TournamentCard';
 import { EmptyState } from './AppShell';
-import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
+import { editionHeading, getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { listCategories } from '../lib/edition-catalog';
 import { isPublicTournamentStatus } from '../lib/publication';
 
@@ -13,7 +13,7 @@ export function PublicTournamentsPage() {
   const visible = listCategories(state, activeEdition?.id).filter((item) => isPublicTournamentStatus(item.status));
 
   return (
-    <PublicAppShell active="disciplines" eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="MODALIDADES" subtitle="Categorias, fases e resultados desta edição">
+    <PublicAppShell active="disciplines" eyebrow={editionHeading(state)} title="MODALIDADES" subtitle="Categorias, fases e resultados desta edição">
       <section className="tournament-list" aria-label="Categorias da edição">
         {visible.map((item, index) => <TournamentCard tournament={item} index={index} detailHref={`/public/tournaments/${item.id}`} resultsHref={`/public/tournaments/${item.id}?aba=jogos`} publicView key={item.id} />)}
         {!visible.length ? <EmptyState title="SEM MODALIDADES PUBLICADAS" copy="As categorias aparecem aqui quando forem publicadas." /> : null}

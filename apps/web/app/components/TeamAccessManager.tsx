@@ -58,7 +58,7 @@ export function TeamAccessManager({ teamId, teamName }: { teamId: string; teamNa
     setEnviando(true);
     setErro('');
     try {
-      await dispatch({
+      const resultado = await dispatch({
         type: 'staff/upsert',
         payload: {
           email: emailLimpo,
@@ -72,11 +72,19 @@ export function TeamAccessManager({ teamId, teamName }: { teamId: string; teamNa
           },
         },
         audit: { action: 'Responsável da atlética convidado', entity: nomeLimpo, after: teamName },
-      });
+      }, { silent: true });
+      // O despacho não lança: devolve ok/erro. Confirmar sem olhar o resultado
+      // anunciava "já pode entrar" para um acesso que o servidor recusou.
+      if (!resultado.ok) {
+        setErro(resultado.error ?? 'Não foi possível criar o acesso.');
+        return;
+      }
       setEmail('');
       setNome('');
       setSenha('');
-      toast(`${nomeLimpo} já pode entrar e cadastrar os atletas do ${teamName}.`, 'success');
+      // A API só usa a senha inicial em conta nova: quem já tinha conta no app
+      // (outra edição, outro papel) continua com a senha que já usa.
+      toast(`Acesso criado. ${nomeLimpo} entra com ${emailLimpo}: com a senha inicial que você definiu, se for o primeiro acesso ao app, ou com a senha que já usa.`, 'success');
     } catch (falha) {
       setErro(falha instanceof Error ? falha.message : 'Não foi possível criar o acesso.');
     } finally {

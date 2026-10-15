@@ -1,4 +1,4 @@
-import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, MatchCorrectionState, MatchEventState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, OverallPosition, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
+import type { AthleteState, AuditState, CompetitionState, DisciplineState, EditionState, MatchCorrectionState, MatchEventState, MatchTiebreakState, MatchScoreSnapshot, MatchState, OverallAwardState, OverallClosureState, OverallMetricState, OverallPosition, StaffState, TeamState, TournamentState } from '../frontend-state.ts';
 
 /** O que a auditoria registra sobre a operação. Autor e horário entram no reducer. */
 export type ActionAudit = Omit<AuditState, 'id' | 'at' | 'actor'>;
@@ -32,7 +32,9 @@ export type MatchAction =
   | (WithAudit & { type: 'match/releaseOperator'; payload: { id: string; operatorId: string } })
   | (WithAudit & { type: 'match/undoEvent'; payload: { id: string; eventId: string; restore: MatchScoreSnapshot } })
   | (WithAudit & { type: 'match/finish'; payload: { id: string; patch: Partial<MatchState> } })
-  | (WithAudit & { type: 'match/correctResult'; payload: { id: string; scoreA: number; scoreB: number; correction: MatchCorrectionState } });
+  | (WithAudit & { type: 'match/correctResult'; payload: { id: string; scoreA: number; scoreB: number; correction: MatchCorrectionState } })
+  /** Resultado final pela súmula, sem lance a lance: placar, parciais e desempate. */
+  | (WithAudit & { type: 'match/recordResult'; payload: { id: string; scoreA: number; scoreB: number; periods?: Array<{ scoreA: number; scoreB: number }>; tiebreak?: MatchTiebreakState } });
 
 /** Operações de categoria (a disputa dentro de uma modalidade). */
 export type CategoryAction =

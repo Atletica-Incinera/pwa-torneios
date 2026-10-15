@@ -2,5 +2,5 @@ import { AppShell } from '../components/AppShell';
 import { OverallStandings } from '../components/OverallStandings';
 
 export default function OverallStandingsPage() {
-  return <AppShell active="tournaments" eyebrow="TODAS AS MODALIDADES" title="CLASSIFICAÇÃO GERAL" subtitle="Pontuação acumulada das equipes na Copa Halterada"><OverallStandings /></AppShell>;
+  return <AppShell active="tournaments" eyebrow="TODAS AS MODALIDADES" title="CLASSIFICAÇÃO GERAL" subtitle="Pontuação acumulada das equipes na edição"><OverallStandings /></AppShell>;
 }

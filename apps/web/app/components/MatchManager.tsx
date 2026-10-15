@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { PencilLine, TriangleAlert } from 'lucide-react';
 import { getActiveEdition, MatchCorrectionState, useFrontendState } from '../lib/repositories/browser-repository';
 import { useUnsavedChanges } from '../lib/use-unsaved-changes';
@@ -103,6 +103,14 @@ export function MatchManager({ match }: { match: MatchBase }) {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [correction, setCorrection] = useState({ scoreA: String(override.scoreA ?? 0), scoreB: String(override.scoreB ?? 0), reason: '' });
+  // Os campos acompanham o placar oficial até a pessoa digitar. Sem isso eles
+  // guardavam o valor do primeiro render (antes de o dado chegar) e a
+  // retificação partia de um placar que não era o oficial.
+  const [correctionTouched, setCorrectionTouched] = useState(false);
+  useEffect(() => {
+    if (correctionTouched) return;
+    setCorrection((current) => ({ ...current, scoreA: String(override.scoreA ?? 0), scoreB: String(override.scoreB ?? 0) }));
+  }, [correctionTouched, override.scoreA, override.scoreB]);
 
   const requirement = statusRequirements[draft.status];
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
@@ -115,6 +123,9 @@ export function MatchManager({ match }: { match: MatchBase }) {
 
   const conflicts = useMemo(() => {
     if (!activeEdition || !draft.date || !draft.time || draft.venue.trim().length < 2) return [];
+    // Jogo que já aconteceu (ou não vai acontecer) não ocupa a agenda de
+    // ninguém: avisar "local ocupado" num jogo encerrado era só ruído.
+    if (isTerminalMatch(match.status)) return [];
     return findScheduleConflicts(
       { id: match.id, date: draft.date, time: draft.time, venue: draft.venue.trim(), discipline: match.discipline, entryA: draft.entryA, entryB: draft.entryB, durationMinutes: scheduledDuration(regulation) },
       collectScheduledMatches(state, activeEdition.id),
@@ -226,6 +237,7 @@ export function MatchManager({ match }: { match: MatchBase }) {
       audit: { action: 'Resultado retificado', entity: `${match.entryA} × ${match.entryB}`, before: entry.before, after: entry.after, reason },
     });
     setCorrection((current) => ({ ...current, reason: '' }));
+    setCorrectionTouched(false);
   }
 
   if (!allowed) return <div className="info-banner"><p>Seu perfil não pode editar partidas de {match.discipline}.</p></div>;
@@ -326,8 +338,8 @@ export function MatchManager({ match }: { match: MatchBase }) {
         {impact.blocked.length ? <div className="info-banner" role="alert"><TriangleAlert size={18} /><div><strong>Confrontos seguintes já operados</strong><p>{impact.blocked.join(', ')}. Anule essas partidas antes de retificar este resultado.</p></div></div> : null}
         {impact.downstream.length ? <div className="info-banner" role="status"><TriangleAlert size={18} /><div><strong>Fases impactadas</strong><p>{impact.downstream.length} confronto(s) ainda não iniciado(s) serão refeitos: {impact.downstream.join(', ')}.</p></div></div> : null}
         <div className="rule-fields two-columns">
-          <label><span>{draft.entryA}</span><input type="number" min="0" value={correction.scoreA} onChange={(event) => setCorrection({ ...correction, scoreA: event.target.value })} /></label>
-          <label><span>{draft.entryB}</span><input type="number" min="0" value={correction.scoreB} onChange={(event) => setCorrection({ ...correction, scoreB: event.target.value })} /></label>
+          <label><span>{draft.entryA}</span><input type="number" min="0" value={correction.scoreA} onChange={(event) => { setCorrectionTouched(true); setCorrection({ ...correction, scoreA: event.target.value }); }} /></label>
+          <label><span>{draft.entryB}</span><input type="number" min="0" value={correction.scoreB} onChange={(event) => { setCorrectionTouched(true); setCorrection({ ...correction, scoreB: event.target.value }); }} /></label>
         </div>
         <div className="form-actions"><button type="submit" className="secondary-button" disabled={impact.blocked.length > 0}>Retificar resultado</button></div>
         {override.corrections?.length ? <ul className="correction-history">{override.corrections.map((item) => <li key={item.id}><strong>{item.before} → {item.after}</strong><span>{item.reason} · {item.actor}</span></li>)}</ul> : null}

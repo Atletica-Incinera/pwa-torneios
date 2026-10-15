@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Clock3, Pencil, Radio } from 'lucide-react';
+import { ClipboardCheck, Clock3, Pencil, Radio } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { MatchSummary } from './MatchSummary';
 import { MatchScorers } from './MatchScorers';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { canManageDiscipline, useFrontendSession } from '../lib/frontend-session';
 import { formatClock } from '../lib/tournament-engine';
-import { matchClockLabel, resolveDisciplineRule } from '../lib/discipline-rules';
+import { matchClockLabel, mesaOperaRelogio, resolveDisciplineRule } from '../lib/discipline-rules';
 import { isLive, isTerminalMatch } from '../lib/status';
 import type { MatchView } from '../lib/edition-catalog';
 
@@ -46,10 +46,10 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
       <section className="spectator-match-state">
         {/* Modalidade sem cronometro nao mostra relogio nem aviso de que nao
             ha relogio: a etapa em andamento ja diz onde a partida esta. */}
-        <div className="spectator-clock-row"><small>{currentPeriod}º {rules.periodLabel.toUpperCase()} DE {rules.periodCount}</small>{rules.clockMode === 'none' ? null : <div className="game-clock" aria-label={`Tempo de partida: ${formatClock(matchClockLabel(rules, clock))}`}><Clock3 size={18} aria-hidden="true" />{formatClock(matchClockLabel(rules, clock))}</div>}</div>
+        <div className="spectator-clock-row"><small>{currentPeriod}º {rules.periodLabel.toUpperCase()} DE {rules.periodCount}</small>{!mesaOperaRelogio || rules.clockMode === 'none' ? null : <div className="game-clock" aria-label={`Tempo de partida: ${formatClock(matchClockLabel(rules, clock))}`}><Clock3 size={18} aria-hidden="true" />{formatClock(matchClockLabel(rules, clock))}</div>}</div>
         <div className="event-timeline">
           {operation.events?.length ? operation.events.map((event) => (
-            <article className="timeline-item" key={event.id}><span className="timeline-minute"><small>{event.period ?? 1}º {rules.periodLabel.slice(0, 1)}</small>{rules.clockMode === 'none' ? null : formatClock(matchClockLabel(rules, event.periodElapsedSeconds ?? event.elapsedSeconds))}</span><div><strong>{event.type}</strong><p>{event.detail}{event.athleteId && state.athletes[event.athleteId] ? ` · ${state.athletes[event.athleteId].name}` : ''}</p></div></article>
+            <article className="timeline-item" key={event.id}><span className="timeline-minute"><small>{event.period ?? 1}º {rules.periodLabel.slice(0, 1)}</small>{!mesaOperaRelogio || rules.clockMode === 'none' ? null : formatClock(matchClockLabel(rules, event.periodElapsedSeconds ?? event.elapsedSeconds))}</span><div><strong>{event.type}</strong><p>{event.detail}{event.athleteId && state.athletes[event.athleteId] ? ` · ${state.athletes[event.athleteId].name}` : ''}</p></div></article>
           )) : <p className="match-filter-empty">A partida começou; aguardando o primeiro evento.</p>}
         </div>
       </section>
@@ -57,6 +57,7 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
     {!readOnly && canOperate ? (
       <div className="form-actions match-detail-actions">
         <Link href={`/matches/${match.id}/manage`} className="secondary-button"><Pencil size={17} aria-hidden="true" /> Editar partida</Link>
+        {operable && !isLive(current.status) && !current.aDefinirA && !current.aDefinirB ? <Link href={`/matches/${match.id}/resultado`} className="secondary-button"><ClipboardCheck size={17} aria-hidden="true" /> Lançar resultado</Link> : null}
         {operable ? <Link href={`/matches/live?partida=${match.id}`} className="primary-button"><Radio size={17} aria-hidden="true" /> {isLive(current.status) ? 'Continuar placar' : 'Abrir placar'}</Link> : null}
       </div>
     ) : null}

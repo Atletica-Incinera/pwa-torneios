@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { BottomNav } from './BottomNav';
 import { AdminRouteGuard } from './AdminRouteGuard';
-import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { canManageDiscipline, canManageEdition, canManageRoster, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { ConnectionBadge } from './ConnectionBadge';
 import { appPath } from '../lib/base-path';
@@ -25,12 +25,14 @@ type AppShellProps = {
    * acessível; este é só o que cabe no cabeçalho.
    */
   actionShortLabel?: string;
-  actionPermission?: 'edition' | 'discipline';
+  actionPermission?: 'edition' | 'discipline' | 'roster';
   actionDiscipline?: string;
+  /** Equipe do elenco, quando a permissão é 'roster'. */
+  actionTeam?: string;
   children: React.ReactNode;
 };
 
-export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionShortLabel, actionPermission = 'edition', actionDiscipline, children }: AppShellProps) {
+export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionLabel, actionShortLabel, actionPermission = 'edition', actionDiscipline, actionTeam, children }: AppShellProps) {
   const { state, source, connection } = useFrontendState();
   const { session } = useFrontendSession();
   // Alcançável desde que o snapshot passou a tratar "sem competição ativa"
@@ -41,7 +43,11 @@ export function AppShell({ active, eyebrow, title, subtitle, actionHref, actionL
   const competition = state.competitions.find((item) => item.active) ?? state.competitions[0];
   const editions = competition ? state.editions.filter((item) => (item.competitionId ?? 'jogos-engenharia') === competition.id) : [];
   const edition = editions.find((item) => item.active) ?? editions[0] ?? state.editions[0];
-  const canUseAction = actionPermission === 'discipline' ? canManageDiscipline(session, actionDiscipline) : canManageEdition(session);
+  const canUseAction = actionPermission === 'discipline'
+    ? canManageDiscipline(session, actionDiscipline)
+    : actionPermission === 'roster'
+      ? canManageRoster(session, actionTeam)
+      : canManageEdition(session);
   return (
     <AdminRouteGuard><main id="app-main" className={`app-screen management-screen theme-${active} motion-page`}>
       <div className="context-bar">

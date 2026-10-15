@@ -4,7 +4,7 @@
  * Fachada do repositório persistido no navegador. Componentes dependem desta
  * interface, enquanto localStorage e sua migração permanecem encapsulados.
  */
-export { getActiveCompetition, getActiveEdition, initialFrontendState, readFrontendState } from '../frontend-state';
+export { editionHeading, getActiveCompetition, getActiveEdition, initialFrontendState, readFrontendState } from '../frontend-state';
 export { useFrontendState } from './use-frontend-state';
 export type { DispatchResult, StateStatus } from './use-frontend-state';
 export type { Action } from './actions';

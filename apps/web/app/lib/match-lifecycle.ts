@@ -1,6 +1,7 @@
 import type { MatchState } from './frontend-state.ts';
 import { absoluteMinutes } from './scheduling-rules.ts';
 import { regulationPeriodCount, setTarget, type Regulation } from './regulation.ts';
+import { mesaOperaRelogio } from './discipline-rules.ts';
 
 export type MatchStatus = NonNullable<MatchState['status']>;
 
@@ -104,7 +105,9 @@ export function evaluateAdvancePeriod(regulation: Regulation, match: Pick<MatchS
     return { allowed: true, requiresEarlyClose: true, message: `O ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} ${period} ainda não atingiu ${setTarget(regulation, period)} pontos com ${completion.minAdvantage} de vantagem.` };
   }
   const durationSeconds = regulation.base.periodDurationMinutes * 60;
-  const hasClock = regulation.base.clockMode !== 'none' && durationSeconds > 0;
+  // Sem cronômetro na mesa o relógio está sempre em zero: exigir confirmação
+  // de "encerramento antecipado" a cada tempo era um diálogo que só atrasava.
+  const hasClock = mesaOperaRelogio && regulation.base.clockMode !== 'none' && durationSeconds > 0;
   if (hasClock && (match.clockSeconds ?? 0) < durationSeconds) {
     return { allowed: true, requiresEarlyClose: true, message: `O tempo da ${regulation.base.periodLabel.toLocaleLowerCase('pt-BR')} ${period} ainda não terminou.` };
   }

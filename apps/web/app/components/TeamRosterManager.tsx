@@ -5,7 +5,7 @@ import { ChevronDown, Save, SlidersHorizontal, UserMinus, UserRound, X } from 'l
 import { useMemo, useState } from 'react';
 import { EmptyState } from './AppShell';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
+import { canManageDiscipline, canManageEdition, isTeamManager, useFrontendSession } from '../lib/frontend-session';
 import { useUi } from './UiProvider';
 import { resolveRegulation } from '../lib/regulation';
 import { checkRoster, checkRosterLock } from '../lib/eligibility';
@@ -28,8 +28,12 @@ export function TeamRosterManager({ teamId, disciplines, readOnly = false }: { t
   // O elenco pertence à edição, não à modalidade: no servidor `athlete/update`
   // está fora das ações do gestor de modalidade e volta 403. Mostrar os botões
   // para ele era pior do que não ter: a remoção parecia ter acontecido.
-  const canEditAny = canManageEdition(session);
-  function editable(discipline: string) { return canManageDiscipline(session, discipline) && (rules[discipline]?.lock.allowed ?? true); }
+  // O responsável da atlética cuida do elenco do próprio time — é a tarefa do
+  // papel, e o servidor (`authorizeTeamManager`) aceita athlete/update dele.
+  const ownTeamManager = isTeamManager(session) && session?.scope === state.teams[teamId]?.name;
+  const canEditAny = canManageEdition(session) || ownTeamManager;
+  const canEditDiscipline = (discipline: string) => ownTeamManager || canManageDiscipline(session, discipline);
+  function editable(discipline: string) { return canEditDiscipline(discipline) && (rules[discipline]?.lock.allowed ?? true); }
   function startAssociation(athlete: ManagedAthlete) { setEditingId(athlete.id); setSelection(athlete.modalities); }
 
   /**
@@ -48,7 +52,7 @@ export function TeamRosterManager({ teamId, disciplines, readOnly = false }: { t
     });
   }
   function toggle(discipline: string) {
-    if (!canManageDiscipline(session, discipline)) return;
+    if (!canEditDiscipline(discipline)) return;
     const rule = rules[discipline];
     // A trava por fase é a única que impede: mexer no elenco com a modalidade
     // em andamento muda quem estava apto em jogos já disputados.
@@ -61,7 +65,7 @@ export function TeamRosterManager({ teamId, disciplines, readOnly = false }: { t
     setSelection((current) => current.includes(discipline) ? current.filter((item) => item !== discipline) : [...current, discipline]);
   }
   function saveAssociation(id: string) { if (submitting) return; if (selection.includes('Futevôlei') && athletes.filter((item) => item.id !== id && item.modalities.includes('Futevôlei')).length >= 4) { toast('Futevôlei permite até duas duplas (4 atletas) por atlética.', 'error'); return; } setSubmitting(true); const athlete = athletes.find((item) => item.id === id); void dispatch({ type: 'athlete/update', payload: { id, patch: { name: athlete?.name, teamId, modalities: selection, created: state.athletes[id]?.created ?? athlete?.created } }, audit: { action: 'Modalidades do atleta alteradas', entity: athlete?.name ?? id, before: athlete?.modalities.join(', ') || 'Sem modalidade', after: selection.join(', ') || 'Sem modalidade' } }).then((saved) => { setSubmitting(false); if (saved.ok) setEditingId(null); }); }
-  function renderAthlete(athlete: ManagedAthlete) { return <article className="roster-manage-row" key={athlete.id}><span className="jersey-number"><UserRound size={16} /></span><span className="roster-athlete-copy">{readOnly ? <strong>{athlete.name}</strong> : <Link href={`/athletes/${athlete.id}`}><strong>{athlete.name}</strong></Link>}<small>{athlete.created && !readOnly ? 'Cadastro desta edição' : 'Atleta da equipe'}</small></span>{!readOnly && canEditAny ? <span className="roster-row-actions"><button type="button" className="roster-associate-button" onClick={() => editingId === athlete.id ? setEditingId(null) : startAssociation(athlete)} aria-label={`Editar modalidades de ${athlete.name}`} title="Editar modalidades" aria-expanded={editingId === athlete.id}>{editingId === athlete.id ? <X size={17} aria-hidden="true" /> : <SlidersHorizontal size={17} aria-hidden="true" />}</button><button type="button" className="roster-remove-button" onClick={() => void removeAthlete(athlete)} aria-label={`Remover ${athlete.name} da equipe`} title="Remover da equipe"><UserMinus size={17} aria-hidden="true" /></button></span> : null}{editingId === athlete.id && !readOnly ? <div className="local-athlete-editor form-step-enter"><div>{disciplines.map((discipline) => <label key={discipline} className={!editable(discipline) ? 'is-disabled' : ''} title={rules[discipline]?.lock.allowed ? undefined : rules[discipline]?.lock.message}><input type="checkbox" checked={selection.includes(discipline)} onChange={() => toggle(discipline)} disabled={!editable(discipline)} /><span>{discipline}</span></label>)}</div><div className="local-athlete-editor-actions"><button type="button" onClick={() => setEditingId(null)}><X size={16} />Cancelar</button><button type="button" onClick={() => saveAssociation(athlete.id)} disabled={submitting}><Save size={16} />{submitting ? 'Salvando…' : 'Salvar'}</button></div></div> : null}</article>; }
+  function renderAthlete(athlete: ManagedAthlete) { return <article className="roster-manage-row" key={athlete.id}><span className="jersey-number"><UserRound size={16} /></span><span className="roster-athlete-copy">{readOnly ? <strong>{athlete.name}</strong> : <Link href={`/athletes/${athlete.id}`}><strong>{athlete.name}</strong></Link>}{athlete.created && !readOnly ? <small>Cadastro desta edição</small> : null}</span>{!readOnly && canEditAny ? <span className="roster-row-actions"><button type="button" className="roster-associate-button" onClick={() => editingId === athlete.id ? setEditingId(null) : startAssociation(athlete)} aria-label={`Editar modalidades de ${athlete.name}`} title="Editar modalidades" aria-expanded={editingId === athlete.id}>{editingId === athlete.id ? <X size={17} aria-hidden="true" /> : <SlidersHorizontal size={17} aria-hidden="true" />}</button><button type="button" className="roster-remove-button" onClick={() => void removeAthlete(athlete)} aria-label={`Remover ${athlete.name} da equipe`} title="Remover da equipe"><UserMinus size={17} aria-hidden="true" /></button></span> : null}{editingId === athlete.id && !readOnly ? <div className="local-athlete-editor form-step-enter"><div>{disciplines.map((discipline) => <label key={discipline} className={!editable(discipline) ? 'is-disabled' : ''} title={rules[discipline]?.lock.allowed ? undefined : rules[discipline]?.lock.message}><input type="checkbox" checked={selection.includes(discipline)} onChange={() => toggle(discipline)} disabled={!editable(discipline)} /><span>{discipline}</span></label>)}</div><div className="local-athlete-editor-actions"><button type="button" onClick={() => setEditingId(null)}><X size={16} />Cancelar</button><button type="button" onClick={() => saveAssociation(athlete.id)} disabled={submitting}><Save size={16} />{submitting ? 'Salvando…' : 'Salvar'}</button></div></div> : null}</article>; }
   if (!athletes.length) return <EmptyState title="SEM ATLETAS" copy={readOnly ? 'Esta equipe ainda não possui elenco publicado.' : 'Cadastre o primeiro atleta desta equipe pelo botão superior.'} />;
   return <div className="team-modality-list">{groups.map((group, index) => {
     const tone = tones[index % tones.length];

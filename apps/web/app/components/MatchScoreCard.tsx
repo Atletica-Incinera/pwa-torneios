@@ -9,6 +9,8 @@ type MatchScoreCardProps = {
   discipline?: string;
   categoryLabel?: string;
   status: string;
+  /** Rótulo já resolvido (com o relógio); sem ele, cai no rótulo do estado. */
+  statusLabel?: string;
   statusTone?: 'blue' | 'pink' | 'orange' | 'neutral';
   teamA: string;
   teamALogo?: string;
@@ -30,6 +32,7 @@ export function MatchScoreCard({
   discipline = 'Futsal',
   categoryLabel,
   status,
+  statusLabel,
   statusTone = 'neutral',
   teamA,
   teamALogo,
@@ -50,7 +53,7 @@ export function MatchScoreCard({
         {discipline ? <span className="match-discipline">{discipline}</span> : null}
         <CalendarDays size={18} />
         <span>{dateLabel}</span>
-        <StatusBadge tone={statusTone}>{getMatchStatusLabel(status)}</StatusBadge>
+        <StatusBadge tone={statusTone}>{statusLabel ?? getMatchStatusLabel(status)}</StatusBadge>
       </div>
       <div className="versus-row">
         <div className={`team-side${aDefinirA ? ' team-side-a-definir' : ''}`}>
@@ -60,7 +63,7 @@ export function MatchScoreCard({
           <strong>{teamA}</strong>
         </div>
         <div className="versus-mark">
-          <span>{scoreA ?? '—'} — {scoreB ?? '—'}</span>
+          {scoreA === null || scoreB === null ? <span className="versus-time">×</span> : <span>{scoreA} — {scoreB}</span>}
           {currentSet ? <b className="current-set-score">Set {currentSet.number}: {currentSet.scoreA} — {currentSet.scoreB}</b> : null}
           <small>{venue}</small>
         </div>
@@ -73,7 +76,7 @@ export function MatchScoreCard({
   );
 
   const cssClass = `next-match-card next-match-link match-score-card ${className}`.trim();
-  const ariaLabel = `${teamA} contra ${teamB}, ${status}`;
+  const ariaLabel = `${teamA} contra ${teamB}, ${statusLabel ?? status}${scoreA !== null && scoreB !== null ? `, ${scoreA} a ${scoreB}` : ''}`;
 
   if (!href) {
     return (

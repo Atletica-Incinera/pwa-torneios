@@ -4,7 +4,7 @@ import { Target } from 'lucide-react';
 import { useMemo } from 'react';
 import { PublicAppShell } from '../../components/PublicAppShell';
 import { EmptyState, TeamMark } from '../../components/AppShell';
-import { getActiveEdition, useFrontendState } from '../../lib/repositories/browser-repository';
+import { editionHeading, getActiveEdition, useFrontendState } from '../../lib/repositories/browser-repository';
 import { artilhariaPorModalidade, colocacoes } from '../../lib/artilharia';
 
 export default function PublicScorersPage() {
@@ -22,7 +22,7 @@ export default function PublicScorersPage() {
   return (
     <PublicAppShell
       active="scorers"
-      eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`}
+      eyebrow={editionHeading(state)}
       title="ARTILHARIA"
       subtitle="Quem mais marcou em cada modalidade"
     >

@@ -37,6 +37,10 @@ function useFrontendStateValue(initialState?: FrontendState) {
   const [status, setStatus] = useState<StateStatus>(initialState ? 'ready' : 'loading');
   const [error, setError] = useState<string | null>(null);
   const [connection, setConnection] = useState<ConnectionState>('online');
+  // O estado inicial pode vir do servidor do Next (snapshot público, com cache
+  // de até 30 s). Serve para a primeira pintura da área pública, não para as
+  // telas internas: formulário que guarda o valor inicial capturava dado velho.
+  const [fresh, setFresh] = useState(!initialState);
   const adapter = useMemo(createAdapter, []);
   const source = useMemo(resolveDataSource, []);
   const mounted = useRef(true);
@@ -53,6 +57,7 @@ function useFrontendStateValue(initialState?: FrontendState) {
       absorb(loaded);
       setError(null);
       setStatus('ready');
+      setFresh(true);
     } catch (caught) {
       handleUnauthorized(caught);
       if (!mounted.current) return;
@@ -61,12 +66,32 @@ function useFrontendStateValue(initialState?: FrontendState) {
     }
   }, [absorb, adapter]);
 
+  // O que chega pelo canal em tempo real também é um carregamento bem-sucedido.
+  // Antes só o `refresh` limpava o erro: depois de uma queda curta do servidor
+  // (um deploy), o canal voltava e trazia a edição, mas a tela continuava em
+  // "Dados indisponíveis" até alguém tocar em "Tentar novamente".
+  const absorbLive = useCallback((next: FrontendState) => {
+    absorb(next);
+    if (!mounted.current) return;
+    setError(null);
+    setStatus('ready');
+    setFresh(true);
+  }, [absorb]);
+
   useEffect(() => {
     mounted.current = true;
     void refresh();
-    const unsubscribe = adapter.subscribe(absorb, (next) => { if (mounted.current) setConnection(next); });
+    const unsubscribe = adapter.subscribe(absorbLive, (next) => { if (mounted.current) setConnection(next); });
     return () => { mounted.current = false; unsubscribe(); };
-  }, [absorb, adapter, refresh]);
+  }, [absorbLive, adapter, refresh]);
+
+  useEffect(() => {
+    // Em erro, tenta de novo sozinho: quem está na quadra não deveria precisar
+    // saber que o servidor reiniciou.
+    if (status !== 'error' || source !== 'http') return;
+    const timer = window.setInterval(() => { void refresh(); }, 5000);
+    return () => window.clearInterval(timer);
+  }, [refresh, source, status]);
 
   useEffect(() => {
     // Preferência muda em outra tela do mesmo aparelho: todas acompanham.
@@ -93,11 +118,15 @@ function useFrontendStateValue(initialState?: FrontendState) {
   }, [refresh, source]);
 
   /** Executa uma operação nomeada. É por aqui que a Fase 1 passa a escrever. */
-  const dispatch = useCallback(async (action: Action): Promise<DispatchResult> => {
+  /**
+   * `silent` cala os avisos automáticos: uma operação em lote (colar a lista
+   * do elenco) mostra um resumo só no fim, em vez de um aviso por item.
+   */
+  const dispatch = useCallback(async (action: Action, options: { silent?: boolean } = {}): Promise<DispatchResult> => {
     try {
       const next = await adapter.apply(action);
       absorb(next);
-      if (action.audit) toast(action.audit.action, 'success');
+      if (action.audit && !options.silent) toast(action.audit.action, 'success');
       return { ok: true };
     } catch (caught) {
       handleUnauthorized(caught);
@@ -106,7 +135,7 @@ function useFrontendStateValue(initialState?: FrontendState) {
       // transformava toda regra de negócio recusada num "tente novamente" que
       // nunca ia dar certo — e ninguém descobria o porquê.
       const message = caught instanceof Error && caught.message ? caught.message : 'Não foi possível salvar. Tente novamente.';
-      toast(message, 'error');
+      if (!options.silent) toast(message, 'error');
       return { ok: false, error: message };
     }
   }, [absorb, adapter]);
@@ -120,7 +149,7 @@ function useFrontendStateValue(initialState?: FrontendState) {
     setState((current) => ({ ...current, preferences: { ...current.preferences, ...patch } }));
   }, []);
 
-  return { state, status, error, hydrated: status === 'ready', source, connection, dispatch, setPreference, refresh };
+  return { state, status, error, hydrated: status === 'ready', fresh, source, connection, dispatch, setPreference, refresh };
 }
 
 type FrontendStateValue = ReturnType<typeof useFrontendStateValue>;

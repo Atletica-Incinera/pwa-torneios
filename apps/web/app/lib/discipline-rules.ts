@@ -18,9 +18,19 @@ export function resolveDisciplineRule(name: string, discipline?: Pick<Discipline
   return discipline?.rules ?? defaultDisciplineRules[name] ?? genericRule;
 }
 
+/**
+ * A mesa opera sem cronômetro: registra tempo/período e lances, não o relógio.
+ * Um lugar só decide isso para a mesa, o detalhe da partida e a área pública —
+ * antes a mesa ignorava o relógio e o público via uma contagem que ninguém
+ * controlava, com todo gol marcado no mesmo minuto.
+ */
+export const mesaOperaRelogio = false;
+
 export function formatDisciplineRule(rule: DisciplineRule) {
   if (rule.clockMode === 'none') return `${rule.periodCount} ${rule.periodCount === 1 ? rule.periodLabel : `${rule.periodLabel}s`}`;
-  return `${rule.periodCount} × ${rule.periodDurationMinutes} min · relógio ${rule.clockMode === 'countdown' ? 'regressivo' : 'progressivo'}`;
+  // A mesa não cronometra (decisão de produto): a duração serve à agenda, e
+  // anunciar "relógio regressivo" prometia um cronômetro que ninguém opera.
+  return `${rule.periodCount} × ${rule.periodDurationMinutes} min`;
 }
 
 /** Linha completa: estrutura de tempo + condição de encerramento do regulamento. */

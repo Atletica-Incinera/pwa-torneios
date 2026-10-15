@@ -89,9 +89,14 @@ export function normalizeSessionUser(
     editionRoles,
     mustChangePassword: user.mustChangePassword === true,
     role: selectedRole?.role ?? user.role,
+    // O escopo é o alcance do papel: a modalidade do gestor, a equipe do
+    // responsável. Sem a equipe aqui, a guarda de rota não reconhecia a
+    // própria equipe do responsável e bloqueava até o elenco dele.
     scope: selectedRole?.role === 'DISCIPLINE_MANAGER'
       ? selectedRole.disciplineName ?? user.scope
-      : undefined,
+      : selectedRole?.role === 'TEAM_MANAGER'
+        ? selectedRole.teamName ?? user.scope
+        : undefined,
     selectedRoleAssignmentId: selectedRole?.roleAssignmentId,
     selectedEditionId: selectedRole?.editionId
       ?? previous?.selectedEditionId

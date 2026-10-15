@@ -64,7 +64,8 @@ test('set só fecha com a vantagem mínima do regulamento', () => {
 test('avançar de etapa antes do fim válido exige encerramento antecipado', () => {
   const futsal = resolveRegulation('Futsal');
 
-  assert.equal(evaluateAdvancePeriod(futsal, { currentPeriod: 1, clockSeconds: 600 }).requiresEarlyClose, true);
+  // A mesa opera sem cronômetro (mesaOperaRelogio): o relógio não decide nada.
+  assert.equal(evaluateAdvancePeriod(futsal, { currentPeriod: 1, clockSeconds: 600 }).requiresEarlyClose, false);
   assert.equal(evaluateAdvancePeriod(futsal, { currentPeriod: 1, clockSeconds: 1200 }).requiresEarlyClose, false);
   assert.equal(evaluateAdvancePeriod(futsal, { currentPeriod: 2, clockSeconds: 1200 }).allowed, false);
 });

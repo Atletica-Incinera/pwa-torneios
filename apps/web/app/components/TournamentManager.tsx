@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { getActiveEdition, TournamentAdvancement, TournamentPhase, TournamentState, useFrontendState } from '../lib/repositories/browser-repository';
-import { distributeGroups, generateRoundRobin } from '../lib/tournament-engine';
+import { distributeGroups } from '../lib/tournament-engine';
+import { planSchedule, suggestedInterval } from '../lib/schedule-plan';
+import { defaultSchedulingPolicy, scheduledDuration } from '../lib/scheduling-rules';
 import { useUi } from './UiProvider';
 import { disciplineHref, listMatches } from '../lib/edition-catalog';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
@@ -15,6 +17,8 @@ import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
 import { checkRoster, eligibleAthletes, findTeamByName } from '../lib/eligibility';
 import { isTournamentStarted, matchStatus, tournamentStatus } from '../lib/status';
 import { createId } from '../lib/create-id';
+
+const defaultPhaseName: Record<TournamentPhase['format'], string> = { Grupos: 'Fase de grupos', 'Mata-mata': 'Mata-mata', Liga: 'Liga' };
 
 export function TournamentManager({ id, name, discipline, initialStatus, teamNames }: { id: string; name: string; discipline: string; initialStatus: string; teamNames: string[] }) {
   const { state, dispatch } = useFrontendState();
@@ -37,8 +41,20 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   const [renaming, setRenaming] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const generationLock = useRef(false);
+  // Quando e onde os jogos gerados acontecem. Antes o gerador inventava:
+  // primeiro dia da edição, de hora em hora a partir das 08:00, "A definir".
+  const [schedulePlan, setSchedulePlan] = useState(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const start = activeEdition?.start && activeEdition.start > today ? activeEdition.start : today;
+    const nextHour = start === today ? Math.min(22, now.getHours() + 1) : 9;
+    return { date: start, time: `${String(nextHour).padStart(2, '0')}:00`, // Mesma conta da crítica de agenda: duração prevista + troca de quadra.
+    // Com contas diferentes, o jogo gerado já nascia "em conflito".
+    interval: String(scheduledDuration(regulation) + defaultSchedulingPolicy.changeoverMinutes), venues: '' };
+  });
   const locked = isTournamentStarted(setup.status);
   const groupOptions = setup.phases.find((phase) => phase.format === 'Grupos')?.groups ?? [];
+  const hasKnockout = setup.phases.some((phase) => phase.format === 'Mata-mata');
   const allowed = canManageDiscipline(session, discipline);
   const advancement = setup.advancement ?? { ...defaultAdvancement, perGroup: setup.phases.find((phase) => phase.format === 'Grupos')?.qualifiers ?? defaultAdvancement.perGroup, thirdPlaceMatch: regulation.knockout.thirdPlaceMatch };
   // Confrontos já gerados que saíram do estado "Agendada" não podem ser
@@ -113,8 +129,15 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   }
 
   function updatePhase(phaseId: string, patch: Partial<TournamentPhase>) {
-    const normalizedPatch = patch.format === 'Mata-mata' ? { ...patch, qualifiers: 1 } : patch;
-    update({ ...setup, phases: setup.phases.map((phase) => phase.id === phaseId ? { ...phase, ...normalizedPatch } : phase), generated: false }, 'Fase configurada', phaseId, JSON.stringify(normalizedPatch), true);
+    // Só "Grupos" tem grupos: ao trocar de formato eles saem de verdade, em vez
+    // de ficarem escondidos e tirarem os jogos da tabela no servidor.
+    const withoutGroups = patch.format && patch.format !== 'Grupos' ? { ...patch, groups: [] } : patch;
+    const normalizedPatch = patch.format === 'Mata-mata' ? { ...withoutGroups, qualifiers: 1 } : withoutGroups;
+    // O nome padrão acompanha o formato: uma liga que continuava se chamando
+    // "Fase de grupos" levava esse nome para a agenda, os cards e o placar.
+    const current = setup.phases.find((phase) => phase.id === phaseId);
+    const renamed = patch.format && current && Object.values(defaultPhaseName).includes(current.name) ? { ...normalizedPatch, name: defaultPhaseName[patch.format] } : normalizedPatch;
+    update({ ...setup, phases: setup.phases.map((phase) => phase.id === phaseId ? { ...phase, ...renamed } : phase), generated: false }, 'Fase configurada', phaseId, JSON.stringify(renamed), true);
   }
 
   function groupInputValue(phase: TournamentPhase) {
@@ -218,7 +241,12 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     } else if (setup.generated && !(await confirm({ title: 'Regerar confrontos?', message: 'Os jogos gerados anteriormente serão substituídos.', confirmLabel: 'Regerar', danger: true }))) { generationLock.current = false; return; }
     setGenerating(true);
     const ordered = [...setup.participants].sort((a, b) => (setup.seeds[a] ?? 999) - (setup.seeds[b] ?? 999));
-    const assignments = { ...distributeGroups(ordered, groupOptions, setup.seeds), ...setup.assignments };
+    // Sem fase de grupos não há distribuição: mandar "Geral" (ou um grupo que
+    // não existe mais) fazia a API recusar a geração inteira, e o aviso de erro
+    // sumia em três segundos — a tela ficava como se nada tivesse acontecido.
+    const validAssignments = Object.fromEntries(Object.entries(setup.assignments)
+      .filter(([team, group]) => ordered.includes(team) && groupOptions.includes(group)));
+    const assignments = groupOptions.length ? { ...distributeGroups(ordered, groupOptions, setup.seeds), ...validAssignments } : {};
     const buckets = groupOptions.length ? groupOptions.map((group) => ({ name: group, teams: ordered.filter((team) => assignments[team] === group) })) : [{ name: setup.phases[0]?.name ?? 'Fase inicial', teams: ordered }];
     const classificationPhase = setup.phases.find((phase) => phase.format !== 'Mata-mata');
     if (classificationPhase && buckets.some((bucket) => classificationPhase.qualifiers > bucket.teams.length)) {
@@ -227,10 +255,15 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
       generationLock.current = false;
       return;
     }
-    const pairs = buckets.flatMap((bucket) => generateRoundRobin(bucket.teams).map((pair) => ({ pair, phase: bucket.name })));
-    const startDate = activeEdition?.start ?? new Date().toISOString().slice(0, 10);
+    const pairs = planSchedule({
+      buckets,
+      startDate: schedulePlan.date,
+      startTime: schedulePlan.time,
+      intervalMinutes: Number(schedulePlan.interval) || suggestedInterval(resolveDisciplineRule(discipline, state.disciplines[discipline])),
+      venues: schedulePlan.venues.split(','),
+    });
     const logoFor = (team: string) => findTeamByName(state, team)?.logo ?? '';
-    const createdMatches = Object.fromEntries(pairs.map(({ pair: [entryA, entryB], phase }, index) => [`${id}-generated-${index + 1}`, { created: true as const, editionId: activeEdition?.id, tournamentId: id, discipline, entryA, entryB, logoA: logoFor(entryA), logoB: logoFor(entryB), date: startDate, time: `${String(8 + (index % 10)).padStart(2, '0')}:00`, venue: 'A definir', phase, status: 'Agendada' as const, rules: resolveDisciplineRule(discipline, state.disciplines[discipline]), currentPeriod: 1, clockSeconds: 0, paused: true, events: [], periodScoreA: 0, periodScoreB: 0, periodResults: [] }]));
+    const createdMatches = Object.fromEntries(pairs.map(({ entryA, entryB, phase, date, time, venue }, index) => [`${id}-generated-${index + 1}`, { created: true as const, editionId: activeEdition?.id, tournamentId: id, discipline, entryA, entryB, logoA: logoFor(entryA), logoB: logoFor(entryB), date, time, venue, phase, status: 'Agendada' as const, rules: resolveDisciplineRule(discipline, state.disciplines[discipline]), currentPeriod: 1, clockSeconds: 0, paused: true, events: [], periodScoreA: 0, periodScoreB: 0, periodResults: [] }]));
     const next = { ...setup, editionId: setup.editionId ?? activeEdition?.id, assignments, generated: true, advancement, byes: undefined };
     await dispatch({
       type: 'category/generateMatches',
@@ -300,6 +333,7 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     <section className="management-panel" id="phases"><div className="management-panel-head"><div><small>ETAPA 2</small><h2>FASES E GRUPOS</h2></div><strong>{setup.phases.length}</strong></div>
       <p>Uma fase é um trecho do torneio. <strong>Grupos</strong> é todos contra todos dentro de cada chave; <strong>Mata-mata</strong> elimina quem perde; <strong>Liga</strong> é turno único entre todos, sem chaves. A categoria já vem com fase de grupos seguida de mata-mata — apague o que não usar. Em Grupos, escreva os nomes das chaves separados por vírgula (<code>Grupo A, Grupo B</code>) e depois distribua as equipes logo abaixo.</p><div className="phase-editor-list">{setup.phases.map((phase, index) => <article key={phase.id}><span className="phase-order">{String(index + 1).padStart(2, '0')}</span><div><input value={phase.name} onChange={(event) => updatePhase(phase.id, { name: event.target.value })} disabled={locked} aria-label="Nome da fase" /><div className="phase-fields"><label><span>Formato</span><select value={phase.format} onChange={(event) => updatePhase(phase.id, { format: event.target.value as TournamentPhase['format'] })} disabled={locked}><option>Grupos</option><option>Mata-mata</option><option>Liga</option></select></label><label><span>{phase.format === 'Mata-mata' ? 'Quantos passam por confronto' : 'Classificados'}</span><input type="number" min="1" max={Math.max(1, setup.participants.length)} value={phase.qualifiers} onChange={(event) => updatePhase(phase.id, { qualifiers: Math.max(1, Number(event.target.value)) })} disabled={locked || phase.format === 'Mata-mata'} aria-label="Quantidade de classificados" /></label>{phase.format === 'Grupos' ? <label><span>Grupos</span><input value={groupInputValue(phase)} onChange={(event) => updateGroups(phase, event.target.value)} onBlur={() => finishGroupEditing(phase)} disabled={locked} aria-label="Grupos separados por vírgula" /></label> : null}</div></div><div className="phase-editor-actions"><button type="button" onClick={() => movePhase(index, -1)} disabled={locked || index === 0} aria-label={`Mover ${phase.name || `fase ${index + 1}`} para cima`} title="Mover fase para cima"><ArrowUp size={15} aria-hidden="true" /></button><button type="button" onClick={() => movePhase(index, 1)} disabled={locked || index === setup.phases.length - 1} aria-label={`Mover ${phase.name || `fase ${index + 1}`} para baixo`} title="Mover fase para baixo"><ArrowDown size={15} aria-hidden="true" /></button><button type="button" className="phase-remove-button" onClick={() => removePhase(phase.id)} disabled={locked} aria-label={`Remover ${phase.name || `fase ${index + 1}`}`} title="Remover fase"><Trash2 size={15} aria-hidden="true" /></button></div></article>)}</div><form className="phase-add-form" onSubmit={addPhase}><label className="sr-only" htmlFor="nova-fase">Nome da nova fase</label><input id="nova-fase" value={phaseName} onChange={(event) => setPhaseName(event.target.value)} placeholder="Nome da nova fase" disabled={locked} /><button type="submit" disabled={locked}><Plus size={17} aria-hidden="true" /> Adicionar fase</button></form>{groupOptions.length ? <div className="group-assignment"><h3>DISTRIBUIÇÃO NOS GRUPOS</h3>{setup.participants.map((team) => <label key={team}><span>{team}</span><select value={setup.assignments[team] ?? ''} onChange={(event) => update({ ...setup, assignments: { ...setup.assignments, [team]: event.target.value }, generated: false }, 'Grupo da equipe alterado', team, event.target.value)} disabled={locked}><option value="">Definir grupo</option>{groupOptions.map((group) => <option key={group}>{group}</option>)}</select></label>)}</div> : null}</section>
     <section className="management-panel" id="advancement"><div className="management-panel-head"><div><small>ETAPA 3</small><h2>QUEM SE CLASSIFICA</h2></div></div>
+      {!hasKnockout ? <p>Sem mata-mata nesta categoria: a colocação final é a tabela{setup.phases.some((phase) => phase.format === 'Liga') ? ' da liga' : ''}. Não há classificados a definir.</p> : <>
       <p>{describeAdvancement(advancement, groupOptions.length || 1)}</p>
       <div className="rule-fields">
         <label><span>Classificados por grupo</span><input type="number" min="1" max={Math.max(1, setup.participants.length)} value={advancement.perGroup} onChange={(event) => updateAdvancement({ perGroup: Math.max(1, Number(event.target.value)) })} disabled={locked} /></label>
@@ -307,9 +341,18 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
         <label><span>Quem enfrenta quem no mata-mata</span><select value={advancement.crossing} onChange={(event) => updateAdvancement({ crossing: event.target.value as TournamentAdvancement['crossing'] })} disabled={locked}><option value="padrao">Olímpico: 1º do grupo contra o último classificado</option><option value="sequencial">Sequencial: grupos vizinhos (A1 × B2)</option></select></label>
       </div>
       <label className="checkbox-field"><input type="checkbox" checked={advancement.thirdPlaceMatch} onChange={(event) => updateAdvancement({ thirdPlaceMatch: event.target.checked })} disabled={locked} /><span>Gerar disputa de terceiro lugar após as semifinais</span></label>
+      </>}
     </section>
     <section className="management-panel" id="generate"><div className="management-panel-head"><div><small>ETAPA 4</small><h2>MONTAR OS JOGOS</h2></div></div>
-      <p>{setup.participants.length < 2 ? 'Inscreva ao menos 2 participantes na Etapa 1 para gerar os confrontos.' : !setup.phases.length ? 'Crie ao menos uma fase na Etapa 2 para gerar os confrontos.' : locked ? 'A categoria já começou: os confrontos não podem mais ser regerados.' : setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} fases.` : 'Gera todos contra todos dentro de cada grupo. Também dá para agendar jogos um a um pela agenda, depois de publicar.'}</p>
+      <p>{setup.participants.length < 2 ? 'Inscreva ao menos 2 participantes na Etapa 1 para gerar os confrontos.' : !setup.phases.length ? 'Crie ao menos uma fase na Etapa 2 para gerar os confrontos.' : locked ? 'A categoria já começou: os confrontos não podem mais ser regerados.' : setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} ${setup.phases.length === 1 ? 'fase' : 'fases'}.` : `${setup.phases.some((phase) => phase.format === 'Grupos') ? 'Gera todos contra todos dentro de cada grupo.' : setup.phases.some((phase) => phase.format === 'Liga') ? 'Gera todos contra todos, em turno único.' : 'Gera a primeira rodada do mata-mata.'}${hasKnockout && setup.phases.some((phase) => phase.format !== 'Mata-mata') ? ' O mata-mata é montado depois, com os classificados.' : ''} Também dá para agendar jogos um a um pela agenda, depois de publicar.`}</p>
+      {!locked && setup.participants.length >= 2 && setup.phases.length ? <fieldset className="schedule-plan-fields">
+        <legend>Quando e onde</legend>
+        <label><span>Primeiro dia</span><input type="date" value={schedulePlan.date} min={activeEdition?.start} max={activeEdition?.end} onChange={(event) => setSchedulePlan((value) => ({ ...value, date: event.target.value }))} /></label>
+        <label><span>Primeiro jogo</span><input type="time" step={300} value={schedulePlan.time} onChange={(event) => setSchedulePlan((value) => ({ ...value, time: event.target.value }))} /></label>
+        <label><span>Minutos entre jogos</span><input type="number" min={10} step={5} value={schedulePlan.interval} onChange={(event) => setSchedulePlan((value) => ({ ...value, interval: event.target.value }))} /></label>
+        <label className="schedule-plan-venues"><span>Quadras (separe por vírgula)</span><input value={schedulePlan.venues} placeholder="Ex.: Ginásio CIn, Quadra 2" onChange={(event) => setSchedulePlan((value) => ({ ...value, venues: event.target.value }))} /></label>
+        <p className="form-hint">Os jogos saem por rodada, alternando os grupos, um depois do outro em cada quadra. Dá para ajustar qualquer jogo depois, na agenda.</p>
+      </fieldset> : null}
       <button type="button" className="wide-action button-reset" onClick={generateConfrontations} disabled={generating || locked || setup.participants.length < 2 || !setup.phases.length} aria-busy={generating}><WandSparkles size={18} aria-hidden="true" /> {generating ? 'MONTANDO OS JOGOS…' : setup.generated ? 'MONTAR OS JOGOS DE NOVO' : 'MONTAR OS JOGOS'} <span aria-hidden="true">›</span></button></section>
     {canManageEdition(session) ? <section className="management-panel management-panel-danger" id="excluir"><div className="management-panel-head"><div><small>SE FOR PRECISO</small><h2>EXCLUIR ESTA CATEGORIA</h2></div></div>
       {/* A situacao so anda para a frente -- o seletor de Publicacao desabilita
