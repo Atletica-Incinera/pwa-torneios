@@ -233,15 +233,16 @@ test('gestor cadastra atleta, e apenas na modalidade dele', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'NOVO ATLETA' })).toBeVisible();
 
   await page.getByLabel('Nome completo').fill('Atleta do Gestor');
-  await page.getByRole('button', { name: 'Cadastrar e continuar' }).click();
 
+  // Nome e modalidade na mesma tela: a do gestor já vem marcada e travada,
+  // porque salvar sem ela, ou com outra, seria recusado pelo servidor.
   const modalidades = page.locator('.modality-check');
   await expect(modalidades).toHaveCount(1);
   await expect(modalidades.first()).toContainText('Futsal');
-  // Sem "Pular por enquanto": salvar sem modalidade seria recusado pelo servidor.
-  await expect(page.getByRole('button', { name: 'Pular por enquanto' })).toHaveCount(0);
+  await expect(modalidades.first().getByRole('checkbox')).toBeChecked();
+  await expect(modalidades.first().getByRole('checkbox')).toBeDisabled();
 
-  await page.getByRole('button', { name: 'Concluir cadastro' }).click();
+  await page.getByRole('button', { name: 'Cadastrar', exact: true }).click();
   await expect(page).toHaveURL(/\/teams\/alcateia/);
   // Presença no elenco, não visibilidade: os grupos por modalidade são um
   // acordeão e só o primeiro nasce aberto (`open={index === 0}`). Se o atleta

@@ -10,7 +10,9 @@ import { PasswordChangeForm } from '../components/PasswordChangeForm';
 
 /** O papel dito como a pessoa o reconhece: "Gestor de Futsal", "Responsável da Incinera". */
 function roleLabel(role: string | undefined, scope?: string | null) {
-  if (role === 'SUPER_ADMIN') return 'Super admin';
+  // Super admin não aparece como tal na interface (o nome já sai como "Usuário
+  // do app"): para quem olha a tela, é a administração da edição.
+  if (role === 'SUPER_ADMIN') return 'Admin da edição';
   if (role === 'EDITION_ADMIN') return 'Admin da edição';
   if (role === 'DISCIPLINE_MANAGER') return scope ? `Gestor de ${scope}` : 'Gestor de modalidade';
   if (role === 'TEAM_MANAGER') return scope ? `Responsável da ${scope}` : 'Responsável da atlética';
@@ -19,7 +21,7 @@ function roleLabel(role: string | undefined, scope?: string | null) {
 
 function accessList(session: FrontendSession | null) {
   if (!session) return [];
-  if (isSuperAdmin(session)) return [{ key: 'super', edition: 'Todas as competições', label: 'Super admin' }];
+  if (isSuperAdmin(session)) return [{ key: 'super', edition: 'Todas as competições', label: 'Admin da edição' }];
   return session.editionRoles.map((role) => ({
     key: role.roleAssignmentId,
     edition: `Edição ${role.editionName}`,

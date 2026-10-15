@@ -44,7 +44,11 @@ export function TeamAthleteForm({ teamId }: { teamId: string }) {
   const [mode, setMode] = useState<Mode>('one');
   const [name, setName] = useState('');
   const [list, setList] = useState('');
-  const [selected, setSelected] = useState<string[]>(managerScope ? [managerScope] : disciplines.length === 1 ? disciplines : []);
+  const [picked, setSelected] = useState<string[]>(disciplines.length === 1 ? disciplines : []);
+  // A modalidade do gestor vem da sessão a cada render, não do estado inicial:
+  // no primeiro render a sessão ainda não carregou, e a caixa nascia travada e
+  // desmarcada — o gestor não conseguia marcar a única modalidade que pode usar.
+  const selected = managerScope ? [managerScope] : picked;
   const [error, setError] = useState('');
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const submitting = progress !== null;
@@ -97,7 +101,7 @@ export function TeamAthleteForm({ teamId }: { teamId: string }) {
     const { created, failures } = await create(parsed.names);
     if (failures.length) {
       setList(failures.map((item) => item.split(':')[0]).join('\n'));
-      setError(`${created} cadastrado(s). Não foi possível cadastrar ${failures.length}: ${failures.join('; ')}`);
+      setError(`${created} ${created === 1 ? 'cadastrado' : 'cadastrados'}. Não foi possível cadastrar ${failures.length === 1 ? '1 nome' : `${failures.length} nomes`}: ${failures.join('; ')}`);
       return;
     }
     toast(`${created} ${created === 1 ? 'atleta cadastrado' : 'atletas cadastrados'} no ${displayTeamName}.`, 'success');
@@ -123,7 +127,7 @@ export function TeamAthleteForm({ teamId }: { teamId: string }) {
           ? <label><span>Nome completo</span><input value={name} onChange={(event) => { setName(event.target.value); setError(''); }} placeholder="Nome do atleta" autoComplete="off" autoFocus required /></label>
           : <label><span>Um nome por linha</span><textarea value={list} onChange={(event) => { setList(event.target.value); setError(''); }} rows={8} placeholder={'Ana Souza\nBruno Lima\nCarla Mendes'} autoFocus /></label>}
         {mode === 'list' && list.trim()
-          ? <p className="form-hint" role="status">{parsed.names.length} {parsed.names.length === 1 ? 'nome novo' : 'nomes novos'}{parsed.skipped.length ? ` · ${parsed.skipped.length} ignorado(s): ${parsed.skipped.join(', ')}` : ''}</p>
+          ? <p className="form-hint" role="status">{parsed.names.length} {parsed.names.length === 1 ? 'nome novo' : 'nomes novos'}{parsed.skipped.length ? ` · ${parsed.skipped.length} ${parsed.skipped.length === 1 ? 'ignorado' : 'ignorados'}: ${parsed.skipped.join(', ')}` : ''}</p>
           : null}
         {modalityPicker}
         {error ? <p className="form-feedback form-feedback-error" role="alert">{error}</p> : null}

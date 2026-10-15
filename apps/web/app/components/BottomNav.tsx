@@ -35,7 +35,9 @@ function itemsFor(role: string | undefined, scope: string | undefined, selectedD
     return [
       { key: 'home', label: 'Início', href: '/dashboard', icon: Home, tone: 'orange' },
       { key: 'matches', label: 'Jogos', href: `/matches?modalidade=${encodeURIComponent(discipline)}`, icon: Radio, tone: 'pink' },
-      { key: 'tournaments', label: 'Tabelas', href: '/disciplines', icon: Medal, tone: 'blue' },
+      // Mesmo nome que o admin vê: o destino é o mesmo, e trocar o rótulo por
+      // papel só fazia a mesma tela parecer outra.
+      { key: 'tournaments', label: 'Modalidades', href: '/disciplines', icon: Medal, tone: 'blue' },
       { key: 'teams', label: 'Equipes', href: '/teams', icon: Shield, tone: 'green' },
       { key: 'profile', label: 'Conta', href: '/more', icon: UserRound, tone: 'cream' },
     ];
