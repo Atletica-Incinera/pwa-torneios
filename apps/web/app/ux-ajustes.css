@@ -1,0 +1,108 @@
+/*
+ * Ajustes de UX do teste ponta a ponta de outubro de 2026.
+ *
+ * Arquivo próprio em vez de mais linhas no globals.css (4 mil linhas): o plano
+ * (DS-I09) é fatiar aquele arquivo, e o que nasce agora já nasce fatiado.
+ * Usa só os tokens que já existem em :root.
+ */
+
+/* Controle segmentado: duas ou três escolhas exclusivas, alvo de 44 px. */
+.segmented-control { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; margin: 0 0 16px; border: 1px solid var(--line); background: var(--surface-2); }
+.segmented-control button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: var(--type-body-sm); font-weight: 800; cursor: pointer; }
+.segmented-control button.active { background: var(--orange); color: var(--black); }
+.segmented-control button:focus-visible { outline: 2px solid var(--white); outline-offset: -4px; }
+
+/* Lista de modalidades no cadastro de atleta: grade de duas colunas. */
+.modality-fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: 10px; }
+.modality-fieldset legend { margin-bottom: 10px; color: var(--text-secondary); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.modality-check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.modality-check-grid .modality-check { min-height: 48px; }
+@media (max-width: 360px) { .modality-check-grid { grid-template-columns: 1fr; } }
+
+/* Campo de texto longo (colar elenco) com o mesmo desenho dos outros campos. */
+.entity-form textarea { width: 100%; min-height: 160px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--white); font: inherit; font-size: var(--type-body); line-height: var(--leading-body); resize: vertical; }
+.entity-form textarea:focus-visible { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange); outline: none; }
+
+/* Etapa 4 da categoria: quando e onde os jogos gerados acontecem. */
+.schedule-plan-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 16px; padding: 0; border: 0; }
+.schedule-plan-fields legend { grid-column: 1 / -1; margin-bottom: 4px; color: var(--text-secondary); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.schedule-plan-fields label { display: grid; gap: 6px; }
+.schedule-plan-fields label > span { font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--text-secondary); }
+.schedule-plan-fields input { width: 100%; min-height: 48px; padding: 0 12px; border: 1px solid var(--line); background: var(--surface); color: var(--white); font: inherit; }
+.schedule-plan-fields input:focus-visible { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange); outline: none; }
+.schedule-plan-fields .schedule-plan-venues, .schedule-plan-fields .form-hint { grid-column: 1 / -1; }
+
+/* Mesa: lance recusado pela API fica visível até o próximo lance dar certo. */
+.lance-recusado { margin: 0 0 12px; padding: 12px 14px; border: 2px solid var(--white); background: var(--card-2); color: var(--white); font-weight: 800; line-height: 1.35; }
+.lance-recusado::before { content: '⚠ '; }
+
+/* Folha de resultado (súmula). */
+.result-sheet { display: grid; gap: 14px; }
+.result-sheet-context { margin: 0; color: var(--text-secondary); font-size: var(--type-body-sm); }
+.result-sheet-form { gap: 12px; }
+.result-sheet-head, .result-sheet-row { display: grid; grid-template-columns: 1fr minmax(64px, auto) 1fr; align-items: center; gap: 10px; }
+.result-sheet-head span { font-family: var(--font-display); font-size: var(--type-card-title); text-transform: uppercase; overflow-wrap: anywhere; }
+.result-sheet-head span:last-child { text-align: right; }
+.result-sheet-row input { width: 100%; min-height: 64px; padding: 0; border: 1px solid var(--line); background: var(--surface); color: var(--white); font-family: var(--font-display); font-size: 2rem; text-align: center; }
+.result-sheet-row input:focus-visible { border-color: var(--orange); box-shadow: inset 0 0 0 2px var(--orange); outline: none; }
+.result-sheet-row small { text-align: center; color: var(--text-secondary); font-size: var(--type-caption); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.result-sheet-final input { min-height: 76px; font-size: 2.6rem; }
+.result-sheet-toggle { margin-top: 4px; }
+.result-sheet-tiebreak { margin: 0; padding: 12px; border: 1px solid var(--orange); display: grid; gap: 10px; }
+.result-sheet-tiebreak legend { padding: 0 6px; color: var(--orange); font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.result-sheet-summary { margin: 0; padding: 12px 14px; background: var(--orange); color: var(--black); font-weight: 900; }
+.result-walkover { display: grid; gap: 12px; }
+.result-walkover p { margin: 0; color: var(--text-secondary); line-height: 1.5; }
+.result-walkover .secondary-button { min-height: 56px; justify-content: center; }
+
+/* Ação larga secundária: mesma forma da principal, sem o preenchimento verde. */
+.wide-action.secondary-wide-action { background: transparent; color: var(--white); border: 1px solid var(--line); margin-top: 10px; }
+
+/* Mesa: partida por sets decidida — só resta encerrar. */
+.sets-decided { display: grid; gap: 10px; margin: 0 0 14px; padding: 14px; border: 2px solid var(--orange); background: var(--card-2); }
+.sets-decided p { margin: 0; color: var(--white); font-size: var(--type-body); }
+
+/* Chave do mata-mata por rodada. */
+.bracket-view { display: grid; gap: 18px; }
+.bracket-round { display: grid; gap: 10px; }
+.bracket-round h3 { margin: 0; color: var(--orange); font-family: var(--font-display); font-size: var(--type-card-title); text-transform: uppercase; letter-spacing: .02em; }
+.bracket-match { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--white); text-decoration: none; min-height: 44px; }
+.bracket-match:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+.bracket-side { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; color: var(--text-secondary); }
+.bracket-side strong { font-weight: 800; overflow-wrap: anywhere; }
+.bracket-side b { font-family: var(--font-display); font-size: 1.4rem; }
+.bracket-side.winner { color: var(--white); }
+.bracket-side.winner strong::after { content: ' ✓'; color: var(--orange); }
+.bracket-match small { color: var(--text-muted); font-size: var(--type-caption); }
+
+/* Pódio da categoria encerrada. */
+.podium-block { display: grid; gap: 12px; margin: 0 0 18px; padding: 16px; border: 2px solid var(--orange); background: var(--card-2); }
+.podium-champion { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 12px; color: var(--orange); }
+.podium-champion small { display: block; color: var(--orange); font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.podium-champion strong { display: block; color: var(--white); font-family: var(--font-display); font-size: var(--type-section); line-height: 1; text-transform: uppercase; overflow-wrap: anywhere; }
+.podium-rest { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.podium-rest li { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px; color: var(--text-secondary); }
+.podium-rest strong { color: var(--white); }
+.podium-source { margin: 0; color: var(--text-muted); font-size: var(--type-caption); }
+
+/* Campeãs na home pública: uma linha por categoria decidida. */
+.champions-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.champions-list a { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px 12px; border: 1px solid var(--line, rgba(255,255,255,.14)); background: rgba(255,255,255,.03); color: inherit; text-decoration: none; }
+.champions-list a:hover, .champions-list a:focus-visible { border-color: var(--orange); }
+.champions-list span { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.champions-list small { font-size: 12px; opacity: .75; }
+.champions-list strong { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.champions-list .team-mark { width: 40px; height: 40px; flex: none; }
+
+/* Ranking geral: sugestões automáticas agrupadas por modalidade. */
+.automatic-award-groups { display: grid; gap: 14px; margin-top: 12px; }
+.automatic-award-groups h3 { margin: 0 0 6px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--orange); }
+.automatic-award-groups .automatic-award-list { margin: 0; }
+
+/* Editor da edição: no celular, as datas dividem a linha e os botões ocupam a
+   largura toda — com três colunas o "Salvar datas" saía da tela. */
+.edition-inline-actions label, .edition-inline-actions input { min-width: 0; }
+@media (max-width: 560px) {
+  .edition-inline-actions { grid-template-columns: 1fr 1fr; }
+  .edition-inline-actions button, .edition-inline-actions .edition-status-field { grid-column: 1 / -1; min-height: 44px; }
+}

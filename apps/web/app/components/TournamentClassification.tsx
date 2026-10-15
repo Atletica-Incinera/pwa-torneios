@@ -1,6 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { ArrowUp, Trophy } from 'lucide-react';
+import { bracketRounds } from '../lib/bracket-view';
+import { formatMatchDateLabel } from '../lib/date-utils';
 import { useMemo, useState } from 'react';
 import { StatusBadge } from './AppShell';
 import { calculateStandings, type Standing, type TournamentMatch } from '../lib/tournament-engine';
@@ -19,9 +22,11 @@ type TournamentClassificationProps = {
   fallbackParticipants?: readonly string[];
   heading?: ClassificationHeading;
   className?: string;
+  /** Onde o jogo da chave abre: área pública ou gestão. */
+  matchHrefBase?: string;
 };
 
-export function TournamentClassification({ tournamentId, discipline = 'Futsal', fallbackParticipants, heading, className = '' }: TournamentClassificationProps) {
+export function TournamentClassification({ tournamentId, discipline = 'Futsal', fallbackParticipants, heading, className = '', matchHrefBase = '/matches' }: TournamentClassificationProps) {
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const setup = tournamentId ? state.tournaments[tournamentId] : undefined;
@@ -53,7 +58,7 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   }, [regulation.secondary, state.matches]);
   const allMatches = useMemo<TournamentMatch[]>(() => listMatches(state, activeEdition?.id, { discipline, tournamentId }).map((match) => {
     const fairPlay = disciplinaryOf(match.id);
-    return { id: match.id, entryA: match.entryA, entryB: match.entryB, scoreA: match.scoreA, scoreB: match.scoreB, status: match.status, phase: match.phase, group: match.phase, disciplinaryA: fairPlay.a, disciplinaryB: fairPlay.b };
+    return { id: match.id, entryA: match.entryA, entryB: match.entryB, scoreA: match.scoreA, scoreB: match.scoreB, status: match.status, phase: match.phase, group: match.phase, disciplinaryA: fairPlay.a, disciplinaryB: fairPlay.b, date: match.date, time: match.time, winner: state.matches[match.id]?.tiebreak?.winner ?? state.matches[match.id]?.walkoverWinner };
   }), [activeEdition?.id, disciplinaryOf, discipline, state, tournamentId]);
   const availableGroups = groupNames.length ? groupNames : ['Classificação'];
   const [view, setView] = useState(availableGroups[0]);
@@ -88,10 +93,10 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
   const usesFairPlay = regulation.standings.tiebreakers.includes('fair-play') && regulation.secondary.some((item) => item.fairPlayPoints > 0);
   const table = officialTable ?? calculateStandings(groupParticipants, allMatches.filter((match) => {
     if (activeView === 'Chaveamento') return false;
-    if (singleTable) return !knockoutPhases.includes(match.phase ?? '');
+    if (singleTable) return !knockoutPhases.includes(match.phase ?? '') && !match.id.includes('-advanced-');
     return match.group === activeView || match.phase === activeView;
   }), regulation.standings);
-  const knockout = allMatches.filter((match) => /semi|quart|final/i.test(match.phase ?? ''));
+  const rounds = bracketRounds(allMatches, knockoutPhases);
   const qualifierCount = classificationPhase?.qualifiers;
   const advancementLabel = qualifierCount ? `${qualifierCount} ${qualifierCount === 1 ? 'equipe avança' : 'equipes avançam'}` : 'Avanço ainda não configurado';
   const phaseIndex = classificationPhase ? phases.findIndex((phase) => phase.id === classificationPhase.id) : -1;
@@ -118,7 +123,15 @@ export function TournamentClassification({ tournamentId, discipline = 'Futsal', 
         </div>
         {!table.length ? <p className="match-filter-empty">{!participants.length ? 'A tabela aparece depois que as equipes forem inscritas nesta categoria.' : singleTable ? 'Nenhuma equipe nesta fase ainda.' : `Distribua equipes em ${activeView} para calcular a classificação.`}</p> : null}
         <div className="qualification-note"><Trophy size={20} /><div><strong>{advancementLabel}</strong><p>Vitória {regulation.standings.win} · empate {regulation.standings.draw} · derrota {regulation.standings.loss}. Desempate: {describeTiebreakers(regulation.standings)}.</p>{setup ? <p>{describeAdvancement(setup.advancement ?? { ...defaultAdvancement, perGroup: qualifierCount ?? defaultAdvancement.perGroup }, availableGroups.length)}</p> : null}</div><StatusBadge tone="orange"><ArrowUp size={12} /> {nextPhase?.name ?? 'Próxima fase'}</StatusBadge></div>
-      </> : <div className="phase-timeline" aria-label="Chaveamento">{knockout.length ? knockout.map((match, index) => <article key={match.id}><span>{String(index + 1).padStart(2, '0')}</span><div><small>{match.phase ?? 'MATA-MATA'}</small><h3>{match.entryA} × {match.entryB}</h3><p>{isOfficialResult(match.status) ? `${match.scoreA} × ${match.scoreB}` : match.status}</p></div><Trophy size={20} /></article>) : <p className="match-filter-empty">O chaveamento será exibido quando os confrontos eliminatórios forem gerados.</p>}</div>}
+      </> : <div className="bracket-view" aria-label="Chaveamento">{rounds.length ? rounds.map((round) => <section className="bracket-round" key={round.key} aria-label={round.name}><h3>{round.name}</h3>{round.matches.map((match) => {
+          const official = isOfficialResult(match.status);
+          const winner = official ? (match as { winner?: string }).winner ?? ((match.scoreA ?? 0) > (match.scoreB ?? 0) ? match.entryA : (match.scoreB ?? 0) > (match.scoreA ?? 0) ? match.entryB : undefined) : undefined;
+          return <Link className="bracket-match" href={`${matchHrefBase}/${match.id}`} key={match.id}>
+            <span className={winner === match.entryA ? 'bracket-side winner' : 'bracket-side'}><strong>{match.entryA}</strong>{official ? <b>{match.scoreA}</b> : null}</span>
+            <span className={winner === match.entryB ? 'bracket-side winner' : 'bracket-side'}><strong>{match.entryB}</strong>{official ? <b>{match.scoreB}</b> : null}</span>
+            <small>{official ? (match.status === 'W.O.' ? 'W.O.' : 'Encerrado') : match.date && match.date.length === 10 ? `${formatMatchDateLabel(match.date)} · ${match.time}` : match.status}</small>
+          </Link>;
+        })}</section>) : <p className="match-filter-empty">A chave aparece quando a fase anterior terminar e os confrontos forem definidos.</p>}</div>}
     </div>
   </section>;
 }

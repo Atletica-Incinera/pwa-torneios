@@ -2,6 +2,9 @@ import type { FrontendState, MatchState } from './frontend-state.ts';
 import { resolveDisciplineRule } from './discipline-rules.ts';
 import { tournamentProgress } from './tournament-engine.ts';
 import { describeCompletion, regulationFromRule } from './regulation.ts';
+import { matchSituation, visibleScore, type MatchSituation } from './match-situation.ts';
+import { currentPhaseLabel } from './category-phase.ts';
+import { matchStageLabel } from './bracket-view.ts';
 
 export type Tone = 'blue' | 'pink' | 'orange';
 
@@ -50,7 +53,7 @@ export function listCategories(state: Pick<FrontendState, 'tournaments' | 'match
       status: item.status,
       // Sem ninguém inscrito o card diz isso, em vez de inventar um total.
       entries: item.participants.length || null,
-      phase: item.phases[0]?.name ?? 'Configuração',
+      phase: currentPhaseLabel(item, Object.entries(state.matches).filter(([, match]) => match.tournamentId === id)),
       progress: progressOf(id, item.generated),
       tone: (item.tone ?? tones[index % tones.length]) as Tone,
       created: Boolean(item.created),
@@ -102,19 +105,25 @@ export type MatchView = {
   periodScoreA?: number;
   periodScoreB?: number;
   isSetBased?: boolean;
+  /** Estado como a pessoa lê, com o relógio: Próximo, Atrasado, Sem resultado. */
+  situation: MatchSituation;
   date: string;
   time: string;
   venue: string;
   phase: string;
+  /** Fase para quem lê: "Grupo A", "Semifinal", "Final" — nunca "Mata-mata". */
+  stage: string;
   status: NonNullable<MatchState['status']>;
   created: boolean;
 };
 
 export type MatchFilter = { discipline?: string; tournamentId?: string };
 
-function matchView(id: string, match: MatchState): MatchView {
+function matchView(id: string, match: MatchState, allIds: readonly string[] = []): MatchView {
   const discipline = match.discipline ?? 'Modalidade';
-  const regulation = regulationFromRule(discipline, resolveDisciplineRule(discipline, match.rules ? { rules: match.rules } : undefined));
+  const rule = resolveDisciplineRule(discipline, match.rules ? { rules: match.rules } : undefined);
+  const regulation = regulationFromRule(discipline, rule);
+  const durationMinutes = regulation.completion.mode === 'sets' ? 75 : (rule.periodCount ?? 2) * (rule.periodDurationMinutes ?? 30);
   return {
     id,
     editionId: match.editionId,
@@ -126,16 +135,19 @@ function matchView(id: string, match: MatchState): MatchView {
     logoB: match.logoB ?? '',
     aDefinirA: match.aDefinirA ?? false,
     aDefinirB: match.aDefinirB ?? false,
-    scoreA: match.scoreA ?? null,
-    scoreB: match.scoreB ?? null,
+    // A API manda 0 para jogo que nem começou; zero ali vira empate inventado.
+    scoreA: visibleScore(match.status, match.scoreA),
+    scoreB: visibleScore(match.status, match.scoreB),
     currentPeriod: match.currentPeriod ?? 1,
     periodScoreA: match.periodScoreA ?? 0,
     periodScoreB: match.periodScoreB ?? 0,
     isSetBased: regulation.completion.mode === 'sets',
+    situation: matchSituation({ status: match.status, date: match.date, time: match.time, durationMinutes }),
     date: match.date ?? 'A definir',
     time: match.time ?? '--:--',
     venue: match.venue ?? 'A definir',
     phase: match.phase ?? 'Fase atual',
+    stage: matchStageLabel(id, match.phase, allIds) || 'Fase atual',
     status: match.status ?? 'Agendada',
     created: Boolean(match.created),
   };
@@ -144,7 +156,7 @@ function matchView(id: string, match: MatchState): MatchView {
 /** Uma partida da edição, já com os defaults aplicados. */
 export function findMatch(state: Pick<FrontendState, 'matches'>, id: string): MatchView | undefined {
   const match = state.matches[id];
-  return match ? matchView(id, match) : undefined;
+  return match ? matchView(id, match, Object.keys(state.matches)) : undefined;
 }
 
 /**
@@ -153,9 +165,10 @@ export function findMatch(state: Pick<FrontendState, 'matches'>, id: string): Ma
  * passavam a discordar.
  */
 export function listMatches(state: Pick<FrontendState, 'matches'>, editionId?: string, filter: MatchFilter = {}): MatchView[] {
+  const ids = Object.keys(state.matches);
   return Object.entries(state.matches)
     .filter(([, item]) => !editionId || item.editionId === editionId)
-    .map(([id, item]) => matchView(id, item))
+    .map(([id, item]) => matchView(id, item, ids))
     .filter((item) => (!filter.discipline || item.discipline === filter.discipline) && (!filter.tournamentId || item.tournamentId === filter.tournamentId));
 }
 

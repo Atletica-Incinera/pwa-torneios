@@ -40,6 +40,22 @@ export async function signIn(email: string, password: string, remembered: boolea
   }
 }
 
+const voluntaryLogoutKey = 'intereng:saida-voluntaria';
+
+/** Marca, nesta aba, que a sessão acabou porque a pessoa escolheu sair. */
+export function markVoluntaryLogout() {
+  try { window.sessionStorage.setItem(voluntaryLogoutKey, '1'); } catch { /* aba sem storage: segue sem a marca */ }
+}
+
+/** Lê e apaga a marca de saída voluntária. */
+export function takeVoluntaryLogout(): boolean {
+  try {
+    const marked = window.sessionStorage.getItem(voluntaryLogoutKey) === '1';
+    window.sessionStorage.removeItem(voluntaryLogoutKey);
+    return marked;
+  } catch { return false; }
+}
+
 export function clearFrontendSession() {
   clearStoredSession();
 }
@@ -117,7 +133,9 @@ export function useFrontendSession() {
     window.addEventListener('storage', syncStorage);
     return () => { active = false; window.removeEventListener(sessionChangeEvent, sync); window.removeEventListener('storage', syncStorage); };
   }, []);
-  const logout = useCallback(() => { void adapter.signOut(); }, []);
+  // Saída voluntária: a guarda de rota não deve devolver a próxima pessoa
+  // que entrar neste aparelho à última tela de quem saiu.
+  const logout = useCallback(() => { markVoluntaryLogout(); void adapter.signOut(); }, []);
   return { session, hydrated, expired, logout };
 }
 

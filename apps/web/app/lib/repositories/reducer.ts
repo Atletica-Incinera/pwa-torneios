@@ -233,6 +233,19 @@ function reduce(current: FrontendState, action: Action): FrontendState {
     case 'match/finish':
       return cascade(patchMatch(current, action.payload.id, action.payload.patch), action.payload.id);
 
+    case 'match/recordResult': {
+      const { id, scoreA, scoreB, periods, tiebreak } = action.payload;
+      const recorded = patchMatch(current, id, {
+        status: 'Encerrada',
+        scoreA,
+        scoreB,
+        periodResults: (periods ?? []).map((item, index) => ({ period: index + 1, ...item })),
+        tiebreak,
+        startNote: 'Resultado lançado pela súmula.',
+      });
+      return cascade(recorded, id);
+    }
+
     case 'match/correctResult': {
       const { id, scoreA, scoreB, correction } = action.payload;
       const cleared = clearDownstream(current, id);

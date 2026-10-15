@@ -1,6 +1,6 @@
 import type { FrontendState, OverallAwardState, OverallMetricState, OverallPosition } from './frontend-state.ts';
 import { findTeamByName } from './eligibility.ts';
-import { tournamentPodium } from './tournament-progression.ts';
+import { categoryPodium } from './podium.ts';
 import { isTournamentDecided } from './status.ts';
 
 export const positionLabels: Record<OverallPosition, string> = {
@@ -54,11 +54,11 @@ export function suggestAutomaticAwards(state: FrontendState, editionId?: string)
     if (editionId && tournament.editionId !== editionId) continue;
     if (!isTournamentDecided(tournament.status)) continue;
     const discipline = tournament.discipline ?? '';
-    const podium = tournamentPodium(state, tournamentId);
+    const podium = categoryPodium(state, tournamentId);
     const byPosition: Partial<Record<OverallPosition, string[]>> = {
-      campeao: podium.champion ? [podium.champion] : [],
-      vice: podium.runnerUp ? [podium.runnerUp] : [],
-      terceiro: podium.third ? [podium.third] : [],
+      campeao: podium ? [podium.champion] : [],
+      vice: podium?.vice ? [podium.vice] : [],
+      terceiro: podium?.third ? [podium.third] : [],
       participacao: tournament.participants,
     };
     for (const metric of automaticMetrics) {

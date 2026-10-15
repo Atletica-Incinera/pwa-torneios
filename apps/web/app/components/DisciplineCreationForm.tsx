@@ -79,10 +79,10 @@ export function DisciplineCreationForm() {
 
   const defaultHint = name === 'Queimado'
     ? 'Sugestão inicial aplicada. Confira tempo, tamanho do elenco e critério de desempate com o regulamento da edição.'
-    : name && defaultDisciplineRules[name] ? 'Sugestão inicial aplicada; ajuste conforme o regulamento da Copa Halterada.' : 'Defina a regra oficial antes de criar partidas.';
+    : name && defaultDisciplineRules[name] ? 'Sugestão inicial aplicada; ajuste conforme o regulamento da competição.' : 'Defina a regra oficial antes de criar partidas.';
 
   return (
-    <AppShell active="profile" eyebrow="COPA HALTERADA" title="ADICIONAR MODALIDADE" subtitle="Defina as regras que serão aplicadas automaticamente aos jogos">
+    <AppShell active="profile" eyebrow="MODALIDADES" title="ADICIONAR MODALIDADE" subtitle="Defina as regras que serão aplicadas automaticamente aos jogos">
       <form className="entity-form discipline-rule-form" onSubmit={(event) => void submit(event)} noValidate>
         <label><span>Modalidade do catálogo</span><select value={name} onChange={(event) => changeName(event.target.value)} required><option value="">Selecione</option>{catalog.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label><span>Tipo</span><select value={mode} onChange={(event) => setMode(event.target.value as typeof mode)}><option>Coletiva</option><option>Individual</option></select></label>

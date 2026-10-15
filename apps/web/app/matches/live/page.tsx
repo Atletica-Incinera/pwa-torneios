@@ -12,7 +12,7 @@ import { MatchEventState, MatchScoreSnapshot, MatchTiebreakState, useFrontendSta
 import { canManageDiscipline, useFrontendSession } from '../../lib/frontend-session';
 import { eligibleAthletes, findMatch, findTeamByName, listMatches, type MatchView } from '../../lib/edition-catalog';
 import { formatClock } from '../../lib/tournament-engine';
-import { matchClockLabel } from '../../lib/discipline-rules';
+import { matchClockLabel, mesaOperaRelogio } from '../../lib/discipline-rules';
 import { describeCompletion, knockoutMethodLabels, regulationPeriodCount, resolveRegulation, setTarget, type KnockoutMethod } from '../../lib/regulation';
 import { evaluateAdvancePeriod, evaluateFinish, evaluateOperatorLock, evaluateStart, isEliminationPhase, operatorLockMs, setWinner } from '../../lib/match-lifecycle';
 import { isLive, matchStatus } from '../../lib/status';
@@ -24,7 +24,7 @@ import { getOperatorDeviceId } from '../../lib/repositories/operator-device';
 type EventTone = 'blue' | 'pink' | 'orange';
 
 /** Placeholder de render: a tela devolve "partida não encontrada" logo adiante. */
-const emptyMatch: MatchView = { id: '', discipline: 'Modalidade', entryA: 'Equipe A', logoA: '', entryB: 'Equipe B', logoB: '', scoreA: null, scoreB: null, date: 'A definir', time: '--:--', venue: 'A definir', phase: 'Fase atual', status: 'Agendada', created: false };
+const emptyMatch: MatchView = { id: '', discipline: 'Modalidade', entryA: 'Equipe A', logoA: '', entryB: 'Equipe B', logoB: '', scoreA: null, scoreB: null, date: 'A definir', time: '--:--', venue: 'A definir', phase: 'Fase atual', stage: 'Fase atual', status: 'Agendada', situation: { label: 'A agendar', tone: 'blue', showScore: false }, created: false };
 
 export default function LiveMatchPage() {
   return <AdminRouteGuard><Suspense fallback={<LoadingScreen message="Preparando placar..." />}><LiveMatchContent /></Suspense></AdminRouteGuard>;
@@ -72,7 +72,7 @@ function LiveMatchContent() {
   const completion = regulation.completion;
   const isSets = completion.mode === 'sets';
   const isDeclarative = completion.mode === 'board' || completion.mode === 'result';
-  const elimination = isEliminationPhase(phase);
+  const elimination = match.id.includes('-advanced-') || isEliminationPhase(phase);
   const totalPeriods = regulationPeriodCount(regulation);
   const overtimePeriods = completion.mode === 'periods' ? completion.overtimePeriods : 0;
   const soundEnabled = state.preferences.soundEffects !== false;
@@ -80,12 +80,15 @@ function LiveMatchContent() {
   const inOvertime = currentPeriod > totalPeriods;
   const periodDurationMinutes = inOvertime && completion.mode === 'periods' ? completion.overtimeDurationMinutes : regulation.base.periodDurationMinutes;
   const periodDurationSeconds = periodDurationMinutes * 60;
-  const hasClock = false;
+  const hasClock = mesaOperaRelogio;
   const periodLabel = inOvertime ? 'Prorrogação' : regulation.base.periodLabel;
   const [clock, setClock] = useState(0);
   const [impact, setImpact] = useState<EventTone | null>(null);
   /** Lance pontuado aguardando o nome de quem marcou. Some sozinho ao trocar de lance. */
   const [atribuindo, setAtribuindo] = useState<{ eventId: string; side: 'home' | 'away'; rotulo: string; equipe: string } | null>(null);
+  // Lance recusado pela API: fica na tela até o próximo lance dar certo. Um
+  // aviso de 3 s passava despercebido e a mesa seguia achando que o gol valeu.
+  const [lanceRecusado, setLanceRecusado] = useState<string | null>(null);
   const [tiebreakOpen, setTiebreakOpen] = useState(false);
   const [tiebreakDraft, setTiebreakDraft] = useState({ method: regulation.knockout.method as KnockoutMethod, scoreA: '', scoreB: '', winner: '', reason: '' });
 
@@ -193,7 +196,7 @@ function LiveMatchContent() {
       previous,
     };
     const moment = hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, tappedAt)) : `${periodLabel} ${currentPeriod}`;
-    void dispatch({
+    const saved = dispatch({
       type: 'match/registerEvent',
       payload: {
         id: match.id,
@@ -209,8 +212,16 @@ function LiveMatchContent() {
         },
       },
       audit: { action: `${type} registrado`, entity: detail, after: `${moment} · ${event.scoreA} × ${event.scoreB}` },
+    }).then((result) => {
+      if (result.ok) setLanceRecusado(null);
+      else {
+        setLanceRecusado(`${type} de ${detail} não foi registrado: ${result.error ?? 'a conexão falhou'}. O placar não mudou.`);
+        // O painel de autor não pode ficar aberto para um lance que não existe.
+        setAtribuindo((current) => current?.eventId === event.id ? null : current);
+      }
+      return result;
     });
-    return { event, moment };
+    return { event, moment, saved };
   }
 
   function registerScore(actionLabel: string, points: number, side: 'home' | 'away', tone: EventTone) {
@@ -233,7 +244,9 @@ function LiveMatchContent() {
         periodScoreB: decided && !matchOver ? 0 : nextPeriodB,
         currentPeriod: nextPeriod,
       }, points, decided ? { period: currentPeriod, scoreA: nextPeriodA, scoreB: nextPeriodB } : undefined);
-      setAtribuindo({ eventId: registrado.id, side, rotulo: actionLabel, equipe: team });
+      // Por sets não há autor de ponto a registrar: perguntar "quem marcou?" a
+      // cada um dos ~90 pontos de um jogo de vôlei travava a mesa.
+      void registrado;
       if (decided) {
         announce(`${regulation.base.periodLabel} ${currentPeriod} para ${decided === 'home' ? match.entryA : match.entryB}: ${nextPeriodA} a ${nextPeriodB}.`);
         playSound(soundForLifecycle('period-end', match.discipline));
@@ -402,8 +415,12 @@ function LiveMatchContent() {
         patch: {
           currentPeriod: nextPeriod,
           clockSeconds: 0,
+          // A mesa não mostra cronômetro, mas o período novo precisa começar
+          // "correndo": parado, a API recusa todo gol; correndo sem horário de
+          // início, recusa a própria virada. Em 2026 nenhum jogo de futsal,
+          // handebol ou basquete passou do 1º tempo por causa disso.
           paused: hasClock,
-          runningSince: undefined,
+          runningSince: hasClock ? undefined : new Date().toISOString(),
           // No formato por sets a parcial já foi gravada quando o set fechou.
           periodResults: isSets ? persisted.periodResults ?? [] : [...(persisted.periodResults ?? []), { period: currentPeriod, scoreA: periodScoreA, scoreB: periodScoreB }],
           periodScoreA: 0,
@@ -506,7 +523,10 @@ function LiveMatchContent() {
   if (invalidMatch) return <main className="app-screen live-screen theme-matches"><div className="empty-state"><strong>PARTIDA NÃO ENCONTRADA</strong><p>O identificador informado não pertence à edição atual.</p><Link href={`/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}`} className="wide-action">VOLTAR PARA JOGOS</Link></div><BottomNav active="matches" /></main>;
 
   const displayClock = hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, clock)) : 'SEM CRONÔMETRO';
-  const actionDisabled = !live || (hasClock && paused) || finished;
+  // Partida por sets decidida: ponto a mais não existe. O botão some e fica só
+  // o encerramento — em 2026 um toque depois do match point virou set fantasma.
+  const setsDecided = completion.mode === 'sets' && (homeScore >= completion.setsToWin || awayScore >= completion.setsToWin);
+  const actionDisabled = !live || (hasClock && paused) || finished || setsDecided;
   // Sem cronometro nao ha minutagem para exibir na sumula, e `#3` so parece
   // uma. A etapa continua identificando o lance.
   const eventTime = (event: MatchEventState) => hasClock ? formatClock(matchClockLabel({ ...regulation.base, periodDurationMinutes }, event.periodElapsedSeconds ?? event.elapsedSeconds)) : '';
@@ -520,7 +540,7 @@ function LiveMatchContent() {
       <div className={`diagonal-impact impact-${impact ?? 'none'}`} aria-hidden="true" />
       <PageNavigation title="PLACAR AO VIVO" />
       <header className="live-topbar motion-enter motion-delay-1">
-        <div><p className="eyebrow orange">{match.discipline.toUpperCase()} · COPA HALTERADA</p><h1>{phase}</h1></div>
+        <div><p className="eyebrow orange">{match.discipline.toUpperCase()}</p><h1>{match.stage}</h1></div>
         <div className="live-status-actions">
           <button type="button" className="sound-toggle" onClick={() => void setPreference({ soundEffects: !soundEnabled })} aria-label={soundEnabled ? 'Desativar sons do placar' : 'Ativar sons do placar'}>{soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}</button>
           <span className={`live-status ${paused && hasClock ? 'paused' : ''}`}><i /> {finished ? 'ENCERRADA' : live ? (paused && hasClock ? 'PAUSADA' : 'AO VIVO') : String(status).toUpperCase()}</span>
@@ -574,10 +594,15 @@ function LiveMatchContent() {
         <section className="match-start-panel motion-enter motion-delay-3">
           <div><p className="eyebrow orange">CONFIRMAÇÃO DE INÍCIO</p><h2>A PARTIDA AINDA NÃO COMEÇOU</h2><p>{describeCompletion(regulation)}. Abrir o placar não inicia o jogo: confirme o início para que o resultado passe a valer.</p></div>
           <button type="button" className="wide-action" onClick={() => void startMatch()} disabled={operatorConflict}><PlayCircle size={18} /> INICIAR PARTIDA <span>›</span></button>
+          {/* Quem só tem a súmula (o jogo já acabou) não precisa iniciar a
+              partida e tocar ponto a ponto: lança o resultado de uma vez. */}
+          {!match.aDefinirA && !match.aDefinirB ? <Link href={`/matches/${match.id}/resultado`} className="wide-action secondary-wide-action">Já acabou? Lançar pela súmula ou W.O. <span>›</span></Link> : null}
         </section>
       ) : null}
 
       {allowed && live && !finished ? <>
+        {lanceRecusado ? <p className="lance-recusado" role="alert">{lanceRecusado}</p> : null}
+        {live && !finished && setsDecided ? <section className="sets-decided" aria-live="polite"><p><strong>{homeScore > awayScore ? match.entryA : match.entryB}</strong> venceu {Math.max(homeScore, awayScore)} × {Math.min(homeScore, awayScore)} em sets.</p><button type="button" className="wide-action" onClick={() => void finishMatch()}>Encerrar partida {homeScore} × {awayScore} <span>›</span></button></section> : null}
         <section className="event-actions motion-enter motion-delay-3" aria-label="Ações do placar">
           {isDeclarative ? <>
             <button className="event-btn blue sport-press" onClick={() => declareResult('home')} disabled={actionDisabled}><Goal size={25} /><span>Vitória<small>{match.entryA}</small></span></button>

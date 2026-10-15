@@ -9,7 +9,7 @@ test('carrega a regra padrão da modalidade antes da partida', () => {
   assert.equal(rule.periodCount, 2);
   assert.equal(rule.periodDurationMinutes, 10);
   assert.equal(rule.clockMode, 'countdown');
-  assert.equal(formatDisciplineRule(rule), '2 × 10 min · relógio regressivo');
+  assert.equal(formatDisciplineRule(rule), '2 × 10 min');
 });
 
 test('prioriza a regra configurada na edição e calcula o relógio', () => {

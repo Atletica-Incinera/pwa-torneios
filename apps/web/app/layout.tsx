@@ -3,6 +3,7 @@ import { Archivo, Outfit } from 'next/font/google';
 import type { Metadata } from 'next';
 import './globals.css';
 import './motion.css';
+import './ux-ajustes.css';
 import { PwaRegistration } from './components/PwaRegistration';
 import { UiProvider } from './components/UiProvider';
 import { appPath } from './lib/base-path';

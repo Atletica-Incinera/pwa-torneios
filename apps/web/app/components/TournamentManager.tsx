@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2, WandSparkles } from 'lucide-react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { getActiveEdition, TournamentAdvancement, TournamentPhase, TournamentState, useFrontendState } from '../lib/repositories/browser-repository';
-import { distributeGroups, generateRoundRobin } from '../lib/tournament-engine';
+import { distributeGroups } from '../lib/tournament-engine';
+import { planSchedule, suggestedInterval } from '../lib/schedule-plan';
+import { defaultSchedulingPolicy, scheduledDuration } from '../lib/scheduling-rules';
 import { useUi } from './UiProvider';
 import { disciplineHref, listMatches } from '../lib/edition-catalog';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
@@ -37,6 +39,17 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   const [renaming, setRenaming] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const generationLock = useRef(false);
+  // Quando e onde os jogos gerados acontecem. Antes o gerador inventava:
+  // primeiro dia da edição, de hora em hora a partir das 08:00, "A definir".
+  const [schedulePlan, setSchedulePlan] = useState(() => {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const start = activeEdition?.start && activeEdition.start > today ? activeEdition.start : today;
+    const nextHour = start === today ? Math.min(22, now.getHours() + 1) : 9;
+    return { date: start, time: `${String(nextHour).padStart(2, '0')}:00`, // Mesma conta da crítica de agenda: duração prevista + troca de quadra.
+    // Com contas diferentes, o jogo gerado já nascia "em conflito".
+    interval: String(scheduledDuration(regulation) + defaultSchedulingPolicy.changeoverMinutes), venues: '' };
+  });
   const locked = isTournamentStarted(setup.status);
   const groupOptions = setup.phases.find((phase) => phase.format === 'Grupos')?.groups ?? [];
   const allowed = canManageDiscipline(session, discipline);
@@ -113,7 +126,10 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
   }
 
   function updatePhase(phaseId: string, patch: Partial<TournamentPhase>) {
-    const normalizedPatch = patch.format === 'Mata-mata' ? { ...patch, qualifiers: 1 } : patch;
+    // Só "Grupos" tem grupos: ao trocar de formato eles saem de verdade, em vez
+    // de ficarem escondidos e tirarem os jogos da tabela no servidor.
+    const withoutGroups = patch.format && patch.format !== 'Grupos' ? { ...patch, groups: [] } : patch;
+    const normalizedPatch = patch.format === 'Mata-mata' ? { ...withoutGroups, qualifiers: 1 } : withoutGroups;
     update({ ...setup, phases: setup.phases.map((phase) => phase.id === phaseId ? { ...phase, ...normalizedPatch } : phase), generated: false }, 'Fase configurada', phaseId, JSON.stringify(normalizedPatch), true);
   }
 
@@ -218,7 +234,12 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     } else if (setup.generated && !(await confirm({ title: 'Regerar confrontos?', message: 'Os jogos gerados anteriormente serão substituídos.', confirmLabel: 'Regerar', danger: true }))) { generationLock.current = false; return; }
     setGenerating(true);
     const ordered = [...setup.participants].sort((a, b) => (setup.seeds[a] ?? 999) - (setup.seeds[b] ?? 999));
-    const assignments = { ...distributeGroups(ordered, groupOptions, setup.seeds), ...setup.assignments };
+    // Sem fase de grupos não há distribuição: mandar "Geral" (ou um grupo que
+    // não existe mais) fazia a API recusar a geração inteira, e o aviso de erro
+    // sumia em três segundos — a tela ficava como se nada tivesse acontecido.
+    const validAssignments = Object.fromEntries(Object.entries(setup.assignments)
+      .filter(([team, group]) => ordered.includes(team) && groupOptions.includes(group)));
+    const assignments = groupOptions.length ? { ...distributeGroups(ordered, groupOptions, setup.seeds), ...validAssignments } : {};
     const buckets = groupOptions.length ? groupOptions.map((group) => ({ name: group, teams: ordered.filter((team) => assignments[team] === group) })) : [{ name: setup.phases[0]?.name ?? 'Fase inicial', teams: ordered }];
     const classificationPhase = setup.phases.find((phase) => phase.format !== 'Mata-mata');
     if (classificationPhase && buckets.some((bucket) => classificationPhase.qualifiers > bucket.teams.length)) {
@@ -227,10 +248,15 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
       generationLock.current = false;
       return;
     }
-    const pairs = buckets.flatMap((bucket) => generateRoundRobin(bucket.teams).map((pair) => ({ pair, phase: bucket.name })));
-    const startDate = activeEdition?.start ?? new Date().toISOString().slice(0, 10);
+    const pairs = planSchedule({
+      buckets,
+      startDate: schedulePlan.date,
+      startTime: schedulePlan.time,
+      intervalMinutes: Number(schedulePlan.interval) || suggestedInterval(resolveDisciplineRule(discipline, state.disciplines[discipline])),
+      venues: schedulePlan.venues.split(','),
+    });
     const logoFor = (team: string) => findTeamByName(state, team)?.logo ?? '';
-    const createdMatches = Object.fromEntries(pairs.map(({ pair: [entryA, entryB], phase }, index) => [`${id}-generated-${index + 1}`, { created: true as const, editionId: activeEdition?.id, tournamentId: id, discipline, entryA, entryB, logoA: logoFor(entryA), logoB: logoFor(entryB), date: startDate, time: `${String(8 + (index % 10)).padStart(2, '0')}:00`, venue: 'A definir', phase, status: 'Agendada' as const, rules: resolveDisciplineRule(discipline, state.disciplines[discipline]), currentPeriod: 1, clockSeconds: 0, paused: true, events: [], periodScoreA: 0, periodScoreB: 0, periodResults: [] }]));
+    const createdMatches = Object.fromEntries(pairs.map(({ entryA, entryB, phase, date, time, venue }, index) => [`${id}-generated-${index + 1}`, { created: true as const, editionId: activeEdition?.id, tournamentId: id, discipline, entryA, entryB, logoA: logoFor(entryA), logoB: logoFor(entryB), date, time, venue, phase, status: 'Agendada' as const, rules: resolveDisciplineRule(discipline, state.disciplines[discipline]), currentPeriod: 1, clockSeconds: 0, paused: true, events: [], periodScoreA: 0, periodScoreB: 0, periodResults: [] }]));
     const next = { ...setup, editionId: setup.editionId ?? activeEdition?.id, assignments, generated: true, advancement, byes: undefined };
     await dispatch({
       type: 'category/generateMatches',
@@ -310,6 +336,14 @@ export function TournamentManager({ id, name, discipline, initialStatus, teamNam
     </section>
     <section className="management-panel" id="generate"><div className="management-panel-head"><div><small>ETAPA 4</small><h2>MONTAR OS JOGOS</h2></div></div>
       <p>{setup.participants.length < 2 ? 'Inscreva ao menos 2 participantes na Etapa 1 para gerar os confrontos.' : !setup.phases.length ? 'Crie ao menos uma fase na Etapa 2 para gerar os confrontos.' : locked ? 'A categoria já começou: os confrontos não podem mais ser regerados.' : setup.generated ? `Confrontos gerados para ${setup.participants.length} participantes em ${setup.phases.length} fases.` : 'Gera todos contra todos dentro de cada grupo. Também dá para agendar jogos um a um pela agenda, depois de publicar.'}</p>
+      {!locked && setup.participants.length >= 2 && setup.phases.length ? <fieldset className="schedule-plan-fields">
+        <legend>Quando e onde</legend>
+        <label><span>Primeiro dia</span><input type="date" value={schedulePlan.date} min={activeEdition?.start} max={activeEdition?.end} onChange={(event) => setSchedulePlan((value) => ({ ...value, date: event.target.value }))} /></label>
+        <label><span>Primeiro jogo</span><input type="time" step={300} value={schedulePlan.time} onChange={(event) => setSchedulePlan((value) => ({ ...value, time: event.target.value }))} /></label>
+        <label><span>Minutos entre jogos</span><input type="number" min={10} step={5} value={schedulePlan.interval} onChange={(event) => setSchedulePlan((value) => ({ ...value, interval: event.target.value }))} /></label>
+        <label className="schedule-plan-venues"><span>Quadras (separe por vírgula)</span><input value={schedulePlan.venues} placeholder="Ex.: Ginásio CIn, Quadra 2" onChange={(event) => setSchedulePlan((value) => ({ ...value, venues: event.target.value }))} /></label>
+        <p className="form-hint">Os jogos saem por rodada, alternando os grupos, um depois do outro em cada quadra. Dá para ajustar qualquer jogo depois, na agenda.</p>
+      </fieldset> : null}
       <button type="button" className="wide-action button-reset" onClick={generateConfrontations} disabled={generating || locked || setup.participants.length < 2 || !setup.phases.length} aria-busy={generating}><WandSparkles size={18} aria-hidden="true" /> {generating ? 'MONTANDO OS JOGOS…' : setup.generated ? 'MONTAR OS JOGOS DE NOVO' : 'MONTAR OS JOGOS'} <span aria-hidden="true">›</span></button></section>
     {canManageEdition(session) ? <section className="management-panel management-panel-danger" id="excluir"><div className="management-panel-head"><div><small>SE FOR PRECISO</small><h2>EXCLUIR ESTA CATEGORIA</h2></div></div>
       {/* A situacao so anda para a frente -- o seletor de Publicacao desabilita

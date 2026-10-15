@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { teamIdForManager } from '../lib/team-manager';
 import { Radio, Shield, Trophy, Users } from 'lucide-react';
 import { AppShell, SectionTitle } from '../components/AppShell';
 import { EditionProgress } from '../components/EditionProgress';
 import { MatchCard } from '../components/MatchCard';
 import { NoCompetitionsYet } from '../components/NoCompetitionsYet';
-import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
+import { editionHeading, getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
 import { listCategories, listDisciplines, listMatches, listTeams } from '../lib/edition-catalog';
 import { isLive, matchStatus, tournamentStatus } from '../lib/status';
 import { canManageEdition, isSuperAdmin, useFrontendSession } from '../lib/frontend-session';
@@ -14,9 +17,13 @@ import { canManageEdition, isSuperAdmin, useFrontendSession } from '../lib/front
 export default function DashboardPage() {
   const { state } = useFrontendState();
   const { session } = useFrontendSession();
+  const router = useRouter();
   const activeEdition = getActiveEdition(state);
+  // O responsável da atlética tem uma tarefa só: o elenco do próprio time.
+  const ownTeamId = teamIdForManager(state, session);
+  useEffect(() => { if (ownTeamId) router.replace(`/teams/${ownTeamId}`); }, [ownTeamId, router]);
   if (state.competitions.length === 0) {
-    return <AppShell active="home" eyebrow="COPA HALTERADA" title="A COPA CHEGOU!" subtitle="Comece cadastrando a primeira competição">
+    return <AppShell active="home" eyebrow="PRIMEIROS PASSOS" title="BEM-VINDO" subtitle="Comece cadastrando a primeira competição">
       <NoCompetitionsYet canCreate={isSuperAdmin(session)} />
     </AppShell>;
   }
@@ -38,5 +45,5 @@ export default function DashboardPage() {
     { label: 'Categorias', value: String(categories.length), meta: `${disciplines.length} modalidades · ${drafts} em rascunho`, icon: Trophy, tone: 'orange', href: '/disciplines' },
     { label: 'Jogos ao vivo', value: String(liveMatches), meta: liveMatches ? 'Agora' : 'Nenhum agora', icon: Radio, tone: 'blue', href: `/matches?modalidade=${encodeURIComponent(state.preferences.selectedDiscipline)}` },
   ];
-  return <AppShell active="home" eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="A COPA CHEGOU!" subtitle="Visão geral da edição ativa">{canManageEdition(session) ? <EditionProgress /> : null}<section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
+  return <AppShell active="home" eyebrow={editionHeading(state)} title="INÍCIO" subtitle="Visão geral da edição ativa">{canManageEdition(session) ? <EditionProgress /> : null}<section className="stats-grid" aria-label="Resumo da edição">{stats.map(({ label, value, meta, icon: Icon, tone, href }) => <Link className={`stat-card stat-${tone}`} key={label} href={href}><div className="stat-icon"><Icon size={24} /></div><strong>{value}</strong><span>{label}</span><small>{meta}</small></Link>)}</section>{nextMatch ? <section className="section-block"><SectionTitle eyebrow="AGENDA" title="PRÓXIMO CONFRONTO" href={`/matches?modalidade=${encodeURIComponent(nextMatch.discipline)}`} linkLabel="Agenda" /><MatchCard href={`/matches/${nextMatch.id}`} match={nextMatch} /></section> : null}</AppShell>;
 }

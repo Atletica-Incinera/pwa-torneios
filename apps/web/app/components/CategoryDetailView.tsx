@@ -1,5 +1,6 @@
 'use client';
 
+import { PodiumBlock } from './PodiumBlock';
 import Link from 'next/link';
 import { Brackets, CalendarPlus, Flag, Trophy, Users } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
@@ -9,11 +10,12 @@ import { MatchSchedule } from './MatchSchedule';
 import { TournamentClassification } from './TournamentClassification';
 import { TournamentManager } from './TournamentManager';
 import { getActiveEdition, useFrontendState } from '../lib/repositories/browser-repository';
-import { findCategory, disciplineHref, listTeams } from '../lib/edition-catalog';
+import { findCategory, listTeams } from '../lib/edition-catalog';
 import { canManageDiscipline, canManageEdition, useFrontendSession } from '../lib/frontend-session';
 import { isTournamentDecided } from '../lib/status';
 import { defaultAdvancement, describeAdvancement } from '../lib/bracket-rules';
 import { useTablistKeys } from '../lib/use-tablist-keys';
+import { phaseSummary } from '../lib/category-phase';
 
 type Tab = 'tabela' | 'jogos' | 'fases' | 'participantes' | 'regras';
 
@@ -67,14 +69,14 @@ export function CategoryDetailView({ id }: { id: string }) {
       active="tournaments"
       eyebrow={`${category.discipline.toUpperCase()} · EDIÇÃO ${activeEdition?.year ?? ''}`}
       title={category.name.toUpperCase()}
-      subtitle={`${category.entries === null ? 'Inscrição pendente' : `${category.entries} inscritas`} · ${category.status}`}
+      subtitle={`${category.entries === null ? 'Inscrição pendente' : `${category.entries} ${category.entries === 1 ? 'inscrita' : 'inscritas'}`} · ${category.status === 'Encerrado' ? 'Encerrada' : `${category.status} · ${category.phase}`}`}
       actionHref={`/matches/new?modalidade=${encodeURIComponent(category.discipline)}`}
       actionLabel={`Agendar jogo de ${category.discipline}`}
       actionShortLabel="Jogo"
       actionPermission="discipline"
       actionDiscipline={category.discipline}
     >
-      <Link href={disciplineHref(category.discipline)} className="breadcrumb-link">‹ {category.discipline}</Link>
+      <PodiumBlock tournamentId={id} />
 
       <div className="tournament-tab-list" role="tablist" aria-label="Seções da categoria" onKeyDown={onTabKeys}>
         {visibleTabs.map((tab) => (
@@ -101,7 +103,7 @@ export function CategoryDetailView({ id }: { id: string }) {
                   <div>
                     <StatusBadge tone={phase.format === 'Mata-mata' ? 'orange' : 'blue'}>{phase.format}</StatusBadge>
                     <h3>{phase.name}</h3>
-                    <p>{phase.groups.length ? `${phase.groups.length} grupos · ${phase.groups.join(', ')}` : 'Eliminação simples'}{phase.format !== 'Mata-mata' ? ` · avançam ${phase.qualifiers}` : ''}</p>
+                    <p>{phaseSummary(phase, index < setup.phases.length - 1)}</p>
                   </div>
                   {phase.format === 'Mata-mata' ? <Brackets size={22} /> : <Flag size={22} />}
                 </article>

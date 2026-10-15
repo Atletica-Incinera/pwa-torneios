@@ -3,10 +3,11 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShieldAlert } from 'lucide-react';
-import { canReadAudit, clearFrontendSession, isSuperAdmin, mustChangePassword, useFrontendSession } from '../lib/frontend-session';
+import { canReadAudit, clearFrontendSession, isSuperAdmin, mustChangePassword, takeVoluntaryLogout, useFrontendSession } from '../lib/frontend-session';
 import { useFrontendState } from '../lib/repositories/browser-repository';
 import { ErrorScreen } from './ErrorScreen';
 import { PasswordChangeScreen } from './PasswordChangeForm';
+import { teamIdForManager } from '../lib/team-manager';
 
 // O gestor cria e edita dentro da sua modalidade — inclusive categoria.
 // Fica de fora o que pertence à edição inteira: contexto, cadastro de equipe e
@@ -27,10 +28,10 @@ const hiddenProductPrefixes = ['/staff/promote'];
  */
 const teamManagerPrefixes = ['/teams', '/dashboard', '/profile', '/public', '/offline'];
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
-  const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, status, error, refresh } = useFrontendState();
+  const router = useRouter(); const pathname = usePathname(); const { session, hydrated, expired } = useFrontendSession(); const { state, hydrated: stateHydrated, fresh, status, error, refresh } = useFrontendState();
   // A equipe do responsavel vem pelo nome no escopo; a rota usa o id.
   const equipeDoResponsavel = session?.role === 'TEAM_MANAGER'
-    ? Object.entries(state.teams).find(([, equipe]) => equipe.name === session.scope)?.[0] ?? '__sem-equipe__'
+    ? teamIdForManager(state, session) ?? '__sem-equipe__'
     : '';
   const matchingStaffRoles = session?.email ? Object.values(state.staff).filter((member) => (
     member.email === session.email
@@ -62,7 +63,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
     if (!hydrated) return;
     // Prazo vencido ou 401: quem estava dentro precisa saber por quê.
     if (expired) { router.replace('/login?access=expired'); return; }
-    if (!session) { router.replace(`/login?redirect=${encodeURIComponent(pathname)}`); return; }
+    if (!session) { router.replace(takeVoluntaryLogout() ? '/login' : `/login?redirect=${encodeURIComponent(pathname)}`); return; }
     if (stateHydrated && revoked) { clearFrontendSession(); router.replace('/login?access=revoked'); }
   }, [expired, hydrated, pathname, revoked, router, session, stateHydrated]);
   if (!hydrated || expired || !session || revoked) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;
@@ -72,7 +73,9 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
   if (mustChangePassword(session)) return <PasswordChangeScreen email={session.email} />;
   // Com acesso em ordem, o que falta são os dados: a tela oferece nova tentativa.
   if (status === 'error') return <ErrorScreen message={error} onRetry={() => void refresh()} />;
-  if (!stateHydrated) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;
-  if (forbidden) return <main className="app-screen global-state-screen"><ShieldAlert size={44} /><h1>ACESSO RESTRITO</h1><p>{session.role === 'DISCIPLINE_MANAGER' ? `Seu papel permite operar apenas a modalidade ${session.scope}.` : 'Esta área não está disponível na interface do produto.'}</p><button type="button" className="primary-button" onClick={() => router.replace(session.role === 'DISCIPLINE_MANAGER' ? `/matches?modalidade=${encodeURIComponent(session.scope ?? 'Futsal')}` : '/dashboard')}>{session.role === 'DISCIPLINE_MANAGER' ? 'Ir para minha modalidade' : 'Voltar ao início'}</button></main>;
+  // Tela interna só com o snapshot autorizado deste aparelho, nunca com o
+  // público que o servidor do Next usou na primeira pintura.
+  if (!stateHydrated || !fresh) return <main className="app-screen global-state-screen" aria-busy="true"><span className="loading-mark">26</span><p>VALIDANDO ACESSO</p><span className="loading-line" /></main>;
+  if (forbidden) return <main className="app-screen global-state-screen"><ShieldAlert size={44} /><h1>ACESSO RESTRITO</h1><p>{session.role === 'DISCIPLINE_MANAGER' ? `Seu papel permite operar apenas a modalidade ${session.scope}.` : 'Esta área não está disponível na interface do produto.'}</p><button type="button" className="primary-button" onClick={() => router.replace(session.role === 'DISCIPLINE_MANAGER' ? `/matches?modalidade=${encodeURIComponent(session.scope ?? 'Futsal')}` : session.role === 'TEAM_MANAGER' ? `/teams/${equipeDoResponsavel}` : '/dashboard')}>{session.role === 'DISCIPLINE_MANAGER' ? 'Ir para minha modalidade' : session.role === 'TEAM_MANAGER' ? 'Ir para o meu time' : 'Voltar ao início'}</button></main>;
   return children;
 }

@@ -155,6 +155,21 @@ export function getActiveCompetition(state: Pick<FrontendState, 'competitions'>)
   return state.competitions.find((item) => item.active) ?? state.competitions[0];
 }
 
+/**
+ * Cabeçalho da competição em vigor: "INTERCIN TESTE · EDIÇÃO 2026".
+ *
+ * A marca do produto (logo, nome do app, login) é Copa Halterada; o nome da
+ * competição é dado. Escrever "COPA HALTERADA" fixo no topo das telas fazia
+ * qualquer outra competição aparecer com o nome errado.
+ */
+export function editionHeading(state: Pick<FrontendState, 'competitions' | 'editions'>) {
+  const competition = getActiveCompetition(state);
+  if (!competition) return 'NENHUMA COMPETIÇÃO ATIVA';
+  const year = getActiveEdition(state)?.year;
+  const name = competition.name.toLocaleUpperCase('pt-BR');
+  return year ? `${name} · EDIÇÃO ${year}` : name;
+}
+
 export function getActiveEdition(state: Pick<FrontendState, 'competitions' | 'editions'>) {
   const competition = getActiveCompetition(state);
   const editions = state.editions.filter((item) => !competition || (item.competitionId ?? 'jogos-engenharia') === competition.id);

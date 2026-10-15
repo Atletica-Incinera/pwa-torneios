@@ -7,7 +7,8 @@ import { useUi } from './UiProvider';
 import { getActiveEdition, OverallMetricState, OverallPosition, useFrontendState } from '../lib/repositories/browser-repository';
 import { activeAwards, computeOverallRanking, editionAwards, hasAward, isRankingClosed, positionLabels, rankingClosure, suggestAutomaticAwards } from '../lib/overall-ranking';
 import { canManageEdition, useFrontendSession } from '../lib/frontend-session';
-import { listDisciplines, listTeams } from '../lib/edition-catalog';
+import { listCategories, listDisciplines, listTeams } from '../lib/edition-catalog';
+import { isPublicTournamentStatus } from '../lib/publication';
 import { createId } from '../lib/create-id';
 
 /** Como a métrica fica registrada na auditoria: pontos e origem, legíveis. */
@@ -22,6 +23,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   const activeEdition = getActiveEdition(state);
   const [metricDraft, setMetricDraft] = useState({ name: '', points: '1', position: '' as OverallPosition | '' });
   const [metricDrafts, setMetricDrafts] = useState<Record<string, string>>({});
+  const [pointDrafts, setPointDrafts] = useState<Record<string, string>>({});
   const [seeding, setSeeding] = useState(false);
   const [awardDraft, setAwardDraft] = useState({ teamId: '', discipline: state.preferences.selectedDiscipline, metricId: state.overallRanking.metrics[0]?.id ?? '', points: String(state.overallRanking.metrics[0]?.defaultPoints ?? 1), note: '' });
 
@@ -34,6 +36,20 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
   const ranking = useMemo(() => computeOverallRanking(state, teams, activeEdition?.id), [activeEdition?.id, state, teams]);
   const suggestions = useMemo(() => (readOnly ? [] : suggestAutomaticAwards(state, activeEdition?.id)), [activeEdition?.id, readOnly, state]);
   const toneOf = (teamId: string) => teams.find((team) => team.id === teamId)?.tone ?? 'blue';
+  // Uma linha por modalidade: 26 linhas soltas de "Participação · 1 pts" não
+  // deixavam ver o que importa — quem foi campeã, vice e 3º.
+  const suggestionGroups = useMemo(() => {
+    const groups = new Map<string, typeof suggestions>();
+    for (const item of suggestions) groups.set(item.discipline, [...(groups.get(item.discipline) ?? []), item]);
+    return [...groups.entries()].map(([discipline, items]) => ({
+      discipline,
+      podium: items.filter((item) => item.metric.position !== 'participacao'),
+      participation: items.filter((item) => item.metric.position === 'participacao'),
+    }));
+  }, [suggestions]);
+  // Fechar o ranking com categoria ainda em disputa congela uma classificação
+  // incompleta; a tela avisa antes, em vez de só confiar no "homologados".
+  const undecided = listCategories(state, activeEdition?.id).filter((category) => isPublicTournamentStatus(category.status) && category.status !== 'Encerrado');
 
   /** Alterar o ranking depois do fechamento é retificação: exige motivo. */
   async function requireRectification(title: string) {
@@ -96,6 +112,15 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
     await dispatch({ type: 'ranking/removeMetric', payload: { metricId: metric.id }, audit: { action: 'Métrica do ranking removida', entity: metric.name } });
   }
 
+  function commitMetricPoints(metric: OverallMetricState) {
+    const raw = pointDrafts[metric.id];
+    setPointDrafts((current) => { const { [metric.id]: _removed, ...rest } = current; return rest; });
+    if (raw === undefined) return;
+    const points = Number(raw);
+    if (raw.trim() === '' || !Number.isFinite(points) || points === metric.defaultPoints) return;
+    updateMetric(metric, { defaultPoints: points }, 'Pontos da métrica alterados');
+  }
+
   function chooseMetric(metricId: string) {
     const metric = state.overallRanking.metrics.find((item) => item.id === metricId);
     setAwardDraft((current) => ({ ...current, metricId, points: String(metric?.defaultPoints ?? current.points) }));
@@ -116,7 +141,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
 
   async function applyAutomatic() {
     if (!activeEdition || !suggestions.length) return;
-    if (!(await confirm({ title: 'Lançar pontos automáticos?', message: `${suggestions.length} bonificação(ões) sairão direto dos resultados oficiais das disputas encerradas.`, confirmLabel: 'Lançar' }))) return;
+    if (!(await confirm({ title: 'Lançar pontos automáticos?', message: `${suggestions.length} ${suggestions.length === 1 ? "bonificação sai" : "bonificações saem"} direto dos resultados oficiais das disputas encerradas.`, confirmLabel: 'Lançar' }))) return;
     const rectification = await requireRectification('Lançar automáticos no ranking fechado?');
     if (!rectification.ok) return;
     const created = suggestions.map((item, index) => ({ id: createId('award-auto'), editionId: activeEdition.id, teamId: item.teamId, discipline: item.discipline, metricId: item.metric.id, points: item.points, note: `${positionLabels[item.metric.position!]} · ${item.tournamentName}`, createdAt: new Date().toISOString(), origin: 'automatico' as const }));
@@ -138,7 +163,8 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
       await dispatch({ type: 'ranking/reopen', payload: { editionId: activeEdition.id }, audit: { action: 'Ranking geral reaberto', entity: `Edição ${activeEdition.name}`, reason } });
       return;
     }
-    if (!(await confirm({ title: 'Fechar o ranking geral?', message: 'A classificação vira o resultado oficial da edição. Depois disso, toda alteração exige motivo e fica registrada como retificação.', confirmLabel: 'Fechar ranking', danger: true }))) return;
+    const pending = [undecided.length ? `${undecided.length} ${undecided.length === 1 ? 'categoria ainda está' : 'categorias ainda estão'} em disputa (${undecided.map((item) => item.name).join(', ')}).` : '', suggestions.length ? `${suggestions.length} ${suggestions.length === 1 ? 'bonificação automática não foi lançada' : 'bonificações automáticas não foram lançadas'}.` : ''].filter(Boolean).join(' ');
+    if (!(await confirm({ title: 'Fechar o ranking geral?', message: `${pending ? `Atenção: ${pending} ` : ''}A classificação vira o resultado oficial da edição. Depois disso, toda alteração exige motivo e fica registrada como retificação.`, confirmLabel: 'Fechar ranking', danger: true }))) return;
     await dispatch({ type: 'ranking/close', payload: { closure: { editionId: activeEdition.id, at: new Date().toISOString(), actor: session?.name ?? 'Usuário do app' } }, audit: { action: 'Ranking geral fechado', entity: `Edição ${activeEdition.name}`, after: `${ranking[0]?.name ?? 'Sem líder'} em primeiro` } });
   }
 
@@ -147,11 +173,10 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
 
   return <>
     <section className="section-block overall-ranking-section">
-      <SectionTitle eyebrow={`COPA HALTERADA · EDIÇÃO ${activeEdition?.year ?? ''}`} title="RANKING GERAL" />
-      <p className="section-intro">Pontuação acumulada das equipes em todas as modalidades da edição.</p>
+      <SectionTitle eyebrow={closed ? 'Oficial' : 'Parcial'} title="RANKING GERAL" />
       {closed ? <div className="info-banner" role="status"><Lock size={18} /><div><strong>Classificação oficial e fechada</strong><p>Fechada em {new Date(closure!.at).toLocaleString('pt-BR')} por {closure!.actor}. Alterações posteriores aparecem como retificação na auditoria.</p></div></div> : null}
       <div className="overall-ranking-list" aria-label="Classificação geral das equipes">
-        {ranking.map((team) => <article className={`overall-ranking-row rank-${team.rank}`} key={team.id}><span className="rank-block">{team.rank}</span><TeamMark initial={team.name[0]} tone={toneOf(team.id)} logo={teams.find((item) => item.id === team.id)?.logo} small /><div><strong>{team.name}</strong><small>{team.disciplines} modalidades · {team.bonuses} bonificações</small></div><b>{team.points}<small>PTS</small></b></article>)}
+        {ranking.map((team) => <article className={`overall-ranking-row rank-${team.rank}`} key={team.id}><span className="rank-block">{team.points ? team.rank : '–'}</span><TeamMark initial={team.name[0]} tone={toneOf(team.id)} logo={teams.find((item) => item.id === team.id)?.logo} small /><div><strong>{team.name}</strong><small>{team.points ? `${team.disciplines} ${team.disciplines === 1 ? 'modalidade' : 'modalidades'} · ${team.bonuses} ${team.bonuses === 1 ? 'bonificação' : 'bonificações'}` : 'Ainda sem pontos'}</small></div><b>{team.points}<small>PTS</small></b></article>)}
       </div>
     </section>
 
@@ -160,7 +185,13 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
         <SectionTitle eyebrow="RESULTADOS OFICIAIS" title="PONTOS AUTOMÁTICOS" />
         <p className="form-hint">Métricas com posição declarada saem direto do pódio das disputas encerradas. As demais continuam sendo lançamento manual do admin.</p>
         {suggestions.length ? <>
-          <ul className="automatic-award-list">{suggestions.map((item) => <li key={`${item.teamId}-${item.discipline}-${item.metric.id}`}><strong>{item.teamName}</strong><span>{item.discipline} · {item.metric.name}</span><b>{item.points} pts</b></li>)}</ul>
+          <div className="automatic-award-groups">{suggestionGroups.map((group) => <article key={group.discipline}>
+            <h3>{group.discipline}</h3>
+            <ul className="automatic-award-list">
+              {group.podium.map((item) => <li key={`${item.teamId}-${item.metric.id}`}><strong>{item.teamName}</strong><span>{item.metric.name}</span><b>{item.points} {Math.abs(item.points) === 1 ? 'pt' : 'pts'}</b></li>)}
+              {group.participation.length ? <li><strong>{group.participation.length} {group.participation.length === 1 ? 'equipe' : 'equipes'}</strong><span>{group.participation[0].metric.name}</span><b>{group.participation[0].points} {Math.abs(group.participation[0].points) === 1 ? 'pt' : 'pts'} cada</b></li> : null}
+            </ul>
+          </article>)}</div>
           <button type="button" className="wide-action" onClick={() => void applyAutomatic()}><Sparkles size={18} /> LANÇAR {suggestions.length} {suggestions.length === 1 ? 'BONIFICAÇÃO' : 'BONIFICAÇÕES'} <span>›</span></button>
         </> : <p className="match-filter-empty">Nenhuma bonificação automática pendente. Encerre as disputas para liberar o pódio.</p>}
       </section>
@@ -181,7 +212,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
             <input aria-label={`Nome da métrica ${metric.name}`} value={metricDrafts[metric.id] ?? metric.name} onChange={(event) => setMetricDrafts((current) => ({ ...current, [metric.id]: event.target.value }))} onBlur={() => commitMetricName(metric)} />
           </div>
           <div className="ranking-metric-fields-row">
-            <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={metric.defaultPoints} onChange={(event) => { const points = Number(event.target.value); if (Number.isFinite(points)) updateMetric(metric, { defaultPoints: points }, 'Pontos da métrica alterados'); }} /></label>
+            <label><span>Pontos</span><input aria-label={`Pontos de ${metric.name}`} type="number" value={pointDrafts[metric.id] ?? String(metric.defaultPoints)} onChange={(event) => setPointDrafts((current) => ({ ...current, [metric.id]: event.target.value }))} onBlur={() => commitMetricPoints(metric)} /></label>
             <label><span>Origem</span><select aria-label={`Origem de ${metric.name}`} value={metric.position ?? ''} onChange={(event) => updateMetric(metric, { position: (event.target.value || null) as OverallPosition | null }, 'Origem da métrica alterada')}><option value="">Manual</option>{Object.entries(positionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
             <button type="button" onClick={() => void removeMetric(metric)} aria-label={`Remover métrica ${metric.name}`} title="Remover métrica"><Trash2 size={17} aria-hidden="true" /></button>
           </div>
@@ -208,7 +239,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
           const metric = state.overallRanking.metrics.find((item) => item.id === award.metricId);
           return <article key={award.id} className={award.revokedAt ? 'is-revoked' : ''}>
             <div><strong>{team?.name ?? 'Equipe'}</strong><small>{award.discipline} · {metric?.name ?? 'Métrica'} · {award.origin === 'automatico' ? 'automático' : 'manual'}{award.note ? ` · ${award.note}` : ''}</small>{award.revokedAt ? <small className="revoked-note">Estornado por {award.revokedBy}: {award.revokeReason}</small> : null}</div>
-            <b>{award.points} pts</b>
+            <b>{award.points} {Math.abs(award.points) === 1 ? 'pt' : 'pts'}</b>
             {award.revokedAt ? <Undo2 size={16} aria-label="Estornada" /> : <button type="button" onClick={() => void revokeAward(award.id, team?.name ?? 'equipe')} aria-label={`Estornar pontuação de ${team?.name ?? 'equipe'}`}><Undo2 size={16} /></button>}
           </article>;
         }) : <p className="match-filter-empty">Nenhuma pontuação geral lançada nesta edição.</p>}</div>
@@ -217,6 +248,7 @@ export function OverallStandings({ readOnly = false }: { readOnly?: boolean }) {
       <section className="section-block ranking-admin-panel">
         <SectionTitle eyebrow="OFICIALIZAÇÃO" title="FECHAMENTO DO RANKING" />
         <p className="form-hint">{closed ? 'A classificação geral está oficial. Reabrir exige motivo e fica registrado na auditoria.' : 'Feche o ranking quando todos os resultados estiverem homologados. Depois disso, alterações viram retificações rastreáveis.'}</p>
+        {!closed && (undecided.length || suggestions.length) ? <p className="form-error" role="status">{undecided.length ? `Em disputa: ${undecided.map((item) => item.name).join(', ')}. ` : ''}{suggestions.length ? `Faltam lançar ${suggestions.length} ${suggestions.length === 1 ? 'bonificação automática' : 'bonificações automáticas'}.` : ''}</p> : null}
         <button type="button" className="wide-action" onClick={() => void toggleClosure()}><Lock size={18} /> {closed ? 'REABRIR RANKING GERAL' : 'FECHAR A CLASSIFICAÇÃO'} <span>›</span></button>
       </section>
     </> : null}
