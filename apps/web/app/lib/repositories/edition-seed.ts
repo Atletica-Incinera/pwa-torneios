@@ -41,6 +41,9 @@ export const seedDisciplines: Record<string, DisciplineState> = {
   'Vôlei': { name: 'Vôlei', mode: 'Coletiva', tone: 'pink', enabled: true },
   Handebol: { name: 'Handebol', mode: 'Coletiva', tone: 'orange', enabled: true },
   Xadrez: { name: 'Xadrez', mode: 'Individual', tone: 'blue', enabled: true },
+  // Sem preset com este nome e sem regra propria: e a modalidade que cai na
+  // regra generica, e o unico jeito de exercitar o aviso que diz isso.
+  Queimado: { name: 'Queimado', mode: 'Coletiva', tone: 'orange', enabled: true },
 };
 
 /** Toda categoria nasce com estas duas fases, semeada ou criada no app. */

@@ -1,9 +1,9 @@
 'use client';
 
-import { Clock3, Goal, Layers3, Settings2, Trash2, Trophy, Users } from 'lucide-react';
+import { Clock3, Goal, Layers3, Settings2, Trash2, TriangleAlert, Trophy, Users } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { DisciplineRule, useFrontendState } from '../lib/repositories/browser-repository';
-import { formatDisciplineRegulation, formatDisciplineRule, resolveDisciplineRule } from '../lib/discipline-rules';
+import { formatDisciplineRegulation, formatDisciplineRule, regulamentoIndefinido, resolveDisciplineRule } from '../lib/discipline-rules';
 import { describeTiebreakers, regulationFromRule } from '../lib/regulation';
 import { RegulationFields } from './RegulationFields';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,9 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
   const stored = state.disciplines[name] ?? {};
   const enabled = stored.enabled !== false;
   const rule = resolveDisciplineRule(name, stored);
+  // Sem regra propria e sem preset com o nome dela, o que a tela mostra e um
+  // palpite do app -- e ate aqui ele se parecia com uma decisao.
+  const semRegulamento = regulamentoIndefinido(name, stored);
   const config = stored.config ?? initialConfig ?? formatDisciplineRule(rule);
   const regulation = regulationFromRule(name, rule);
   const [editing, setEditing] = useState(false);
@@ -78,6 +81,12 @@ export function DisciplineManager({ name, mode, initialConfig, tournaments }: { 
       <div><Users size={22} /><span><small>Tipo</small><strong>{mode}</strong></span></div>
       <div><Trophy size={22} /><span><small>Disputas</small><strong>{tournaments} configuradas</strong></span></div>
     </div>
+    {semRegulamento ? <div className="info-banner banner-atencao"><TriangleAlert size={20} aria-hidden="true" /><p>
+      <strong>{name} ainda não tem regulamento definido.</strong> O que está acima é uma regra
+      genérica que o app usa enquanto ninguém configura — dois tempos de 20 minutos com cronômetro
+      regressivo. Se {name} não funciona assim, a mesa vai operar com um relógio que não tem a ver
+      com o jogo. {allowed ? 'Ajuste em Editar regras.' : 'Peça ao administrador da edição para ajustar.'}
+    </p></div> : null}
     {!allowed ? <div className="info-banner"><p>Seu perfil pode consultar o regulamento de {name}, mas não alterá-lo.</p></div> : null}
     {allowed && editing ? <form className="entity-form inline-config-form discipline-rule-form" onSubmit={save}>
       <div className="form-contract-note"><p>Novos jogos receberão estas regras. Jogos já criados mantêm a configuração com que foram agendados.</p></div>
