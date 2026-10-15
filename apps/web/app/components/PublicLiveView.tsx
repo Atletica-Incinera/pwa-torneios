@@ -27,7 +27,8 @@ export function PublicLiveView() {
   const { state } = useFrontendState();
   const activeEdition = getActiveEdition(state);
   const matches = listMatches(state, activeEdition?.id).filter((match) => isPublicMatch(state, match));
-  const anyLive = matches.some((match) => isLive(match.status));
+  // "Ao vivo" esquecido na mesa (horas depois do fim previsto) não é jogo em quadra.
+  const anyLive = matches.some((match) => isLive(match.status) && !match.situation.stale);
   // Jogo em quadra vence o rótulo da edição: se houver bola rolando, é "ao vivo".
   const finished = !anyLive && (activeEdition?.status === 'Finalizada' || activeEdition?.status === 'Arquivada');
   const next = matches.filter((match) => isPendingMatch(match.status)).sort((a, b) => when(a).localeCompare(when(b))).slice(0, 3);

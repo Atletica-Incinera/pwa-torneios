@@ -17,7 +17,11 @@ export default function PublicScorersPage() {
   // Modalidade com lance registrado entra na lista mesmo sem nenhum autor
   // informado: e justamente ai que a lacuna precisa aparecer. Escondendo, a
   // tela dizia "artilharia vazia" quando o certo era "a mesa nao anotou".
-  const comArtilheiros = artilharia.filter((item) => item.artilheiros.length || item.semAutor);
+  const comArtilheiros = artilharia.filter((item) => item.artilheiros.length);
+  // Modalidade sem nenhum autor anotado vira uma linha do resumo abaixo, em vez
+  // de uma seção inteira dizendo "nenhum lance com nome" — em 2026 eram quatro
+  // seções vazias seguidas, e a página não mostrava nada.
+  const semNenhumAutor = artilharia.filter((item) => !item.artilheiros.length && item.semAutor);
 
   return (
     <PublicAppShell
@@ -67,8 +71,15 @@ export default function PublicScorersPage() {
       {!comArtilheiros.length ? (
         <EmptyState
           title="ARTILHARIA AINDA VAZIA"
-          copy="A lista aparece quando os primeiros gols forem registrados com o nome de quem marcou."
+          copy="A lista aparece quando a mesa registrar o nome de quem marcou."
         />
+      ) : null}
+
+      {semNenhumAutor.length ? (
+        <p className="artilharia-lacuna">
+          <Target size={14} aria-hidden="true" /> Sem o nome de quem marcou:{' '}
+          {semNenhumAutor.map((item) => `${item.modalidade} (${item.semAutor} ${item.semAutor === 1 ? 'lance' : 'lances'})`).join(', ')}.
+        </p>
       ) : null}
     </PublicAppShell>
   );

@@ -27,6 +27,8 @@ test('no mata-mata, o nome da rodada pendente', () => {
 
 test('sem jogos gerados', () => {
   assert.equal(currentPhaseLabel({ ...setup, generated: false }, []), 'Jogos a gerar');
+  // Agenda montada à mão, sem a geração: a fase sai dos jogos.
+  assert.equal(currentPhaseLabel({ ...setup, generated: false }, [['t-1', { status: 'Agendada', phase: 'Grupo A' }]]), 'Grupo A');
   assert.equal(currentPhaseLabel({ ...setup, generated: false, phases: [] }, []), 'Configuração');
 });
 

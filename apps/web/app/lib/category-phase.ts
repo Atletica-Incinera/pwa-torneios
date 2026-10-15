@@ -16,7 +16,10 @@ export function currentPhaseLabel(
 ) {
   if (setup.status === 'Encerrado') return 'Encerrada';
   if (setup.status === 'Arquivado') return 'Arquivada';
-  if (!setup.generated || !matches.length) return setup.phases.length ? 'Jogos a gerar' : 'Configuração';
+  // Os jogos decidem, não a marca de "gerado": em 2026 várias categorias tiveram
+  // a agenda montada jogo a jogo, sem passar pela geração, e o selo dizia
+  // "Jogos a gerar" sobre dezenas de jogos já disputados.
+  if (!matches.length) return setup.phases.length ? 'Jogos a gerar' : 'Configuração';
   const pending = matches.filter(([, match]) => !settled.includes(match.status ?? 'Agendada'));
   if (!pending.length) return 'Jogos encerrados';
   const knockout = pending.filter(([id]) => id.includes('-advanced-'));

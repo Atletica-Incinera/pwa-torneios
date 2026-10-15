@@ -11,6 +11,7 @@ import { formatClock } from '../lib/tournament-engine';
 import { matchClockLabel, mesaOperaRelogio, resolveDisciplineRule } from '../lib/discipline-rules';
 import { isLive, isTerminalMatch } from '../lib/status';
 import type { MatchView } from '../lib/edition-catalog';
+import { tiebreakSentence } from '../lib/tiebreak-text';
 
 export function MatchDetailClient({ match, readOnly = false }: { match: MatchView; readOnly?: boolean }) {
   const { state } = useFrontendState();
@@ -41,6 +42,11 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
 
   return <>
     <MatchSummary match={current} />
+    {/* Quem venceu vem logo abaixo do placar: num 3 × 3 decidido nos pênaltis,
+        a frase ficava no fim da página, depois de todos os lances. */}
+    {operation.tiebreak ? <div className="info-banner match-outcome"><p><strong>{tiebreakSentence(operation.tiebreak, current.entryA)}.</strong></p></div> : null}
+    {operation.walkoverWinner ? <div className="info-banner match-outcome"><p><strong>W.O.:</strong> {operation.walkoverWinner} vence por ausência da equipe adversária.</p></div> : null}
+    {operation.periodResults?.length ? <p className="period-results">Parciais: {operation.periodResults.map((item) => `${item.scoreA}-${item.scoreB}`).join(' · ')}</p> : null}
     <div className="sr-only" aria-live="polite" aria-atomic="true">{scoreAnnouncement}</div>
     {isLive(current.status) || operation.events?.length ? (
       <section className="spectator-match-state">
@@ -65,9 +71,6 @@ export function MatchDetailClient({ match, readOnly = false }: { match: MatchVie
         a mesa acerta a artilharia com o jogo terminado, sem o placar na mao. */}
     {!readOnly && canOperate && isTerminalMatch(current.status) ? <MatchScorers match={current} /> : null}
     {!readOnly && !canOperate ? <div className="info-banner"><p>Seu perfil não pode editar ou operar partidas de {current.discipline}.</p></div> : null}
-    {operation.periodResults?.length ? <p className="period-results">Parciais: {operation.periodResults.map((item) => `${item.scoreA}-${item.scoreB}`).join(' · ')}</p> : null}
-    {operation.tiebreak ? <div className="info-banner"><p><strong>{operation.tiebreak.label}:</strong> {operation.tiebreak.winner} ({operation.tiebreak.scoreA} × {operation.tiebreak.scoreB}) · {operation.tiebreak.reason}</p></div> : null}
-    {operation.walkoverWinner ? <div className="info-banner"><p><strong>W.O.:</strong> {operation.walkoverWinner} vence por ausência da equipe adversária.</p></div> : null}
     {operation.reason ? <div className="info-banner"><p><strong>Motivo:</strong> {operation.reason}</p></div> : null}
     {operation.corrections?.length ? <div className="info-banner"><p><strong>Resultado retificado:</strong> {operation.corrections.at(-1)?.before} → {operation.corrections.at(-1)?.after} · {operation.corrections.at(-1)?.reason}</p></div> : null}
   </>;

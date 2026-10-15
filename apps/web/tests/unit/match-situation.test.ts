@@ -31,3 +31,15 @@ test('placar só depois do início: a API manda 0 para jogo que não começou', 
   assert.equal(visibleScore('Ao vivo', 2), 2);
   assert.equal(visibleScore('Encerrada', undefined), 0);
 });
+
+test('ao vivo esquecido vira "Sem atualização" depois de horas do fim previsto', async () => {
+  const { matchSituation } = await import('../../app/lib/match-situation.ts');
+  const now = new Date('2026-10-15T15:00:00');
+  const preso = matchSituation({ status: 'Ao vivo', date: '2026-10-12', time: '09:20', durationMinutes: 40 }, now);
+  assert.equal(preso.label, 'Sem atualização');
+  assert.equal(preso.stale, true);
+  assert.equal(preso.showScore, true);
+  const atrasado = matchSituation({ status: 'Ao vivo', date: '2026-10-15', time: '12:30', durationMinutes: 40 }, now);
+  assert.equal(atrasado.label, 'Ao vivo');
+  assert.equal(atrasado.stale, undefined);
+});
