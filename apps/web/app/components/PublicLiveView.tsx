@@ -28,7 +28,8 @@ export function PublicLiveView() {
   const activeEdition = getActiveEdition(state);
   const matches = listMatches(state, activeEdition?.id).filter((match) => isPublicMatch(state, match));
   const anyLive = matches.some((match) => isLive(match.status));
-  const finished = activeEdition?.status === 'Finalizada' || activeEdition?.status === 'Arquivada';
+  // Jogo em quadra vence o rótulo da edição: se houver bola rolando, é "ao vivo".
+  const finished = !anyLive && (activeEdition?.status === 'Finalizada' || activeEdition?.status === 'Arquivada');
   const next = matches.filter((match) => isPendingMatch(match.status)).sort((a, b) => when(a).localeCompare(when(b))).slice(0, 3);
   const latest = matches.filter((match) => isOfficialResult(match.status)).sort((a, b) => when(b).localeCompare(when(a))).slice(0, 3);
   const champions = listCategories(state, activeEdition?.id)
