@@ -12,6 +12,8 @@ export type MatchSituation = {
    * a mesa não encerrou. Não é jogo em quadra e não pode ser anunciado assim.
    */
   stale?: boolean;
+  /** O horário já passou e não há resultado: não é mais um "próximo jogo". */
+  overdue?: boolean;
 };
 
 type SituationInput = {
@@ -67,7 +69,7 @@ export function matchSituation(match: SituationInput, now: Date = new Date()): M
   const elapsed = (now.getTime() - start.getTime()) / 60_000;
   if (elapsed < 0) return { label: 'Próximo', tone: 'blue', showScore: false };
   if (elapsed <= (match.durationMinutes ?? 60) + graceMinutes) return { label: 'Atrasado', tone: 'pink', showScore: false };
-  return { label: 'Sem resultado', tone: 'pink', showScore: false };
+  return { label: 'Sem resultado', tone: 'pink', showScore: false, overdue: true };
 }
 
 /** O placar exibível: nulo enquanto o jogo não começou. */

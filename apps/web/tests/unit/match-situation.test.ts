@@ -43,3 +43,10 @@ test('ao vivo esquecido vira "Sem atualização" depois de horas do fim previsto
   assert.equal(atrasado.label, 'Ao vivo');
   assert.equal(atrasado.stale, undefined);
 });
+
+test('jogo agendado de dias atrás sem resultado fica marcado como vencido', async () => {
+  const { matchSituation } = await import('../../app/lib/match-situation.ts');
+  const now = new Date('2026-10-15T15:00:00');
+  assert.equal(matchSituation({ status: 'Agendada', date: '2026-10-09', time: '19:00', durationMinutes: 40 }, now).overdue, true);
+  assert.equal(matchSituation({ status: 'Agendada', date: '2026-10-16', time: '09:00', durationMinutes: 40 }, now).overdue, undefined);
+});

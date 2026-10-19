@@ -31,7 +31,9 @@ export function PublicLiveView() {
   const anyLive = matches.some((match) => isLive(match.status) && !match.situation.stale);
   // Jogo em quadra vence o rótulo da edição: se houver bola rolando, é "ao vivo".
   const finished = !anyLive && (activeEdition?.status === 'Finalizada' || activeEdition?.status === 'Arquivada');
-  const next = matches.filter((match) => isPendingMatch(match.status)).sort((a, b) => when(a).localeCompare(when(b))).slice(0, 3);
+  // Só o que ainda vai acontecer: jogo de dias atrás sem resultado lançado não é
+  // "próximo" — depois do fim da edição, a home listava jogos da primeira semana.
+  const next = matches.filter((match) => isPendingMatch(match.status) && !match.situation.overdue).sort((a, b) => when(a).localeCompare(when(b))).slice(0, 3);
   const latest = matches.filter((match) => isOfficialResult(match.status)).sort((a, b) => when(b).localeCompare(when(a))).slice(0, 3);
   const champions = listCategories(state, activeEdition?.id)
     .filter((category) => isPublicTournamentStatus(category.status))
